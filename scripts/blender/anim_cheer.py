@@ -3,6 +3,8 @@
 # -> squash landing -> arms wiggle -> settle back to the idle rest pose. 40f @24fps.
 import bpy, sys, os, math
 from mathutils import Vector, Euler
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import props
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 rdir = argv[0]
@@ -91,6 +93,8 @@ for fc in fcurves(rig.animation_data.action):
     for kp in fc.keyframe_points:
         kp.interpolation = "BEZIER"; kp.easing = "AUTO"
 
+# confetti burst above the head at the jump apex
+props.confetti_burst(Vector((0, -0.15, 0.42)), 11, n=46, seed=7, life=28)
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(rdir, "hippo_cheer_jump.blend"))
 print("SAVED cheer")
 if not render:

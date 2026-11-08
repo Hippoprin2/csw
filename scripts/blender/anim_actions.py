@@ -6,6 +6,8 @@
 #   arm.L: +y raises, +z swings forward.   arm.R: -y raises, -z swings forward.
 import bpy, sys, os, math
 from mathutils import Vector, Euler, Matrix
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import props
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 rdir, ACTION = argv[0], argv[1]
@@ -81,13 +83,18 @@ def sweep():  # 정리·청소: both arms to one side, scrub left-right (broom l
     for f, s in sides:
         # both arms swing across the front toward side s (one raised, one lowered), stretched
         R(f, "arm.L", 0, 25 * s + 10, 50 + 30 * s); R(f, "arm.R", 0, 25 * s - 10, -50 + 30 * s)
-        S(f, "arm.L", (1.08, 1.3, 1.08)); S(f, "arm.R", (1.08, 1.3, 1.08))
         R(f, "body", 0, 10 * s, 14 * s)    # lean + twist toward the side
         R(f, "head", 0, -6 * s, 10 * s)
         S(f, "body", (1.03, 0.97, 1.03)); L(f, "root", 0.0)
         L(f + 3, "root", 0.015)            # little bounce between strokes
     rest(44); rest(F)
-    eyes([(1, 0), (F, 0)]); wag(4, 40, 14, 4); return F
+    eyes([(1, 0), (F, 0)]); wag(4, 40, 14, 4)
+    hp = props.hand_pos(rig, "arm.R", 8)
+    b = props.broom()
+    b.location = hp + Vector((0.0, -0.03, -0.1)); b.rotation_euler = (math.radians(-22), math.radians(-10), 0)
+    props.attach(b, rig, "arm.R", 8)
+    props.key_scale(b, [(1, 0), (4, 0), (7, 1), (42, 1), (45, 0), (F, 0)])
+    return F
 
 def hop():  # 몸 움직이기: two energetic hops with arm swings
     F = 40; rest(1)
@@ -104,15 +111,37 @@ def hop():  # 몸 움직이기: two energetic hops with arm swings
         R(base + 13, "leg.L"); R(base + 13, "leg.R")
         S(base + 16, "body", (1, 1, 1)); sw(base + 16, 0)
     ears_bounce([(1, 0), (8, -12), (12, 14), (16, 0), (26, -12), (30, 14), (34, 0)])
-    rest(F); eyes([(1, 0), (8, 1), (34, 1), (35, 0), (F, 0)]); wag(4, 36, 20, 3); return F
+    rest(F); eyes([(1, 0), (8, 1), (34, 1), (35, 0), (F, 0)]); wag(4, 36, 20, 3)
+    sc.frame_set(1); bpy.context.view_layer.update()
+    head_top = rig.matrix_world @ P["head"].tail
+    for i, (dx, dz, f0) in enumerate(((-0.2, 0.0, 11), (0.21, -0.03, 12), (-0.17, -0.1, 29), (0.19, -0.07, 30))):
+        d = props.sweat_drop(f"Sweat{i}")
+        start = head_top + Vector((dx, -0.08, dz - 0.05))
+        d.rotation_euler = (0, math.radians(-25 if dx < 0 else 25), 0)
+        props.attach(d, rig, "head", 1)
+        for f, off, s in ((1, 0, 0), (f0 - 1, 0, 0), (f0, 0, 0.02), (f0 + 3, 0.03, 0.026), (f0 + 7, 0.06, 0.0), (F, 0.06, 0)):
+            sc.frame_set(f); bpy.context.view_layer.update()
+            d.matrix_world = Matrix.Translation(start + Vector((0.6 * off * (1 if dx > 0 else -1), 0, off))) @ Euler(d.rotation_euler).to_matrix().to_4x4()
+            d.scale = (max(s, 1e-4),) * 3
+            d.keyframe_insert("location", frame=f); d.keyframe_insert("scale", frame=f)
+    return F
 
 def nod():  # 공부·일: content nods, small body bob, a slow blink at the end
     F = 44; rest(1)
     for f, a in ((6, 20), (11, -4), (16, 20), (21, -4), (26, 16), (31, 0)):
         R(f, "head", x=a); S(f, "body", (1.0, 0.985 if a > 5 else 1.0, 1.0))
-    arms(8, ly=-6, lz=18); arms(30, ly=-6, lz=18)
+    arms(5, ly=50, lz=78); arms(36, ly=50, lz=78)
+    for f in (5, 36):
+        S(f, "arm.L", (1.08, 1.35, 1.08)); S(f, "arm.R", (1.08, 1.35, 1.08))
     ears_bounce([(1, 0), (8, 6), (13, -4), (18, 6), (23, -4), (28, 5), (33, 0)])
-    rest(38); rest(F); eyes([(1, 0), (33, 0), (34, 1), (39, 1), (40, 0), (F, 0)]); wag(4, 36, 10, 6); return F
+    rest(40); rest(F); eyes([(1, 0), (33, 0), (34, 1), (39, 1), (40, 0), (F, 0)]); wag(4, 36, 10, 6)
+    tl = props.hand_pos(rig, "arm.L", 12); tr = props.hand_pos(rig, "arm.R", 12)
+    bk = props.book()
+    bk.location = Vector((0, (tl.y + tr.y) / 2 - 0.05, (tl.z + tr.z) / 2 + 0.04))
+    bk.rotation_euler = (math.radians(-22), 0, math.radians(15))   # pages toward the viewer, slight 3/4 turn
+    props.attach(bk, rig, "body", 12)
+    props.key_scale(bk, [(1, 0), (3, 0), (6, 1.6), (8, 1.5), (36, 1.5), (39, 0), (F, 0)])
+    return F
 
 def make_sweet_potato(name="SweetPotato", half_len=0.16, rad=0.058):
     """split-open roasted sweet potato lying along X, origin at its centre.
@@ -197,7 +226,18 @@ def stretch_spin():  # 나 돌보기: big stretch up (arms up, body tall), then 
     arms(34, ly=30, lz=-10); S(46, "body", (1.05, 0.93, 1.05))
     ears_bounce([(1, 0), (26, 0), (32, -14), (38, -14), (46, 10), (50, 0)])
     others = ("body", "head", "ear.L", "ear.R", "arm.L", "arm.R", "leg.L", "leg.R", "tail")
-    rest(52, others); rest(F, others); eyes([(1, 0), (8, 1), (24, 1), (25, 0), (F, 0)]); wag(26, 50, 20, 3); return F
+    rest(52, others); rest(F, others); eyes([(1, 0), (8, 1), (24, 1), (25, 0), (F, 0)]); wag(26, 50, 20, 3)
+    face = math.radians(19)                                  # face the 3/4 camera
+    spots = [(-0.36, 0.35, 9, 0.12), (0.38, 0.45, 12, 0.1), (-0.3, -0.05, 16, 0.09), (0.36, 0.05, 19, 0.11),
+             (-0.4, 0.55, 26, 0.09), (0.3, 0.62, 29, 0.1), (-0.32, 0.15, 33, 0.11), (0.4, 0.28, 36, 0.09),
+             (-0.2, 0.62, 40, 0.08), (0.24, -0.1, 43, 0.1), (-0.42, 0.3, 47, 0.09), (0.36, 0.5, 50, 0.08)]
+    for i, (x, z, f0, s) in enumerate(spots):
+        sp = props.sparkle(f"Sparkle{i % 3}{i}", col=[(1.0, 0.86, 0.35), (1.0, 0.75, 0.82), (0.75, 0.9, 1.0)][i % 3])
+        sp.location = (x, -0.25, z); sp.rotation_euler = (0, 0, face)
+        props.key_scale(sp, [(1, 0), (f0 - 1, 0), (f0 + 2, s), (f0 + 4, s * 0.6), (f0 + 6, s * 1.1), (f0 + 10, 0), (F, 0)])
+        for f, a in ((f0, 0), (f0 + 10, 90)):
+            sp.rotation_euler = (0, math.radians(a), face); sp.keyframe_insert("rotation_euler", frame=f)
+    return F
 
 def wave():  # 사람·마음: raise the right arm and wave, head tilt
     F = 52; rest(1)
@@ -208,7 +248,13 @@ def wave():  # 사람·마음: raise the right arm and wave, head tilt
     R(8, "arm.L", 0, 0, 10); R(40, "arm.L", 0, 0, 10)
     R(24, "head", 0, 10, 4); R(40, "head", 0, 8, 0)
     ears_bounce([(1, 0), (12, 5), (22, -5), (32, 5), (42, 0)])
-    rest(48); rest(F); eyes([(1, 0), (20, 0), (21, 1), (24, 1), (25, 0), (F, 0)]); wag(6, 44, 18, 4); return F
+    rest(48); rest(F); eyes([(1, 0), (20, 0), (21, 1), (24, 1), (25, 0), (F, 0)]); wag(6, 44, 18, 4)
+    hp = props.hand_pos(rig, "arm.R", 10)
+    lt = props.letter()
+    lt.location = hp + Vector((0.0, -0.04, 0.03)); lt.rotation_euler = (0, math.radians(-15), math.radians(19))
+    props.attach(lt, rig, "arm.R", 10)
+    props.key_scale(lt, [(1, 0), (6, 0), (9, 1.8), (11, 1.65), (42, 1.65), (46, 0), (F, 0)])
+    return F
 
 ACTIONS = {"sweep": sweep, "hop": hop, "nod": nod, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
 F = ACTIONS[ACTION]()
