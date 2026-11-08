@@ -37,6 +37,8 @@
     - 교훈: 이 캐릭터 스타일(동숲/무민풍)은 입체 눈알보다 평면 데칼이 맞음.
   - 2026-11-08: 대표 "시안이랑 똑같게" → v4: 시안 이미지 픽셀을 그대로 얼굴에 투영(눈+눈두덩+눈썹+콧구멍). 홍채 위치 기준 닮음변환(시안→렌더 scale 1.254), 부드러운 타원 마스크, 경계 피부색을 본체색에 맞춤. 정면은 시안과 거의 동일. 파일 design/character/3d/v4/ (hippo_v3_open.blend/.glb, decals/eyes_open.png), 비교 renders/v4_vs_concept.png. 스크립트 concept_eye_decal.py, run_v4.sh (build_hippo_v3.py를 DECAL_V4=1로 재사용).
     - 남은 것: 감은 눈/표정용 이미지(시안 스타일로 OpenAI 편집 생성 → 같은 방식 투영), 귀 안쪽 얼룩, 콧구멍 주변 옅은 음영(메시 굴곡).
+  - 2026-11-08: **대표 확정: v4 얼굴(시안 투영)**. 감은 눈 표정: 시안 정면을 1024x1536로 패딩 → OpenAI images/edits(눈만 감게, 나머지 동일, medium ≈$0.04) → 패딩 제거 + bbox 정렬(시안과 bbox 1px 이내) → expressions/closed_front.png → 같은 투영(iris 앵커 고정 인자) → v4/hippo_v3_closed.*, decals/eyes_closed.png. 비교 renders/v4_open_closed.png. 스크립트 run_v4_closed.sh. 표정 추가도 같은 방식.
+    - 다음: 뼈대(10~15개) + 동작 샘플 1개.
 
 ## 열린 질문
 - 최종 동물 종류, 이름, 성격/말투

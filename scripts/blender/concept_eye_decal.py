@@ -2,7 +2,7 @@
 # Maps concept-image px -> front-render px with a similarity transform anchored on the
 # irises, samples the concept into the decal canvas, soft elliptical mask around eyes+brows,
 # per-channel gain so the concept skin matches the model's body color at the mask edge.
-# Usage: python concept_eye_decal.py concept_front.png out.png
+# Usage: python concept_eye_decal.py concept_front.png out.png [cx1,cy1,cx2,cy2]
 import sys
 import numpy as np
 from PIL import Image, ImageFilter
@@ -18,9 +18,12 @@ Hc, Wc, _ = c.shape
 # concept iris centres (dark blobs in the upper half)
 lum = c.mean(-1); dark = lum < 90; dark[Hc // 2:] = False
 lab, n = ndimage.label(dark)
-blobs = sorted([b for b in (np.argwhere(lab == i) for i in range(1, n + 1)) if len(b) > 800],
+blobs = [] if len(sys.argv) > 3 else sorted([b for b in (np.argwhere(lab == i) for i in range(1, n + 1)) if len(b) > 800],
                key=lambda b: b[:, 1].mean())
-(cy1, cx1), (cy2, cx2) = blobs[0].mean(0), blobs[1].mean(0)
+if len(sys.argv) > 3:   # expression images are pre-aligned to the concept: reuse its iris anchors
+    cx1, cy1, cx2, cy2 = map(float, sys.argv[3].split(","))
+else:
+    (cy1, cx1), (cy2, cx2) = blobs[0].mean(0), blobs[1].mean(0)
 # render eye centres (old painted eyes on the TRELLIS model)
 rx1, rx2, ry = 306.8, 459.2, 255.7
 s = (rx2 - rx1) / (cx2 - cx1)
