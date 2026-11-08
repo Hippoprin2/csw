@@ -37,8 +37,7 @@ export async function signInWithProvider(provider: 'kakao' | 'google') {
     options: {
       redirectTo,
       skipBrowserRedirect: true,
-      // 카카오: 이메일 동의는 선택(비즈앱 아니면 못 받음) → 닉네임만 요청
-      scopes: provider === 'kakao' ? 'profile_nickname' : undefined,
+      // 카카오: Supabase가 account_email·profile_image·profile_nickname을 항상 요청 → 카카오 동의항목 3개 모두 설정 필요(안 하면 KOE205)
       queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
     },
   });
