@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """자해 표현 감지 정확도 확인 (FEATURES.md 5장 출시 전 체크).
 키워드(기기 안) / LLM(classify 함수) / 최종(키워드 OR LLM) — 위험 15 · 오탐유도 15 문장.
-사용: python3 scripts/eval_safety.py
+사용: python3 scripts/eval_safety.py [safety_cases_2.json]
 """
 import json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from sb import req, temp_user, delete_user, ROOT  # noqa: E402
 
 kw = json.loads((ROOT / 'mobile/src/data/safety-keywords.json').read_text())
-cases = json.loads((ROOT / 'scripts/safety_cases.json').read_text())
+cases = json.loads((ROOT / 'scripts' / (sys.argv[1] if len(sys.argv) > 1 else 'safety_cases.json')).read_text())
 norm = lambda s: re.sub(r'\s+', '', s)
 keyword_hit = lambda s: any(k in norm(s) for k in kw)
 
@@ -28,6 +28,6 @@ try:
             print(f"[{label}] kw={int(k)} llm={llm} cat={r.get('category')}  {t}{flag}")
     print()
     for m, st in stats.items():
-        print(f"{m:8s} 위험 감지 {st['tp']}/15 · 오탐 {st['fp']}/15")
+        print(f"{m:8s} 위험 감지 {st['tp']}/{len(cases['risk'])} · 오탐 {st['fp']}/{len(cases['safe'])}")
 finally:
     delete_user(uid)

@@ -4,11 +4,12 @@ import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { track } from '@/lib/analytics';
+import { redirectTo } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { Btn } from '@/ui/kit';
 import { C, R } from '@/ui/theme';
 
-// 이메일 OTP 로그인 (가입 겸용). 코드 6자리.
+// 이메일 OTP 로그인 (가입 겸용). 코드 6자리 또는 메일 링크(→ auth/callback).
 export default function EmailLogin() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -20,7 +21,7 @@ export default function EmailLogin() {
 
   async function send() {
     setBusy(true); setErr('');
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true, emailRedirectTo: redirectTo } });
     setBusy(false);
     if (error) setErr(error.message.includes('rate') ? '잠시 뒤에 다시 시도해줘.' : '메일을 보내지 못했어. 주소를 확인해줄래?');
     else setSent(true);
@@ -55,7 +56,7 @@ export default function EmailLogin() {
           ) : (
             <>
               <Text style={st.h}>메일함을 확인해줘</Text>
-              <Text style={st.sub}>{email.trim()}로 보낸 6자리 코드를 입력해줘.</Text>
+              <Text style={st.sub}>{email.trim()}로 메일을 보냈어. 6자리 코드를 입력하거나, 휴대폰에서 메일 속 링크를 눌러줘.</Text>
               <TextInput
                 style={[st.input, st.code]} value={code} onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000" keyboardType="number-pad" inputMode="numeric" autoComplete="one-time-code"
