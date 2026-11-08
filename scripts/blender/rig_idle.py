@@ -65,7 +65,7 @@ def ss(e0, e1, x):
 x, y, z = V[:, 0], V[:, 1], V[:, 2]
 w = {}
 w["head"] = ss(-0.07, 0.04, z)
-arm = ss(0.17, 0.21, np.abs(x)) * ss(-0.32, -0.27, z) * (1 - ss(-0.04, 0.0, z))
+arm = ss(0.195, 0.225, np.abs(x)) * ss(-0.29, -0.26, z) * (1 - ss(-0.07, -0.03, z))
 leg = (1 - ss(-0.40, -0.34, z)) * ss(0.015, 0.05, np.abs(x))
 ear = ss(0.37, 0.41, z) * ss(0.08, 0.11, np.abs(x)) * w["head"]
 tail = ss(0.19, 0.215, y) * ss(-0.40, -0.37, z) * (1 - ss(-0.21, -0.18, z)) * (1 - ss(0.09, 0.11, np.abs(x)))
@@ -180,9 +180,9 @@ def light(name, rot, energy):
     ob.rotation_euler = [math.radians(a) for a in rot]
 light("key", (50, 0, 30), 3.0); light("fill", (60, 0, -120), 1.2)
 light("rim", (110, 0, 180), 2.0); light("bounce", (150, 0, 0), 0.7)
-cam_d = bpy.data.cameras.new("cam"); cam_d.type = "ORTHO"; cam_d.ortho_scale = 1.25
+cam_d = bpy.data.cameras.new("cam"); cam_d.type = "ORTHO"; cam_d.ortho_scale = 1.45   # same framing for every action (jump headroom)
 cam = bpy.data.objects.new("cam", cam_d); sc.collection.objects.link(cam); sc.camera = cam
-target = Vector((0, 0, 0.0))
+target = Vector((0, 0, 0.07))
 cam.location = target + Vector((0.35, -1, 0.12)).normalized() * 10
 cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
 sc.render.filepath = os.path.join(outdir, "idle_frames", "f_")
