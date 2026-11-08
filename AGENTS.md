@@ -8,6 +8,7 @@
   - 아이템/맵/공간 → docs/WORLD.md
   - 기능 → docs/FEATURES.md
   - 유료화 → docs/MONETIZATION.md
+  - 앱 개발(코드·스키마·배포) → docs/DEV.md, mobile/, supabase/
 - 다른 주제에 영향을 주는 결정은 docs/STATUS.md의 '결정 사항'에 한 줄로 남긴다.
 - 커밋 전에 git pull/status로 다른 세션 변경을 확인한다.
 - 사용자에게는 한국어로 답하고, 끝나면 "완료했다"를 붙인다.
