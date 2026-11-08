@@ -5,7 +5,7 @@
 # bone roll. World axes: X = character's left->right (screen), Y = back (camera at -Y), Z = up.
 #   arm.L: +y raises, +z swings forward.   arm.R: -y raises, -z swings forward.
 import bpy, sys, os, math
-from mathutils import Vector, Euler
+from mathutils import Vector, Euler, Matrix
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 rdir, ACTION = argv[0], argv[1]
@@ -20,13 +20,13 @@ for pb in P:
     pb.rotation_mode = "QUATERNION"
     pb.location = (0, 0, 0); pb.scale = (1, 1, 1); pb.rotation_quaternion = (1, 0, 0, 0)
 
-def wq(bone, x=0, y=0, z=0):
+def wq(bone, x=0, y=0, z=0, order="XYZ"):
     Bm = P[bone].bone.matrix_local.to_3x3()
-    Rw = Euler((math.radians(x), math.radians(y), math.radians(z))).to_matrix()
+    Rw = Euler((math.radians(x), math.radians(y), math.radians(z)), order).to_matrix()
     return (Bm.inverted() @ Rw @ Bm).to_quaternion()
 
-def R(f, bone, x=0, y=0, z=0):
-    P[bone].rotation_quaternion = wq(bone, x, y, z); P[bone].keyframe_insert("rotation_quaternion", frame=f)
+def R(f, bone, x=0, y=0, z=0, order="XYZ"):
+    P[bone].rotation_quaternion = wq(bone, x, y, z, order); P[bone].keyframe_insert("rotation_quaternion", frame=f)
 
 def L(f, bone, up=0.0):  # root/body local Y == world up
     P[bone].location = (0, up, 0); P[bone].keyframe_insert("location", frame=f)
@@ -34,10 +34,10 @@ def L(f, bone, up=0.0):  # root/body local Y == world up
 def S(f, bone, s):
     P[bone].scale = s; P[bone].keyframe_insert("scale", frame=f)
 
-def arms(f, ly=0, lz=0, ry=None, rz=None, lx=0, rx=None):
-    """symmetric by default: right arm mirrors left"""
+def arms(f, ly=0, lz=0, ry=None, rz=None, lx=0, rx=None, order="XYZ"):
+    """symmetric by default: right arm mirrors left. order='YXZ' = lower/raise first, then swing on X"""
     ry = -ly if ry is None else ry; rz = -lz if rz is None else rz; rx = lx if rx is None else rx
-    R(f, "arm.L", lx, ly, lz); R(f, "arm.R", rx, ry, rz)
+    R(f, "arm.L", lx, ly, lz, order); R(f, "arm.R", rx, ry, rz, order)
 
 def eyes(keys):  # [(frame, 0 open | 1 closed)]
     dec = bpy.data.objects["EyeDecal"]; nt = dec.data.materials[0].node_tree
@@ -91,14 +91,18 @@ def sweep():  # 정리·청소: both arms to one side, scrub left-right (broom l
 
 def hop():  # 몸 움직이기: two energetic hops with arm swings
     F = 40; rest(1)
+    # arms swing FRONT/BACK: first let them hang closer to the body (Y), then swing on world X
+    # (+x = back, -x = forward). Arms point sideways in rest, so X alone would only twist them.
+    D = -30
+    sw = lambda f, x: arms(f, ly=D, lx=x, order="YXZ")
     for base in (1, 19):
-        S(base + 3, "body", (1.06, 0.9, 1.06)); L(base + 3, "root", -0.03); arms(base + 3, ly=-10, lz=-20)
-        S(base + 6, "body", (0.95, 1.08, 0.95)); L(base + 6, "root", 0.0)
-        L(base + 9, "root", 0.10); S(base + 9, "body", (1, 1, 1)); arms(base + 9, ly=40, lz=30)
+        S(base + 3, "body", (1.06, 0.9, 1.06)); L(base + 3, "root", -0.03); sw(base + 3, 60)      # wind up: back
+        S(base + 6, "body", (0.95, 1.08, 0.95)); L(base + 6, "root", 0.0); sw(base + 6, -40)      # take-off: forward
+        L(base + 9, "root", 0.10); S(base + 9, "body", (1, 1, 1)); sw(base + 9, -80)             # apex: forward-up
         R(base + 9, "leg.L", x=-12); R(base + 9, "leg.R", x=-12)
-        L(base + 13, "root", 0.0); S(base + 13, "body", (1.07, 0.9, 1.07)); arms(base + 13, ly=10, lz=0)
+        L(base + 13, "root", 0.0); S(base + 13, "body", (1.07, 0.9, 1.07)); sw(base + 13, 40)   # landing: back
         R(base + 13, "leg.L"); R(base + 13, "leg.R")
-        S(base + 16, "body", (1, 1, 1))
+        S(base + 16, "body", (1, 1, 1)); sw(base + 16, 0)
     ears_bounce([(1, 0), (8, -12), (12, 14), (16, 0), (26, -12), (30, 14), (34, 0)])
     rest(F); eyes([(1, 0), (8, 1), (34, 1), (35, 0), (F, 0)]); wag(4, 36, 20, 3); return F
 
@@ -110,18 +114,72 @@ def nod():  # 공부·일: content nods, small body bob, a slow blink at the end
     ears_bounce([(1, 0), (8, 6), (13, -4), (18, 6), (23, -4), (28, 5), (33, 0)])
     rest(38); rest(F); eyes([(1, 0), (33, 0), (34, 1), (39, 1), (40, 0), (F, 0)]); wag(4, 36, 10, 6); return F
 
-def eat():  # 잘 먹기: both hands to mouth (onigiri later), chew bobs, happy eyes
+def make_sweet_potato(name="SweetPotato", half_len=0.16, rad=0.058):
+    """split-open roasted sweet potato lying along X, origin at its centre.
+    upper side = golden flesh, lower side = reddish-purple skin (jagged split edge)."""
+    import bmesh
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=128, v_segments=64, radius=1.0)
+    for v in bm.verts:
+        xn = v.co.z                                    # use sphere's pole axis as the length axis
+        ry, rz = v.co.x, v.co.y
+        taper = 1 - 0.55 * abs(xn) ** 2.2              # pointed ends
+        bumps = 1 + 0.05 * math.sin(4 * math.atan2(rz, ry) + 5 * xn)
+        flat = 0.85 if rz > 0 else 1.0                  # slightly flattened open top
+        v.co = Vector((xn * half_len, ry * rad * taper * bumps, rz * rad * taper * bumps * flat))
+    for f in bm.faces:
+        f.smooth = True
+        c = f.calc_center_median()
+        edge = 0.2 * rad + 0.12 * rad * math.sin(c.x / half_len * 9)
+        f.material_index = 1 if c.z > edge else 0
+    me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free()
+    def mat(n, rgb, rough):
+        m = bpy.data.materials.new(n); m.use_nodes = True
+        b = m.node_tree.nodes["Principled BSDF"]
+        lin = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+        b.inputs["Base Color"].default_value = (*lin, 1); b.inputs["Roughness"].default_value = rough
+        return m
+    me.materials.append(mat("SP_Skin", (0.52, 0.22, 0.27), 0.7))     # reddish-purple roasted skin
+    me.materials.append(mat("SP_Flesh", (0.98, 0.78, 0.25), 0.55))   # golden yellow flesh
+    o = bpy.data.objects.new(name, me); sc.collection.objects.link(o)
+    return o
+
+def eat():  # 잘 먹기: both hands hold a sweet potato up to the mouth, bites + chew, happy eyes
     F = 52; rest(1)
     arms(7, ly=55, lz=80); arms(44, ly=55, lz=80)
     for f in (7, 44):
         S(f, "arm.L", (1.1, 1.5, 1.1)); S(f, "arm.R", (1.1, 1.5, 1.1))
     R(7, "head", x=6)
     for i, f in enumerate(range(10, 42, 4)):
-        R(f, "head", x=12 if i % 2 else 2)
+        R(f, "head", x=16 if i % 2 else 4)
         S(f, "body", (1.02, 0.98, 1.02) if i % 2 else (1, 1, 1))
         L(f, "root", 0.012 if i % 2 else 0.0)
     ears_bounce([(1, 0), (12, 6), (20, -4), (28, 6), (36, -4), (44, 0)])
-    rest(F); eyes([(1, 0), (9, 1), (42, 1), (43, 0), (F, 0)]); wag(6, 46, 16, 4); return F
+    rest(F); eyes([(1, 0), (9, 1), (42, 1), (43, 0), (F, 0)]); wag(6, 46, 16, 4)
+    # --- sweet potato prop held between the hands, top near the snout ---
+    sc.frame_set(20); bpy.context.view_layer.update()
+    tl = rig.matrix_world @ P["arm.L"].tail; tr = rig.matrix_world @ P["arm.R"].tail
+    hands = (tl + tr) / 2
+    print("hands at", tuple(round(v, 3) for v in hands))
+    sp = make_sweet_potato()
+    sp.location = Vector((0, hands.y - 0.07, hands.z - 0.005))      # across both hands, in front of the chest
+    sp.rotation_euler = (math.radians(18), 0, 0)                      # +X tilts the flesh side toward the camera
+    # follow the body bone (keeps world placement)
+    body_m = rig.matrix_world @ P["body"].matrix
+    sp.parent = rig; sp.parent_type = "BONE"; sp.parent_bone = "body"
+    sp.matrix_parent_inverse = (body_m @ Matrix.Translation((0, P["body"].length, 0))).inverted()
+    sc.frame_set(1)
+    # pop in with the arms, three bites (shrinks from the top), pop out before rest
+    for f, s in ((1, 0.0), (5, 0.0), (8, 1.08), (10, 1.0), (16, 1.0), (17, 0.88), (26, 0.88), (27, 0.76),
+                 (36, 0.76), (37, 0.64), (43, 0.64), (47, 0.0), (F, 0.0)):
+        if s == 0:
+            sp.scale = (0.001, 0.001, 0.001)
+        elif s < 1:                       # bites: it gets shorter
+            sp.scale = (s, 1, 1)
+        else:
+            sp.scale = (s, s, s)
+        sp.keyframe_insert("scale", frame=f)
+    return F
 
 def stretch_spin():  # 나 돌보기: big stretch up (arms up, body tall), then a happy spin
     F = 60; rest(1, ("body", "head", "ear.L", "ear.R", "arm.L", "arm.R", "leg.L", "leg.R", "tail"))
