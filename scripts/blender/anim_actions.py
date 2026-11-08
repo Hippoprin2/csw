@@ -112,17 +112,23 @@ def hop():  # 몸 움직이기: two energetic hops with arm swings
         S(base + 16, "body", (1, 1, 1)); sw(base + 16, 0)
     ears_bounce([(1, 0), (8, -12), (12, 14), (16, 0), (26, -12), (30, 14), (34, 0)])
     rest(F); eyes([(1, 0), (8, 1), (34, 1), (35, 0), (F, 0)]); wag(4, 36, 20, 3)
+    # headband on the forehead (pops on/off with the action), follows the head
     sc.frame_set(1); bpy.context.view_layer.update()
-    head_top = rig.matrix_world @ P["head"].tail
-    for i, (dx, dz, f0) in enumerate(((-0.2, 0.0, 11), (0.21, -0.03, 12), (-0.17, -0.1, 29), (0.19, -0.07, 30))):
+    hb = props.headband(bpy.data.objects["Hippo"])
+    props.attach(hb, rig, "head", 1)
+    props.key_scale(hb, [(1, 0), (2, 0), (5, 1.06), (7, 1), (36, 1), (39, 0), (F, 0)])
+    # sweat: one at the (screen-)left eyebrow height, one at the right cheek height,
+    # just outside the head silhouette, flicking outward on each hop apex
+    for i, (x, z, f0) in enumerate(((-0.215, 0.36, 10), (0.245, 0.16, 11), (-0.215, 0.36, 28), (0.245, 0.16, 29))):
         d = props.sweat_drop(f"Sweat{i}")
-        start = head_top + Vector((dx, -0.08, dz - 0.05))
-        d.rotation_euler = (0, math.radians(-25 if dx < 0 else 25), 0)
+        side = 1 if x > 0 else -1
+        start = Vector((x, -0.06, z))
+        d.rotation_euler = (0, math.radians(30 * side), 0)
         props.attach(d, rig, "head", 1)
-        for f, off, s in ((1, 0, 0), (f0 - 1, 0, 0), (f0, 0, 0.02), (f0 + 3, 0.03, 0.026), (f0 + 7, 0.06, 0.0), (F, 0.06, 0)):
+        for f, off, sz in ((1, 0, 0), (f0 - 1, 0, 0), (f0, 0, 0.02), (f0 + 3, 0.035, 0.026), (f0 + 7, 0.07, 0.0), (F, 0.07, 0)):
             sc.frame_set(f); bpy.context.view_layer.update()
-            d.matrix_world = Matrix.Translation(start + Vector((0.6 * off * (1 if dx > 0 else -1), 0, off))) @ Euler(d.rotation_euler).to_matrix().to_4x4()
-            d.scale = (max(s, 1e-4),) * 3
+            d.matrix_world = Matrix.Translation(start + Vector((side * off, 0, (0.5 if side < 0 else 0.15) * off))) @ Euler(d.rotation_euler).to_matrix().to_4x4()
+            d.scale = (max(sz, 1e-4),) * 3
             d.keyframe_insert("location", frame=f); d.keyframe_insert("scale", frame=f)
     return F
 
@@ -172,6 +178,45 @@ def make_sweet_potato(name="SweetPotato", half_len=0.16, rad=0.058):
     me.materials.append(mat("SP_Flesh", (0.98, 0.78, 0.25), 0.55))   # golden yellow flesh
     o = bpy.data.objects.new(name, me); sc.collection.objects.link(o)
     return o
+
+def write():  # 공부·일: notebook held in front (left hand under it), pencil scribbling in the right, head down
+    F = 56; rest(1)
+    for f in (5, 50):
+        R(f, "arm.L", 0, 52, 82); S(f, "arm.L", (1.08, 1.4, 1.08))
+        R(f, "arm.R", 0, -40, -84); S(f, "arm.R", (1.06, 1.3, 1.06))
+    for i, f in enumerate(range(8, 47, 2)):              # scribble: quick little hand wiggles
+        if 26 <= f <= 30:                                # pause: tap pencil, look up a bit
+            R(f, "arm.R", 0, -48, -80); continue
+        R(f, "arm.R", 0, -40 + (4 if i % 2 else -3), -84 + (6 if (i // 2) % 2 else -4))
+    for f, a in ((1, 0), (6, 18), (12, 22), (18, 17), (24, 22), (28, 8), (32, 18), (38, 23), (44, 18), (49, 4)):
+        R(f, "head", x=a)
+    S(28, "body", (1, 1.01, 1)); S(34, "body", (1, 1, 1))
+    ears_bounce([(1, 0), (10, 4), (20, -3), (28, 6), (36, -3), (46, 0)])
+    rest(53); rest(F)
+    for b in ("arm.L", "arm.R"):
+        S(53, b, (1, 1, 1))
+    eyes([(1, 0), (27, 0), (28, 1), (30, 1), (31, 0), (F, 0)]); wag(4, 50, 10, 6)
+    hl = props.hand_pos(rig, "arm.L", 16); hr = props.hand_pos(rig, "arm.R", 16)
+    print("write hands", tuple(round(v, 3) for v in hl), tuple(round(v, 3) for v in hr))
+    nb = props.notebook()
+    NB = 1.55                                            # notebook scale: spans both hands
+    nb.location = Vector(((hl.x + hr.x) / 2 - 0.01, min(hl.y, hr.y) - 0.03, (hl.z + hr.z) / 2 - 0.005))
+    nb.rotation_euler = (math.radians(55), 0, math.radians(8))    # page tilted up toward the face + viewer
+    nb.scale = (NB,) * 3
+    props.attach(nb, rig, "body", 16)
+    # pencil: tip on the right half of the page, eraser end in the right hand
+    bpy.context.view_layer.update()
+    page_n = (nb.matrix_world.to_3x3() @ Vector((0, 0, 1))).normalized()
+    tip = nb.matrix_world @ Vector((0.045, 0.0, 0.012))
+    axis = (hr + Vector((0, -0.02, 0.0)) - tip).normalized()
+    pc = props.pencil()
+    pc.rotation_mode = "QUATERNION"
+    pc.rotation_quaternion = axis.to_track_quat("Z", "Y")
+    pc.location = tip + axis * 0.089
+    props.attach(pc, rig, "arm.R", 16)
+    props.key_scale(nb, [(1, 0), (3, 0), (6, NB * 1.05), (8, NB), (48, NB), (51, 0), (F, 0)])
+    props.key_scale(pc, [(1, 0), (3, 0), (6, 1.05), (8, 1), (48, 1), (51, 0), (F, 0)])
+    return F
 
 def eat():  # 잘 먹기: both hands hold a sweet potato up to the mouth, bites + chew, happy eyes
     F = 52; rest(1)
@@ -256,7 +301,7 @@ def wave():  # 사람·마음: raise the right arm and wave, head tilt
     props.key_scale(lt, [(1, 0), (6, 0), (9, 1.8), (11, 1.65), (42, 1.65), (46, 0), (F, 0)])
     return F
 
-ACTIONS = {"sweep": sweep, "hop": hop, "nod": nod, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
+ACTIONS = {"sweep": sweep, "hop": hop, "nod": nod, "write": write, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
 F = ACTIONS[ACTION]()
 sc.frame_start, sc.frame_end = 1, F
 for fc in fcurves(rig.animation_data.action):

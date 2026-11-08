@@ -200,3 +200,97 @@ def confetti_burst(origin, f0, n=36, seed=3, life=26):
         o.keyframe_insert("scale", frame=f0 - 1); o.keyframe_insert("scale", frame=1)
         out.append(o)
     return out
+
+
+# ---------------------------------------------------------------- headband (hop)
+def headband(body_obj, z0=0.372, tilt=-0.08, height=0.042, thick=0.012, gap=0.004, n=128,
+             col=(0.93, 0.36, 0.38), stripe=(0.99, 0.97, 0.93)):
+    """terry headband hugging the head: ring of ray-casts toward the head axis on the plane
+    z = z0 + tilt * y (front = -y is a bit higher). Origin at the ring centre (scale-in pops onto the head)."""
+    bpy.context.view_layer.update()
+    deps = bpy.context.evaluated_depsgraph_get()
+    ev = body_obj.evaluated_get(deps)
+    mwi = body_obj.matrix_world.inverted()
+    ring = []
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        d = Vector((math.cos(a), math.sin(a), 0))
+        z = z0 + tilt * (0.25 * math.sin(a))
+        o = Vector((0, 0, z)) + d * 0.6
+        hit, loc, nor, fi = ev.ray_cast(mwi @ o, (mwi.to_3x3() @ (-d)).normalized())
+        p = (body_obj.matrix_world @ loc) if hit else Vector((0, 0, z)) + d * 0.2
+        ring.append((p, d))
+    # smooth the radius (ears / bumps) so the band reads as one clean loop
+    radii = [((p - Vector((0, 0, p.z))).length) for p, d in ring]
+    sm = [sum(radii[(i + k) % n] for k in range(-4, 5)) / 9 for i in range(n)]
+    sm = [max(r, rr) for r, rr in zip(sm, radii)]
+    zs = [p.z for p, d in ring]
+    cz = sum(zs) / n
+    bm = bmesh.new()
+    lay = []
+    for (p, d), r in zip(ring, sm):
+        c = Vector((0, 0, p.z)) + d * (r + gap)
+        lay.append([bm.verts.new(c + Vector((0, 0, -height / 2)) - Vector((0, 0, cz))),
+                    bm.verts.new(c + Vector((0, 0, height / 2)) - Vector((0, 0, cz)))])
+    for i in range(n):
+        a, b = lay[i], lay[(i + 1) % n]
+        f = bm.faces.new((a[0], b[0], b[1], a[1])); f.smooth = True
+    o = obj_from_bm(bm, "Headband", [mat("Headband", col, 0.9)])
+    o.location = (0, 0, cz)
+    sol = o.modifiers.new("thick", "SOLIDIFY"); sol.thickness = thick; sol.offset = 1
+    bev = o.modifiers.new("round", "BEVEL"); bev.width = 0.004; bev.segments = 3
+    # white centre stripe
+    bm = bmesh.new(); lay = []
+    for (p, d), r in zip(ring, sm):
+        c = Vector((0, 0, p.z)) + d * (r + gap + thick + 0.0008)
+        lay.append([bm.verts.new(c + Vector((0, 0, -height * 0.12)) - Vector((0, 0, cz))),
+                    bm.verts.new(c + Vector((0, 0, height * 0.12)) - Vector((0, 0, cz)))])
+    for i in range(n):
+        a, b = lay[i], lay[(i + 1) % n]
+        f = bm.faces.new((a[0], b[0], b[1], a[1])); f.smooth = True
+    s = obj_from_bm(bm, "HeadbandStripe", [mat("HeadbandStripe", stripe, 0.8)])
+    s.parent = o; s.location = (0, 0, 0)
+    return o
+
+
+# ---------------------------------------------------------------- notebook + pencil (write)
+def notebook():
+    parts = []
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+    cover = obj_from_bm(bm, "NB_Cover", [mat("NB_Cover", (0.42, 0.6, 0.86), 0.6)])
+    cover.scale = (0.17, 0.12, 0.008)
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+    paper = obj_from_bm(bm, "NB_Paper", [mat("NB_Paper", (0.99, 0.98, 0.94), 0.85)])
+    paper.scale = (0.155, 0.108, 0.006); paper.location = (0.004, 0, 0.006)
+    parts += [cover, paper]
+    for k in range(5):                                   # ruled lines + a scribbled line
+        bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+        ln = obj_from_bm(bm, f"NB_Line{k}", [mat("NB_Line", (0.62, 0.74, 0.9), 0.8)])
+        ln.scale = (0.13, 0.0022, 0.001); ln.location = (0.008, -0.04 + 0.02 * k, 0.0095)
+        parts.append(ln)
+    for k in range(6):                                   # spiral rings on the left edge
+        bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=8, radius=0.006)
+        rg = obj_from_bm(bm, f"NB_Ring{k}", [mat("NB_Ring", (0.75, 0.75, 0.78), 0.3)])
+        rg.location = (-0.082, -0.045 + 0.018 * k, 0.008); parts.append(rg)
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in parts:
+        o.select_set(True); bpy.context.view_layer.objects.active = o
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        o.select_set(False)
+    return join(parts, "Notebook")
+
+
+def pencil():
+    body = obj_from_bm(cylinder(0.007, 0.13, seg=6), "PencilBody", [mat("Pencil_Yellow", (0.99, 0.8, 0.25), 0.5)])
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.007, radius2=0.0, depth=0.024)
+    tip = obj_from_bm(bm, "PencilTip", [mat("Pencil_Wood", (0.93, 0.8, 0.62), 0.7)])
+    tip.location = (0, 0, -0.077); tip.rotation_euler = (math.pi, 0, 0)
+    era = obj_from_bm(cylinder(0.0072, 0.016), "PencilEraser", [mat("Pencil_Eraser", (0.96, 0.6, 0.65), 0.6)])
+    era.location = (0, 0, 0.073)
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in (tip, era):
+        o.select_set(True); bpy.context.view_layer.objects.active = o
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        o.select_set(False)
+    return join([body, tip, era], "Pencil")
