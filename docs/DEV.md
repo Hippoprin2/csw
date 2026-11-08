@@ -40,6 +40,7 @@
 ## 대표와 실시간 확인 (Expo Go)
 - `cd mobile && npx expo start --tunnel ngrok --port 8081` (Expo 계정 없이 ngrok 터널. `--tunnel`만 쓰면 Expo 로그인 요구). 터널 주소는 `curl localhost:4040/api/tunnels`의 public_url → `exp://<host>`로 QR 만들기(`npx qrcode -o qr.png "exp://..."`). 같은 서버가 웹 http://localhost:8081 도 제공.
 - 맥이 잠들거나 서버가 꺼지면 주소가 바뀔 수 있음 → 다시 켜고 새 QR.
+- 주의: 터널(ngrok 포함)로 열면 Expo Go가 "Expo Go와 Expo CLI 둘 다 로그인 필요" 오류를 낸다. 계정 없이 하려면 같은 와이파이에서 `npx expo start --lan` → `exp://<맥 IP>:8081` (맥 IP: `ifconfig | grep "inet "`, 이 맥은 en1 와이파이 192.168.0.x). 밖에서 보려면 대표가 Expo 계정을 만들고 폰 Expo Go + 맥 터미널 `npx expo login` 둘 다 로그인 후 `--tunnel`.
 
 ## 배포·운영 메모
 - 마이그레이션: `supabase db push --linked` (CLI: `/Users/soniakang/.bun/install/global/node_modules/supabase/bin/supabase`, 비번은 루트 .env.local `SUPABASE_DB_PASSWORD`)
