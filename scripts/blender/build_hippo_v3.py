@@ -9,7 +9,8 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 blend, decals, outdir = argv[0], argv[1], argv[2]
 state = argv[3] if len(argv) > 3 else "open"
 os.makedirs(outdir, exist_ok=True)
-X0, Y0, X1, Y1 = 200, 170, 570, 360
+import os as _os
+X0, Y0, X1, Y1 = (200, 110, 570, 420) if _os.environ.get('DECAL_V4') else (200, 170, 570, 360)
 OFFSET = 0.0012
 
 bpy.ops.wm.open_mainfile(filepath=blend)
