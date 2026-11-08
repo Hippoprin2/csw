@@ -50,8 +50,9 @@
 
 ## 막힌 것 / 다음 할 일
 - [ ] **이메일 OTP 메일 발송**: 무료 플랜 기본 메일은 템플릿 수정 불가(코드 대신 링크만 감) + 시간당 2통. 커스텀 SMTP 필요 → Resend(무료 월 3,000통) 계정 + 도메인. 도메인 전에는 Resend 계정 주인 메일로만 발송 가능(대표 본인 테스트용으로는 충분).
-- [ ] 카카오 키: Kakao Developers 앱 생성(대표) → set_auth_keys.sh → apply_auth_config.py → `EXPO_PUBLIC_AUTH_KAKAO=1`
-- [ ] 구글 키: Google Cloud OAuth 웹 클라이언트(대표) → 같은 순서 → `EXPO_PUBLIC_AUTH_GOOGLE=1`
+- [x] 카카오·구글 키 Supabase 반영, 앱 버튼 켬 (2026-11-08). 구글 인증 화면까지 정상 확인. 카카오는 KOE004(카카오 로그인 사용 OFF) → 대표가 카카오 로그인 ON 하면 됨
+- [ ] 구글 OAuth 앱은 테스트 모드(테스트 사용자만 로그인) → 출시 때 Publish app
+- [ ] 카카오·구글·Apple 실기기 로그인 확인 (Expo Go)
 - [ ] Apple: 코드·Supabase 설정 완료. Expo Go 실기기 테스트 필요. TestFlight/스토어는 Apple Developer 가입 후
 - [ ] 개인정보처리방침·이용약관 페이지, 문의 메일 → `EXPO_PUBLIC_PRIVACY_URL / TERMS_URL / CONTACT_EMAIL`
 - [ ] 구독(7일 체험 → 월 3,000원) 결제 연동 — 사업자등록 후. 구독 끝나도 기록 보기·내보내기·삭제, 펫·방, 안전장치는 무료 유지(STATUS 결정)
