@@ -37,6 +37,10 @@
 - 앱: `cd mobile && npx tsc --noEmit && npx expo lint` (2026-11-08 둘 다 통과). 웹으로 흐름 확인: `npx expo start --web` → 400×860에서 가입 후 온보딩·기록·안전 카드·구매·유리병 수정·계정 삭제까지 확인함.
   - 웹에서 로그인 테스트: 메일 대신 service role로 OTP를 만들어 세션을 localStorage(`sb-xbifxrvgdimwwijijthl-auth-token`)에 넣는다 (`scripts/sb.py temp_user()` 참고).
 
+## 대표와 실시간 확인 (Expo Go)
+- `cd mobile && npx expo start --tunnel ngrok --port 8081` (Expo 계정 없이 ngrok 터널. `--tunnel`만 쓰면 Expo 로그인 요구). 터널 주소는 `curl localhost:4040/api/tunnels`의 public_url → `exp://<host>`로 QR 만들기(`npx qrcode -o qr.png "exp://..."`). 같은 서버가 웹 http://localhost:8081 도 제공.
+- 맥이 잠들거나 서버가 꺼지면 주소가 바뀔 수 있음 → 다시 켜고 새 QR.
+
 ## 배포·운영 메모
 - 마이그레이션: `supabase db push --linked` (CLI: `/Users/soniakang/.bun/install/global/node_modules/supabase/bin/supabase`, 비번은 루트 .env.local `SUPABASE_DB_PASSWORD`)
 - 함수: `supabase functions deploy classify --use-api --project-ref xbifxrvgdimwwijijthl` (Docker 불필요). 비밀값 `OPENAI_API_KEY`는 supabase secrets에 설정됨.
