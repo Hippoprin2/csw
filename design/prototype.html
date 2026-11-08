@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSW 프로토타입 · 꼬마하마의 방</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6efe4; --room:#fbf6ee; --floor:#ead9c0; --wall:#f3e6d3;
+    --ink:#3b3247; --muted:#8a7f93; --line:#e4d6c3;
+    --hippo:#aaa2dc; --hippo-dark:#8f86c8; --belly:#d8d3f2; --cheek:#f3a6ba;
+    --accent:#ff8a5c; --accent-ink:#fff; --seed:#6cab5a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#e9e2d6;color:var(--ink);font-family:Pretendard,system-ui,sans-serif}
+  .phone{max-width:420px;height:100dvh;max-height:880px;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;position:relative;overflow:hidden}
+  @media(min-width:500px){.phone{margin-top:20px;height:860px;border-radius:36px;box-shadow:0 20px 60px #0002}}
+  header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 8px}
+  .title{font-family:Jua,sans-serif;font-size:22px;letter-spacing:-.2px}
+  .title small{display:block;font-family:Pretendard;font-size:12px;color:var(--muted);font-weight:500}
+  .seeds{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-weight:700;font-size:14px}
+  .seeds i{width:12px;height:14px;background:var(--seed);border-radius:50% 50% 50% 50%/60% 60% 40% 40%;display:inline-block}
+  main{flex:1;overflow-y:auto;position:relative}
+  .view{display:none}.view.on{display:block}
+
+  /* room */
+  .room{position:relative;margin:4px 16px 0;height:360px;border-radius:28px;overflow:hidden;background:linear-gradient(var(--wall) 0 62%,var(--floor) 62% 100%)}
+  .room .window{position:absolute;left:24px;top:28px;width:84px;height:70px;border-radius:14px;background:#cfe6f2;border:6px solid #fff}
+  .room .window:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:5px;background:#fff;transform:translateX(-50%)}
+  .item{position:absolute;font-size:34px;line-height:1;transition:transform .3s}
+  .item.new{animation:pop .6s ease}
+  @keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.25)}100%{transform:scale(1)}}
+  .stage{position:absolute;left:50%;bottom:22px;width:200px;height:200px;transform:translateX(-50%)}
+  .stage svg{width:100%;height:100%;overflow:visible}
+  .prop{position:absolute;font-size:40px;opacity:0;pointer-events:none}
+  .bubble{position:absolute;left:50%;top:18px;transform:translateX(-50%) translateY(6px);background:#fff;border-radius:18px;padding:10px 14px;font-size:14px;font-weight:600;max-width:78%;text-align:center;opacity:0;transition:.3s;box-shadow:0 4px 14px #0001}
+  .bubble.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  .bubble:after{content:"";position:absolute;bottom:-7px;left:50%;margin-left:-7px;border:7px solid transparent;border-top-color:#fff;border-bottom:0}
+  .float{position:absolute;font-weight:800;color:var(--seed);font-size:16px;animation:floatUp 1.4s ease forwards;pointer-events:none}
+  @keyframes floatUp{from{opacity:0;transform:translateY(10px)}20%{opacity:1}to{opacity:0;transform:translateY(-50px)}}
+
+  /* hippo parts */
+  #hippo{transform-box:view-box;transform-origin:100px 180px;animation:idle 3s ease-in-out infinite}
+  #head{transform-box:view-box;transform-origin:100px 110px}
+  #armL{transform-box:view-box;transform-origin:62px 118px}
+  #armR{transform-box:view-box;transform-origin:138px 118px}
+  #snout{transform-box:view-box;transform-origin:100px 92px}
+  .eye{transform-box:fill-box;transform-origin:center;animation:blink 4.5s infinite}
+  @keyframes idle{50%{transform:translateY(-3px) scaleY(1.01)}}
+  @keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+
+  .act-tidy #hippo{animation:sway .5s ease-in-out 5}
+  @keyframes sway{25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
+  .act-tidy #armR{animation:sweep .5s ease-in-out 5}
+  @keyframes sweep{50%{transform:rotate(40deg)}}
+
+  .act-move #hippo{animation:jump .6s cubic-bezier(.3,.7,.4,1) 4}
+  @keyframes jump{0%,100%{transform:translateY(0) scale(1,1)}10%{transform:scale(1.08,.9)}50%{transform:translateY(-38px) scale(.95,1.06)}90%{transform:scale(1.06,.92)}}
+
+  .act-study #head{animation:nod .7s ease-in-out 4}
+  @keyframes nod{50%{transform:rotate(8deg) translateY(3px)}}
+
+  .act-eat #snout{animation:chomp .3s ease-in-out 8}
+  @keyframes chomp{50%{transform:scaleY(.82)}}
+  .act-eat #hippo{animation:idle 1s ease-in-out 3}
+
+  .act-care #hippo{animation:spin 1.2s ease-in-out 2}
+  @keyframes spin{50%{transform:rotateY(180deg) translateY(-8px)}100%{transform:rotateY(360deg)}}
+  .act-care #armL,.act-care #armR{animation:stretch 1.2s ease-in-out 2}
+  @keyframes stretch{50%{transform:rotate(var(--r))}}
+  #armL{--r:70deg}#armR{--r:-70deg}
+
+  .act-people #armR{animation:wave .4s ease-in-out 7}
+  @keyframes wave{50%{transform:rotate(-120deg)}}
+  .act-people #hippo{animation:idle .8s ease-in-out 3}
+
+  .act-cheer #armL{animation:upL .6s ease-in-out 4}
+  .act-cheer #armR{animation:upR .6s ease-in-out 4}
+  @keyframes upL{50%{transform:rotate(130deg)}}
+  @keyframes upR{50%{transform:rotate(-130deg)}}
+  .act-cheer #hippo{animation:jump .6s ease 4}
+
+  .prop.show{animation:propIn 2.6s ease forwards}
+  @keyframes propIn{0%{opacity:0;transform:scale(.4)}12%{opacity:1;transform:scale(1.1)}20%{transform:scale(1)}85%{opacity:1}100%{opacity:0}}
+
+  /* composer */
+  .composer{margin:14px 16px 0;background:#fff;border-radius:22px;padding:16px;border:1px solid var(--line)}
+  .composer label{font-family:Jua;font-size:18px;display:block;margin-bottom:10px}
+  .row{display:flex;gap:8px}
+  .composer input{flex:1;min-width:0;font:inherit;font-size:16px;padding:13px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--room);outline:none}
+  .composer input:focus{border-color:var(--accent)}
+  .btn{font:inherit;font-weight:700;font-size:15px;border:0;border-radius:14px;padding:0 18px;min-height:48px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.4}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+  .chip{font:inherit;font-size:13px;padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:var(--room);color:var(--ink);cursor:pointer}
+  .cat-line{margin-top:12px;font-size:13px;color:var(--muted);min-height:18px}
+  .cat-line b{color:var(--ink)}
+  .cat-line button{font:inherit;font-size:12px;border:0;background:none;color:var(--accent);text-decoration:underline;cursor:pointer;padding:0 2px}
+  .cats{display:none;gap:6px;flex-wrap:wrap;margin-top:8px}.cats.on{display:flex}
+  .cap{font-size:12px;color:var(--muted);margin:10px 18px 24px}
+
+  /* records */
+  .sec{padding:4px 20px 24px}
+  .h{font-family:Jua;font-size:20px;margin:10px 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+  .jar{position:relative;margin:6px auto 18px;width:150px;height:170px;border:4px solid #d9c9b1;border-top-width:10px;border-radius:26px 26px 40px 40px;background:#fffaf2;display:flex;flex-wrap:wrap-reverse;align-content:flex-start;padding:10px;gap:5px;overflow:hidden}
+  .jar span{width:20px;height:20px;border-radius:50%;animation:pop .4s ease}
+  .day{margin-bottom:16px}
+  .day h4{margin:0 0 8px;font-size:13px;color:var(--muted);font-weight:600}
+  .win{display:flex;gap:10px;align-items:center;background:#fff;border-radius:16px;padding:12px 14px;margin-bottom:6px;border:1px solid var(--line)}
+  .win .tag{font-size:11px;padding:3px 8px;border-radius:999px;background:var(--room);color:var(--muted);white-space:nowrap}
+  .win p{margin:0;flex:1;font-size:15px}
+  .empty{text-align:center;color:var(--muted);padding:30px 0;font-size:14px}
+
+  /* shop */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .shop-item{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 8px;text-align:center;font:inherit;color:var(--ink);cursor:pointer}
+  .shop-item .e{font-size:34px;display:block;margin-bottom:6px}
+  .shop-item .n{font-size:13px;font-weight:600}
+  .shop-item .p{font-size:12px;color:var(--seed);font-weight:700;margin-top:3px}
+  .shop-item.owned{opacity:.5}
+  .shop-item:disabled{cursor:default}
+
+  nav{display:flex;border-top:1px solid var(--line);background:#fffaf3;padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;font:inherit;font-size:13px;font-weight:600;border:0;background:none;padding:12px 0 14px;color:var(--muted);cursor:pointer;min-height:56px}
+  nav button.on{color:var(--ink)}
+  nav button.on:before{content:"";display:block;width:24px;height:3px;border-radius:3px;background:var(--accent);margin:0 auto 6px}
+  .draft{position:absolute;right:12px;bottom:68px;font-size:10px;color:var(--muted);background:#fff9;padding:2px 6px;border-radius:6px}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+</style>
+</head>
+<body>
+<div class="phone">
+  <header>
+    <div class="title">꼬마하마의 방<small id="today"></small></div>
+    <div class="seeds" title="씨앗"><i></i><span id="seedCount">0</span></div>
+  </header>
+  <main>
+    <section class="view on" id="v-room">
+      <div class="room" id="room">
+        <div class="window"></div>
+        <div class="bubble" id="bubble"></div>
+        <div class="stage" id="stage">
+          <svg viewBox="0 0 200 200" aria-label="꼬마하마">
+            <ellipse cx="100" cy="186" rx="52" ry="8" fill="#0001"/>
+            <g id="hippo">
+              <rect x="70" y="150" width="22" height="32" rx="10" fill="var(--hippo-dark)"/>
+              <rect x="108" y="150" width="22" height="32" rx="10" fill="var(--hippo-dark)"/>
+              <g id="armL"><ellipse cx="58" cy="132" rx="11" ry="18" transform="rotate(20 58 132)" fill="var(--hippo-dark)"/></g>
+              <g id="armR"><ellipse cx="142" cy="132" rx="11" ry="18" transform="rotate(-20 142 132)" fill="var(--hippo-dark)"/></g>
+              <ellipse cx="100" cy="138" rx="46" ry="40" fill="var(--hippo)"/>
+              <ellipse cx="100" cy="146" rx="28" ry="24" fill="var(--belly)"/>
+              <g id="head">
+                <ellipse cx="68" cy="44" rx="10" ry="9" fill="var(--hippo-dark)"/>
+                <ellipse cx="132" cy="44" rx="10" ry="9" fill="var(--hippo-dark)"/>
+                <ellipse cx="68" cy="45" rx="5" ry="4" fill="var(--cheek)"/>
+                <ellipse cx="132" cy="45" rx="5" ry="4" fill="var(--cheek)"/>
+                <ellipse cx="100" cy="76" rx="46" ry="38" fill="var(--hippo)"/>
+                <circle class="eye" cx="82" cy="64" r="5.5" fill="var(--ink)"/>
+                <circle class="eye" cx="118" cy="64" r="5.5" fill="var(--ink)"/>
+                <circle cx="84" cy="62" r="1.8" fill="#fff"/>
+                <circle cx="120" cy="62" r="1.8" fill="#fff"/>
+                <g id="snout">
+                  <ellipse cx="100" cy="94" rx="34" ry="21" fill="var(--belly)"/>
+                  <ellipse cx="89" cy="88" rx="3.5" ry="4.5" fill="var(--hippo-dark)"/>
+                  <ellipse cx="111" cy="88" rx="3.5" ry="4.5" fill="var(--hippo-dark)"/>
+                  <path d="M90 100 Q100 108 110 100" stroke="var(--ink)" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+                </g>
+                <ellipse cx="66" cy="88" rx="7" ry="4.5" fill="var(--cheek)" opacity=".7"/>
+                <ellipse cx="134" cy="88" rx="7" ry="4.5" fill="var(--cheek)" opacity=".7"/>
+              </g>
+            </g>
+          </svg>
+          <div class="prop" id="prop"></div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <label for="winInput">오늘 해낸 거, 아무리 작아도 좋아요</label>
+        <div class="row">
+          <input id="winInput" maxlength="60" placeholder="예) 침대 정리했다" autocomplete="off">
+          <button class="btn" id="saveBtn" disabled>기록</button>
+        </div>
+        <div class="cat-line" id="catLine"></div>
+        <div class="cats" id="cats"></div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <p class="cap" id="capLine"></p>
+    </section>
+
+    <section class="view" id="v-records">
+      <div class="sec">
+        <div class="h">나의 작은 승리 유리병</div>
+        <p class="sub" id="jarSub"></p>
+        <div class="jar" id="jar"></div>
+        <div id="list"></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-shop">
+      <div class="sec">
+        <div class="h">방 꾸미기</div>
+        <p class="sub">기록할 때마다 씨앗 3개. 산 물건은 꼬마하마 방에 놓여요.</p>
+        <div class="grid" id="shop"></div>
+      </div>
+    </section>
+  </main>
+  <nav>
+    <button class="on" data-v="room">방</button>
+    <button data-v="records">유리병</button>
+    <button data-v="shop">꾸미기</button>
+  </nav>
+  <div class="draft">프로토타입 · 그림은 임시</div>
+</div>
+
+<script>
+const CATS = {
+  tidy:   {name:"정리·청소", prop:"🧹", color:"#9ccfd8", kw:["정리","청소","설거지","빨래","이불","침대","쓰레기","분리수거","치우","개켰","닦"],
+           say:["방이 반짝반짝해졌어!","정리한 너, 진짜 멋져","깨끗해진 만큼 마음도 가벼워졌지?"]},
+  move:   {name:"몸 움직이기", prop:"💦", color:"#f6b26b", kw:["운동","산책","걷","스트레칭","요가","헬스","러닝","뛰","계단","자전거","수영","필라테스"],
+           say:["몸을 움직였구나! 최고야","오늘도 한 걸음!","땀 흘린 너를 응원해"]},
+  study:  {name:"공부·일", prop:"📖", color:"#a4c2f4", kw:["공부","책","읽","과제","숙제","업무","일했","회의","보고서","메일","강의","출근","코딩","시험"],
+           say:["집중한 너, 대단해","오늘 한 만큼 분명히 쌓였어","머리 쓰느라 고생했어"]},
+  eat:    {name:"잘 먹기", prop:"🍙", color:"#f9cb9c", kw:["먹","요리","밥","아침","점심","저녁","물 한","물을","물 마","도시락","채소","과일"],
+           say:["잘 챙겨 먹었구나, 냠냠","너를 먹여 살린 너, 칭찬해","든든하지?"]},
+  care:   {name:"나 돌보기", prop:"✨", color:"#d5a6bd", kw:["씻","샤워","양치","약","잠","일찍","명상","쉬었","쉬기","피부","일기","병원","낮잠"],
+           say:["너를 돌봐준 거, 정말 잘했어","오늘 너한테 다정했네","반짝반짝 빛나는 중"]},
+  people: {name:"사람·마음", prop:"💌", color:"#ea9999", kw:["연락","전화","친구","엄마","아빠","가족","아이","고마","칭찬","만나","안부","사과","인사","선물"],
+           say:["마음을 전했구나","누군가에게 따뜻한 하루가 됐을 거야","다정한 너, 좋아"]},
+  cheer:  {name:"그 밖의 승리", prop:"🎉", color:"#b6d7a8", kw:[],
+           say:["해냈다! 축하해","작은 승리도 승리야","오늘의 너, 칭찬해"]}
+};
+const SHOP = [
+  {id:"plant",e:"🪴",n:"화분",p:9,pos:"right:22px;bottom:118px"},
+  {id:"rug",e:"🟫",n:"러그",p:12,pos:"left:50%;bottom:6px;transform:translateX(-50%) scaleX(3.2) scaleY(.5);opacity:.35;font-size:40px"},
+  {id:"lamp",e:"🛋️",n:"소파",p:18,pos:"left:20px;bottom:110px"},
+  {id:"frame",e:"🖼️",n:"액자",p:15,pos:"right:34px;top:34px"},
+  {id:"star",e:"⭐",n:"별 장식",p:6,pos:"left:132px;top:30px;font-size:22px"},
+  {id:"cake",e:"🎂",n:"케이크",p:21,pos:"right:70px;bottom:24px;font-size:28px"},
+];
+const CHIPS = ["침대 정리했다","물 한 잔 마셨다","10분 산책","책 5쪽 읽었다","엄마한테 전화","샤워했다"];
+const DAILY_CAP = 10, SEED_PER = 3;
+
+const S = JSON.parse(localStorage.getItem("csw-proto")||"null") || {seeds:0, wins:[], owned:[]};
+const save = () => localStorage.setItem("csw-proto", JSON.stringify(S));
+const $ = s => document.querySelector(s);
+const todayKey = () => new Date().toLocaleDateString("sv-SE");
+
+function classify(t){
+  for (const [k,c] of Object.entries(CATS)) if (c.kw.some(w => t.includes(w))) return k;
+  return "cheer";
+}
+let chosen = null;
+function renderCat(){
+  const t = $("#winInput").value.trim();
+  $("#saveBtn").disabled = !t;
+  if(!t){ $("#catLine").innerHTML=""; $("#cats").classList.remove("on"); chosen=null; return; }
+  const k = chosen || classify(t);
+  $("#catLine").innerHTML = `꼬마하마가 <b>${CATS[k].name}</b> 동작을 할 거예요 <button id="chg">바꾸기</button>`;
+  $("#chg").onclick = () => $("#cats").classList.toggle("on");
+}
+$("#cats").innerHTML = Object.entries(CATS).map(([k,c])=>`<button class="chip" data-k="${k}">${c.prop} ${c.name}</button>`).join("");
+$("#cats").onclick = e => { const b=e.target.closest("[data-k]"); if(!b) return; chosen=b.dataset.k; $("#cats").classList.remove("on"); renderCat(); };
+$("#chips").innerHTML = CHIPS.map(c=>`<button class="chip">${c}</button>`).join("");
+$("#chips").onclick = e => { if(e.target.matches(".chip")){ $("#winInput").value=e.target.textContent; chosen=null; renderCat(); $("#winInput").focus(); } };
+$("#winInput").addEventListener("input", ()=>{ chosen=null; renderCat(); });
+$("#winInput").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.isComposing) record(); });
+$("#saveBtn").onclick = record;
+
+let busy = 0;
+function play(k, text){
+  const stage = $("#stage"), prop = $("#prop"), c = CATS[k];
+  clearTimeout(busy);
+  stage.className = "stage"; void stage.offsetWidth; stage.className = "stage act-"+k;
+  prop.textContent = c.prop;
+  const pp = {tidy:"left:118px;bottom:0",move:"right:-6px;top:20px",study:"left:70px;bottom:40px",eat:"left:76px;top:96px;font-size:32px",care:"right:0;top:0",people:"right:-10px;top:30px",cheer:"left:-10px;top:0"}[k];
+  prop.style.cssText = pp; prop.classList.remove("show"); void prop.offsetWidth; prop.classList.add("show");
+  const b = $("#bubble"); b.textContent = c.say[Math.floor(Math.random()*c.say.length)]; b.classList.add("on");
+  busy = setTimeout(()=>{ stage.className="stage"; b.classList.remove("on"); }, 3000);
+}
+function record(){
+  const t = $("#winInput").value.trim(); if(!t) return;
+  const k = chosen || classify(t);
+  const todayCount = S.wins.filter(w=>w.d===todayKey()).length;
+  const earn = todayCount < DAILY_CAP ? SEED_PER : 0;
+  S.wins.unshift({t, k, d:todayKey(), ts:Date.now()}); S.seeds += earn; save();
+  $("#winInput").value=""; chosen=null; renderCat();
+  play(k, t);
+  if(earn){ const f=document.createElement("div"); f.className="float"; f.textContent=`+${earn} 씨앗`; f.style.cssText="right:28px;top:80px"; $("#room").appendChild(f); setTimeout(()=>f.remove(),1500); }
+  renderAll();
+}
+function renderRoom(newId){
+  document.querySelectorAll(".item").forEach(n=>n.remove());
+  S.owned.forEach(id=>{ const it=SHOP.find(s=>s.id===id); const d=document.createElement("div"); d.className="item"+(id===newId?" new":""); d.textContent=it.e; d.style.cssText=it.pos; $("#room").insertBefore(d,$("#stage")); });
+}
+function renderAll(){
+  $("#seedCount").textContent = S.seeds;
+  const n = S.wins.filter(w=>w.d===todayKey()).length;
+  $("#capLine").textContent = n ? `오늘 ${n}번 기록했어요.${n>=DAILY_CAP?" 오늘 씨앗은 다 모았어요. 기록은 얼마든지 계속해도 돼요.":""} 안 들어온 날이 있어도 괜찮아요. 꼬마하마는 기다려요.` : "안 들어온 날이 있어도 괜찮아요. 꼬마하마는 기다려요.";
+  // jar
+  const wk = Date.now()-7*864e5, week = S.wins.filter(w=>w.ts>wk);
+  $("#jarSub").textContent = week.length ? `최근 7일 동안 ${week.length}번 해냈어요` : "기록하면 유리병에 구슬이 하나씩 쌓여요";
+  $("#jar").innerHTML = S.wins.slice(0,40).reverse().map(w=>`<span style="background:${CATS[w.k].color}"></span>`).join("");
+  const by = {}; S.wins.forEach(w=>(by[w.d]=by[w.d]||[]).push(w));
+  $("#list").innerHTML = Object.keys(by).length ? Object.entries(by).map(([d,ws])=>`<div class="day"><h4>${d===todayKey()?"오늘":d}</h4>${ws.map(w=>`<div class="win"><p></p><span class="tag">${CATS[w.k].prop} ${CATS[w.k].name}</span></div>`).join("")}</div>`).join("") : `<div class="empty">아직 비어 있어요. 오늘 한 가장 작은 일부터 적어볼까요?</div>`;
+  // safe text
+  const ps = $("#list").querySelectorAll(".win p"); let i=0; Object.values(by).flat().forEach(w=>{ if(ps[i]) ps[i++].textContent=w.t; });
+  // shop
+  $("#shop").innerHTML = SHOP.map(s=>{ const own=S.owned.includes(s.id); return `<button class="shop-item ${own?"owned":""}" data-id="${s.id}" ${own||S.seeds<s.p?"disabled":""}><span class="e">${s.e}</span><div class="n">${s.n}</div><div class="p">${own?"방에 있음":"씨앗 "+s.p}</div></button>`; }).join("");
+}
+$("#shop").onclick = e => { const b=e.target.closest("[data-id]"); if(!b||b.disabled) return; const it=SHOP.find(s=>s.id===b.dataset.id); S.seeds-=it.p; S.owned.push(it.id); save(); renderAll(); go("room"); renderRoom(it.id); play("cheer"); $("#bubble").textContent=`${it.n} 고마워! 방이 더 좋아졌어`; };
+function go(v){ document.querySelectorAll(".view").forEach(n=>n.classList.toggle("on", n.id==="v-"+v)); document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.v===v)); }
+document.querySelector("nav").onclick = e => { const b=e.target.closest("button"); if(b) go(b.dataset.v); };
+$("#today").textContent = new Date().toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"long"});
+renderAll(); renderRoom();
+setTimeout(()=>{ $("#bubble").textContent = S.wins.length ? "왔구나! 오늘은 뭘 해냈어?" : "안녕! 나는 꼬마하마야. 오늘 해낸 걸 알려줘"; $("#bubble").classList.add("on"); setTimeout(()=>$("#bubble").classList.remove("on"),3200); }, 400);
+</script>
+</body>
+</html>
