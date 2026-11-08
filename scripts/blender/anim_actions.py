@@ -412,9 +412,21 @@ for n, rot, e in (("key", (50, 0, 30), 3.0), ("fill", (60, 0, -120), 1.2), ("rim
 cd = bpy.data.cameras.new("cam"); cd.type = "ORTHO"; cd.ortho_scale = 1.45
 cam = bpy.data.objects.new("cam", cd); sc.collection.objects.link(cam); sc.camera = cam
 target = Vector((0, 0, 0.07))
-ELEV = 0.5 if ACTION.startswith("desk_") else 0.12   # look down on desk scenes so the desktop reads
-cam.location = target + Vector((0.35, -1, ELEV)).normalized() * 10
-cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
+def place_cam(elev):
+    cam.location = target + Vector((0.35, -1, elev)).normalized() * 10
+    cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
+if ACTION.startswith("desk_"):
+    # start/end at the shared idle angle, glide up to look down on the desk while seated
+    LOW, HIGH = 0.12, 0.5
+    def ease(t): return t * t * (3 - 2 * t)
+    for f in range(1, F + 1):
+        if f <= 10: e = LOW + (HIGH - LOW) * ease((f - 1) / 9)
+        elif f >= 52: e = HIGH + (LOW - HIGH) * ease(min(1, (f - 52) / 10))
+        else: e = HIGH
+        place_cam(e)
+        cam.keyframe_insert("location", frame=f); cam.keyframe_insert("rotation_euler", frame=f)
+else:
+    place_cam(0.12)
 sc.render.filepath = os.path.join(rdir, f"{ACTION}_frames", "f_")
 sc.render.image_settings.file_format = "PNG"
 bpy.ops.render.render(animation=True)
