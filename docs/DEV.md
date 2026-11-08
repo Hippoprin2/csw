@@ -53,6 +53,7 @@
 - [x] 카카오·구글 키 Supabase 반영, 앱 버튼 켬 (2026-11-08). 구글 인증 화면까지 정상 확인. 카카오: Supabase가 account_email+profile_image+profile_nickname 고정 요청 → 동의항목 3개 모두 설정해야 함(KOE205). 이메일 동의항목은 비즈 앱(개인 개발자 전환 가능) 필요
 - [ ] 구글 OAuth 앱은 테스트 모드(테스트 사용자만 로그인) → 출시 때 Publish app
 - [ ] 카카오·구글·Apple 실기기 로그인 확인 (Expo Go)
+- 주의: Supabase Auth는 사설 IP 리다이렉트(exp://192.168.x.x…)를 허용 목록에 있어도 거부하고 site_url(csw://)로 보낸다 → OAuth redirectTo는 항상 `csw://auth/callback` (iOS 인증 창이 가로챔). 확인법: admin generate_link에 redirect_to 넣고 돌려받은 redirect_to 비교. (2026-11-08 Apple·카카오 계정 생성은 서버에서 확인)
 - [ ] Apple: 코드·Supabase 설정 완료. Expo Go 실기기 테스트 필요. TestFlight/스토어는 Apple Developer 가입 후
 - [ ] 개인정보처리방침·이용약관 페이지, 문의 메일 → `EXPO_PUBLIC_PRIVACY_URL / TERMS_URL / CONTACT_EMAIL`
 - [ ] 구독(7일 체험 → 월 3,000원) 결제 연동 — 사업자등록 후. 구독 끝나도 기록 보기·내보내기·삭제, 펫·방, 안전장치는 무료 유지(STATUS 결정)
