@@ -179,6 +179,34 @@ def make_sweet_potato(name="SweetPotato", half_len=0.16, rad=0.058):
     o = bpy.data.objects.new(name, me); sc.collection.objects.link(o)
     return o
 
+
+def aim(f, bone, target, sx=1.08):
+    """rotate+stretch a bone (from its rest pose) so its tail lands on world `target`"""
+    pb = P[bone]
+    B3 = pb.bone.matrix_local.to_3x3()
+    head = rig.matrix_world @ pb.bone.head_local   # arms are children of body; body stays near rest here
+    rest_dir = (B3 @ Vector((0, 1, 0))).normalized()
+    v = target - head
+    qw = rest_dir.rotation_difference(v.normalized())
+    pb.rotation_quaternion = (B3.inverted() @ qw.to_matrix() @ B3).to_quaternion()
+    pb.keyframe_insert("rotation_quaternion", frame=f)
+    st = v.length / pb.bone.length
+    pb.scale = (sx, st, sx); pb.keyframe_insert("scale", frame=f)
+
+def seated(F, work):
+    """common seated sequence: props pop in, sit (legs forward), work(f0, f1), stand, props pop out"""
+    rest(1)
+    for b in ("leg.L", "leg.R"):
+        R(6, b, x=-75); R(54, b, x=-75); R(60, b)
+    L(4, "root", 0.04); L(8, "root", 0.0); L(56, "root", 0.03); L(60, "root", 0.0)
+    R(9, "body", x=6); R(53, "body", x=6); R(58, "body")
+    work(11, 51)
+    rest(F)
+    dk = props.desk(); ch = props.chair()
+    for o in (dk, ch):
+        props.key_scale(o, [(1, 0), (2, 0), (6, 1.06), (8, 1), (54, 1), (59, 0), (F, 0)])
+    return dk, ch
+
 def write():  # 공부·일: notebook held in front (left hand under it), pencil scribbling in the right, head down
     F = 56; rest(1)
     for f in (5, 50):
@@ -216,6 +244,62 @@ def write():  # 공부·일: notebook held in front (left hand under it), pencil
     props.attach(pc, rig, "arm.R", 16)
     props.key_scale(nb, [(1, 0), (3, 0), (6, NB * 1.05), (8, NB), (48, NB), (51, 0), (F, 0)])
     props.key_scale(pc, [(1, 0), (3, 0), (6, 1.05), (8, 1), (48, 1), (51, 0), (F, 0)])
+    return F
+
+
+def desk_write():  # 공부·일 (앉아서): notebook flat on the desk, pencil scribbling
+    F = 64
+    page = Vector((0.04, props.DESK_Y + 0.02, props.DESK_TOP_Z + 0.012))
+    def work(f0, f1):
+        for f in (f0 - 2, f1 + 2):
+            R(f, "head", x=4)
+        for i, f in enumerate(range(f0, f1 + 1, 2)):
+            pause = 30 <= f <= 34
+            jit = Vector(((0.012 if i % 2 else -0.01), (0.006 if (i // 2) % 2 else -0.006), 0.0)) if not pause else Vector((0, 0.02, 0.04))
+            aim(f, "arm.R", page + Vector((0.035, 0.03, 0.055)) + jit)
+            aim(f, "arm.L", Vector((-0.1, props.DESK_Y + 0.03, props.DESK_TOP_Z + 0.03)))
+            R(f, "head", x=(8 if pause else 20 + (2 if i % 3 == 0 else 0)))
+        for b in ("arm.L", "arm.R"):
+            R(f0 - 3, b); S(f0 - 3, b, (1, 1, 1)); R(f1 + 3, b); S(f1 + 3, b, (1, 1, 1))
+    dk, ch = seated(F, work)
+    eyes([(1, 0), (31, 0), (32, 1), (34, 1), (35, 0), (F, 0)]); wag(12, 50, 8, 6)
+    ears_bounce([(1, 0), (14, 4), (24, -3), (32, 6), (42, -3), (52, 0)])
+    nb = props.notebook_flat(Vector((0.0, props.DESK_Y + 0.02, props.DESK_TOP_Z + 0.002)), math.radians(8), 1.5)
+    pc = props.pencil(); pc.rotation_mode = "QUATERNION"
+    for o in (nb,):
+        props.key_scale(o, [(1, 0), (4, 0), (8, 1.6), (10, 1.5), (52, 1.5), (57, 0), (F, 0)])
+    # pencil: tip on the page near the hand, eraser end through the hand (keyed per frame)
+    for f in range(1, F + 1):
+        sc.frame_set(f); bpy.context.view_layer.update()
+        hand = rig.matrix_world @ P["arm.R"].tail
+        tip = Vector((hand.x - 0.03, hand.y - 0.015, props.DESK_TOP_Z + 0.014))
+        axis = (hand - tip).normalized()
+        pc.rotation_quaternion = axis.to_track_quat("Z", "Y")
+        pc.location = tip + axis * 0.089
+        on = 1.0 if 11 <= f <= 51 else 0.0
+        pc.scale = (max(on, 1e-3),) * 3
+        for path in ("location", "rotation_quaternion", "scale"):
+            pc.keyframe_insert(path, frame=f)
+    return F
+
+def desk_laptop():  # 공부·일 (앉아서): typing on a laptop, glancing at the screen
+    F = 64
+    def work(f0, f1):
+        base = props.DESK_TOP_Z + 0.03
+        for i, f in enumerate(range(f0, f1 + 1, 2)):
+            pause = 30 <= f <= 34
+            upL = 0.018 if (i % 2 == 0 and not pause) else 0.0
+            upR = 0.018 if (i % 2 == 1 and not pause) else 0.0
+            aim(f, "arm.L", Vector((-0.07, props.DESK_Y + 0.05, base + upL)))
+            aim(f, "arm.R", Vector((0.07, props.DESK_Y + 0.05, base + upR)))
+            R(f, "head", x=(4 if pause else 10), z=(6 if pause else 0))
+        for b in ("arm.L", "arm.R"):
+            R(f0 - 3, b); S(f0 - 3, b, (1, 1, 1)); R(f1 + 3, b); S(f1 + 3, b, (1, 1, 1))
+    dk, ch = seated(F, work)
+    eyes([(1, 0), (31, 0), (32, 1), (34, 1), (35, 0), (F, 0)]); wag(12, 50, 8, 6)
+    ears_bounce([(1, 0), (14, 3), (24, -3), (32, 6), (42, -3), (52, 0)])
+    lp = props.laptop(Vector((0.0, props.DESK_Y + 0.0, props.DESK_TOP_Z)), 0.0)
+    props.key_scale(lp, [(1, 0), (4, 0), (8, 1.06), (10, 1), (52, 1), (57, 0), (F, 0)])
     return F
 
 def eat():  # 잘 먹기: both hands hold a sweet potato up to the mouth, bites + chew, happy eyes
@@ -301,7 +385,7 @@ def wave():  # 사람·마음: raise the right arm and wave, head tilt
     props.key_scale(lt, [(1, 0), (6, 0), (9, 1.8), (11, 1.65), (42, 1.65), (46, 0), (F, 0)])
     return F
 
-ACTIONS = {"sweep": sweep, "hop": hop, "nod": nod, "write": write, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
+ACTIONS = {"sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
 F = ACTIONS[ACTION]()
 sc.frame_start, sc.frame_end = 1, F
 for fc in fcurves(rig.animation_data.action):
@@ -328,7 +412,8 @@ for n, rot, e in (("key", (50, 0, 30), 3.0), ("fill", (60, 0, -120), 1.2), ("rim
 cd = bpy.data.cameras.new("cam"); cd.type = "ORTHO"; cd.ortho_scale = 1.45
 cam = bpy.data.objects.new("cam", cd); sc.collection.objects.link(cam); sc.camera = cam
 target = Vector((0, 0, 0.07))
-cam.location = target + Vector((0.35, -1, 0.12)).normalized() * 10
+ELEV = 0.5 if ACTION.startswith("desk_") else 0.12   # look down on desk scenes so the desktop reads
+cam.location = target + Vector((0.35, -1, ELEV)).normalized() * 10
 cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
 sc.render.filepath = os.path.join(rdir, f"{ACTION}_frames", "f_")
 sc.render.image_settings.file_format = "PNG"

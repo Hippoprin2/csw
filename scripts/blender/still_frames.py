@@ -16,7 +16,8 @@ for n, rot, en in (("k", (50, 0, 30), 3), ("f", (60, 0, -120), 1.2), ("r", (110,
     o = bpy.data.objects.new(n, d); s.collection.objects.link(o); o.rotation_euler = [math.radians(x) for x in rot]
 cd = bpy.data.cameras.new("c"); cd.type = "ORTHO"; cd.ortho_scale = 1.45
 c = bpy.data.objects.new("c", cd); s.collection.objects.link(c); s.camera = c
-t = Vector((0, 0, 0.07)); c.location = t + Vector((0.35, -1, 0.12)).normalized() * 10
+import os
+t = Vector((0, 0, 0.07)); c.location = t + Vector((0.35, -1, float(os.environ.get("CAM_ELEV", "0.12")))).normalized() * 10
 c.rotation_euler = (t - c.location).to_track_quat("-Z", "Y").to_euler()
 for f in frames:
     s.frame_set(f); s.render.filepath = f"{pre}_{f}.png"; bpy.ops.render.render(write_still=True)

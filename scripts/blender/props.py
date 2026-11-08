@@ -294,3 +294,93 @@ def pencil():
         bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
         o.select_set(False)
     return join([body, tip, era], "Pencil")
+
+
+# ---------------------------------------------------------------- desk + chair + laptop (seated work)
+def box(name, size, loc, material):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=min(size) * 0.25, segments=3, affect="EDGES")
+    for f in bm.faces: f.smooth = True
+    o = obj_from_bm(bm, name, [material])
+    o.scale = size; o.location = loc
+    return o
+
+
+def _finish(parts, name, origin):
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in parts:
+        o.select_set(True); bpy.context.view_layer.objects.active = o
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        o.select_set(False)
+    o = join(parts, name)
+    # move origin so scale-in pops from `origin`
+    bpy.context.scene.cursor.location = origin
+    bpy.ops.object.select_all(action="DESELECT"); o.select_set(True); bpy.context.view_layer.objects.active = o
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+    return o
+
+
+DESK_TOP_Z = -0.12
+DESK_Y = -0.31          # desk centre (front of the character is -Y)
+
+
+def desk():
+    wood = mat("Desk_Wood", (0.86, 0.69, 0.5), 0.7)
+    parts = [box("DeskTop", (0.6, 0.3, 0.03), (0, DESK_Y, DESK_TOP_Z - 0.015), wood)]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            leg = obj_from_bm(cylinder(0.016, 0.38 + DESK_TOP_Z), f"DeskLeg{sx}{sy}", [wood])
+            leg.location = (sx * 0.26, DESK_Y + sy * 0.11, (-0.5 + DESK_TOP_Z - 0.03) / 2)
+            parts.append(leg)
+    return _finish(parts, "Desk", Vector((0, DESK_Y, -0.5)))
+
+
+def chair():
+    mint = mat("Chair_Mint", (0.62, 0.84, 0.76), 0.6)
+    wood = mat("Chair_Wood", (0.8, 0.62, 0.45), 0.7)
+    parts = [box("ChairSeat", (0.34, 0.42, 0.035), (0, 0.11, -0.378), mint),
+             box("ChairBack", (0.34, 0.03, 0.26), (0, 0.33, -0.23), mint)]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            leg = obj_from_bm(cylinder(0.014, 0.105), f"ChairLeg{sx}{sy}", [wood])
+            leg.location = (sx * 0.14, 0.11 + sy * 0.17, -0.448)
+            parts.append(leg)
+    return _finish(parts, "Chair", Vector((0, 0.11, -0.5)))
+
+
+def notebook_flat(loc, rot_z=0.0, scale=1.5):
+    nb = notebook()                     # page normal = local +Z
+    nb.scale = (scale,) * 3
+    nb.location = loc; nb.rotation_euler = (0, 0, rot_z)
+    return nb
+
+
+def laptop(loc, rot_z=0.0):
+    shell = mat("Laptop_Shell", (0.82, 0.8, 0.9), 0.35)
+    keys = mat("Laptop_Keys", (0.35, 0.34, 0.42), 0.6)
+    screen = mat("Laptop_Screen", (0.55, 0.78, 0.98), 0.3, emit=1.2)
+    heart = mat("Laptop_Sticker", (0.95, 0.5, 0.58), 0.5)
+    W, D = 0.24, 0.16
+    parts = [box("LapBase", (W, D, 0.012), (0, 0, 0.006), shell),
+             box("LapKeys", (W * 0.86, D * 0.5, 0.002), (0, 0.025, 0.0125), keys),
+             box("LapPad", (W * 0.28, D * 0.2, 0.002), (0, -0.05 + 0.03, 0.0125), keys)]
+    # lid hinged at the far (-Y, camera) edge, screen facing the character (+Y), tilted back
+    lid = box("LapLid", (W, 0.008, D * 0.95), (0, 0, D * 0.475), shell)
+    scr = box("LapScreen", (W * 0.9, 0.002, D * 0.8), (0, 0.005, D * 0.48), screen)
+    bm = bmesh.new(); pts = []
+    for i in range(32):
+        a = 2 * math.pi * i / 32
+        x = 16 * math.sin(a) ** 3; z = 13 * math.cos(a) - 5 * math.cos(2 * a) - 2 * math.cos(3 * a) - math.cos(4 * a)
+        pts.append(bm.verts.new((x * 0.0013, -0.0045, z * 0.0013 + D * 0.5)))
+    bm.faces.new(pts)
+    st = obj_from_bm(bm, "LapSticker", [heart])
+    for o in (lid, scr, st):
+        o.location.y += -D / 2
+    pivot = Vector((0, -D / 2, 0.012))
+    R = Matrix.Translation(pivot) @ Matrix.Rotation(math.radians(15), 4, "X") @ Matrix.Translation(-pivot)
+    bpy.context.view_layer.update()          # matrix_world is stale right after setting scale/location
+    for o in (lid, scr, st):
+        o.matrix_world = R @ o.matrix_world
+    lap = _finish(parts + [lid, scr, st], "Laptop", Vector((0, 0, 0)))
+    lap.location = loc; lap.rotation_euler = (0, 0, rot_z)
+    return lap
