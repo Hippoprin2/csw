@@ -99,6 +99,8 @@ for eng in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
     try: sc.render.engine = eng; break
     except Exception: pass
 sc.render.film_transparent = True
+sc.view_settings.view_transform = "Standard"   # must match idle (default AgX shifts colors)
+sc.view_settings.look = "None"
 sc.render.resolution_x, sc.render.resolution_y = 600, 800
 cam = sc.camera
 if cam is None or cam.type != "CAMERA":
