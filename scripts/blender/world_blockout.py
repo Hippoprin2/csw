@@ -125,13 +125,15 @@ if len(argv) > 3 and argv[3] == "close":      # close-up on the hippo to judge t
 for eng in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
     try: sc.render.engine = eng; break
     except Exception: pass
-sc.render.film_transparent = False
+# world = same as character renders (new world, default dark grey) so the hippo gets the same light.
+# A bright world colour acts as strong ambient light and blows the hippo out (v1 blockouts had this bug).
+sc.render.film_transparent = True
 sc.view_settings.view_transform = "Standard"; sc.view_settings.look = "None"
 RX, RY = 590, 840
 sc.render.resolution_x, sc.render.resolution_y = RX, RY
 w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
-bg = w.node_tree.nodes["Background"]; bg.inputs[1].default_value = 0.9
-bg.inputs[0].default_value = (0.94, 0.92, 0.89, 1) if SCENE == "room" else (0.80, 0.91, 0.96, 1)
+w.node_tree.nodes["Background"].inputs[1].default_value = 0.9
+# backdrop colour is composited afterwards (room #F0EBE4, outdoors #CDE8F5)
 for n, rot, e in (("key", (50, 0, 30), 3.0), ("fill", (60, 0, -120), 1.2), ("rim", (110, 0, 180), 2.0), ("bounce", (150, 0, 0), 0.7)):
     d = bpy.data.lights.new(n, "SUN"); d.energy = e
     o = bpy.data.objects.new(n, d); sc.collection.objects.link(o); o.rotation_euler = [math.radians(x) for x in rot]
