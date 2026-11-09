@@ -50,15 +50,15 @@ def _link(bm, name, m, weighted=True):
     if weighted:
         # big flat faces keep flat normals; only the bevels are smooth. Without this, smooth shading of a
         # beveled box bleeds the corner normals across the whole face (dark gradient on walls, faceted books).
-        wn = o.modifiers.new("wn", "WEIGHTED_NORMAL"); wn.mode = "FACE_AREA"; wn.weight = 100; wn.keep_sharp = True
+        wn = o.modifiers.new("wn", "WEIGHTED_NORMAL"); wn.mode = "FACE_AREA"; wn.weight = 50; wn.keep_sharp = True
     return o
 
 
-def rbox(name, size, loc, m, r=0.25, seg=3):
+def rbox(name, size, loc, m, r=0.25, seg=5):
     """rounded box; r = bevel as fraction of the smallest side"""
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
     bmesh.ops.scale(bm, vec=size, verts=bm.verts)
-    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=min(size) * min(r, 0.42), segments=seg, affect="EDGES", clamp_overlap=True)
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=min(size) * min(r, 0.42), segments=seg, affect="EDGES", profile=0.5, clamp_overlap=True)
     o = _link(bm, name, m); o.location = loc
     return o
 
@@ -74,7 +74,7 @@ def cyl(name, r, h, loc, m, r2=None, seg=40, bevel=0.3, rot=None):
     bmesh.ops.create_cone(bm, cap_ends=True, segments=seg, radius1=r, radius2=r if r2 is None else r2, depth=h)
     if bevel:
         edges = [e for e in bm.edges if not e.is_manifold or e.calc_face_angle(0) > 0.5]
-        bmesh.ops.bevel(bm, geom=edges, offset=min(r, h) * bevel, segments=3, affect="EDGES")
+        bmesh.ops.bevel(bm, geom=edges, offset=min(r, h) * bevel, segments=3, affect="EDGES", profile=0.5)
     o = _link(bm, name, m); o.location = loc
     if rot: o.rotation_euler = rot
     # flat caps keep sharp shading
@@ -227,12 +227,12 @@ def squirrel():
                                       (0.12, 0.33, 0.08), (0.07, 0.37, 0.065), (0.03, 0.375, 0.05))):
         parts.append(sph(f"SqTail{i}", r, (0, ty, tz), m if i < 6 else c))
     g = group("squirrel", parts)
-    g.location = (-0.62, -0.62, FLOOR); g.rotation_euler = (0, 0, math.radians(-28)); g.scale = (1.1, 1.1, 1.1)
+    g.location = (*FRONT_CENTER, FLOOR); g.rotation_euler = (0, 0, math.radians(-28)); g.scale = (1.1, 1.1, 1.1)
     return g
 
 
 def lamp():
-    x, y = -1.0, -0.72
+    x, y = -0.74, -0.72      # pole stays clear of the bedside column (radio/aquarium)
     parts = [
         cyl("LampBase", 0.1, 0.035, (x, y, FLOOR + 0.0175), M("wood2"), bevel=0.4),
         cyl("LampPole", 0.014, 0.78, (x, y, FLOOR + 0.42), M("wood2"), bevel=0),
@@ -250,7 +250,7 @@ def tri(name, w, h, loc, m, thick=0.012):
     ext = bmesh.ops.extrude_face_region(bm, geom=[f])
     bmesh.ops.translate(bm, vec=(0, thick, 0), verts=[v for v in ext["geom"] if isinstance(v, bmesh.types.BMVert)])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=thick * 0.45, segments=2, affect="EDGES", clamp_overlap=True)
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=thick * 0.45, segments=2, affect="EDGES", profile=0.5, clamp_overlap=True)
     o = _link(bm, name, m); o.location = (loc[0], loc[1] - thick, loc[2] + 0.06)
     o.rotation_euler = (0, 0, math.radians(-19))      # square to the 3/4 camera
     return o
@@ -367,7 +367,7 @@ def mobile():
             f = bm.faces.new(verts)
             ext = bmesh.ops.extrude_face_region(bm, geom=[f])
             bmesh.ops.translate(bm, vec=(0, 0.025, 0), verts=[v for v in ext["geom"] if isinstance(v, bmesh.types.BMVert)])
-            bmesh.ops.bevel(bm, geom=list(bm.edges), offset=0.008, segments=2, affect="EDGES", clamp_overlap=True)
+            bmesh.ops.bevel(bm, geom=list(bm.edges), offset=0.008, segments=2, affect="EDGES", profile=0.5, clamp_overlap=True)
             o = _link(bm, "MoStar", M("yellow", 0.6)); o.location = (hx, y - 0.012, hz); parts.append(o)
         else:
             o = sph("MoMoon", 0.045, (hx, y, hz), M("lemon", 0.6), (1, 0.45, 1))
@@ -402,7 +402,7 @@ def rug():
     return group("rug", parts)
 
 
-FRONT_CENTER = (-0.62, -0.62)
+FRONT_CENTER = (-0.36, -0.78)
 
 
 def cushion():
@@ -456,11 +456,21 @@ BEDSIDE = (-1.45, YB - 0.2)
 
 
 def _bedside_table(x, y, parts):
-    w, d, h = 0.26, 0.26, 0.3
-    parts += [rbox("BsBody", (w, d, h), (x, y, FLOOR + h / 2), M("wood"), r=0.25),
-              rbox("BsDrawer", (w - 0.05, 0.02, 0.09), (x, y - d / 2 - 0.005, FLOOR + h - 0.08), M("wood2"), r=0.3),
-              sph("BsKnob", 0.014, (x, y - d / 2 - 0.02, FLOOR + h - 0.08), M("off"))]
-    return FLOOR + h
+    """협탁 v2: overhanging rounded wood top, mint body with one drawer + knob, open cubby, short round legs"""
+    w, d = 0.28, 0.24
+    leg_h, body_h, top_t = 0.07, 0.2, 0.035
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            parts.append(cyl(f"BsLeg{sx}{sy}", 0.018, leg_h + 0.01, (x + sx * (w / 2 - 0.035), y + sy * (d / 2 - 0.035), FLOOR + leg_h / 2), M("wood2"), r2=0.014, bevel=0.3))
+    zb = FLOOR + leg_h
+    parts += [
+        rbox("BsBody", (w, d, body_h), (x, y, zb + body_h / 2), M("mint", 0.75), r=0.18),
+        rbox("BsCubby", (w - 0.05, 0.02, 0.07), (x, y - d / 2 + 0.006, zb + 0.05), M("wood2", 0.85), r=0.3),     # dark inset = open shelf
+        rbox("BsDrawer", (w - 0.05, 0.02, 0.085), (x, y - d / 2 - 0.004, zb + 0.145), M("off", 0.8), r=0.3),
+        sph("BsKnob", 0.017, (x, y - d / 2 - 0.02, zb + 0.145), M("coral", 0.6)),
+        rbox("BsTop", (w + 0.05, d + 0.04, top_t), (x, y, zb + body_h + top_t / 2), M("wood"), r=0.4),
+    ]
+    return zb + body_h + top_t
 
 
 def radio_stand():
@@ -478,26 +488,33 @@ def radio_stand():
 
 
 def aquarium():
+    """어항 v2: tinted see-through tank (no opaque water block, so the fish show), 2 fish, weeds, bubbles"""
     x, y = BEDSIDE; parts = []
     top = _bedside_table(x, y, parts)
-    w, d, h = 0.24, 0.16, 0.18
-    glass = rbox("AqGlass", (w, d, h), (x, y, top + h / 2), mat("R_aqglass", (0.85, 0.95, 1.0), 0.15, alpha=0.35), r=0.12)
+    w, d, h = 0.25, 0.15, 0.19
+    glass = rbox("AqGlass", (w, d, h), (x, y, top + h / 2), mat("R_aqglass2", (0.70, 0.88, 0.97), 0.1, alpha=0.26), r=0.12)
     m = glass.active_material
     try:
         m.surface_render_method = "BLENDED"
     except Exception:
         m.blend_method = "BLEND"
+    m.use_backface_culling = True
     parts += [glass,
-              rbox("AqWater", (w - 0.02, d - 0.02, h * 0.72), (x, y, top + 0.01 + h * 0.36), M("water", 0.3, 0.15), r=0.12),
-              rbox("AqRim", (w + 0.01, d + 0.01, 0.018), (x, y, top + h), M("mint", 0.7), r=0.4),
-              rbox("AqSand", (w - 0.025, d - 0.025, 0.025), (x, y, top + 0.02), M("pebble", 0.9), r=0.4)]
-    for k, (fx, fz, col, flip) in enumerate(((-0.04, 0.08, "orange", 1), (0.05, 0.05, "confetti_y", -1))):
-        body = sph(f"AqFish{k}", 0.022, (x + fx, y - d / 2 + 0.03, top + fz), M(col, 0.6), (1.4, 0.6, 1))
-        tail = sph(f"AqTail{k}", 0.013, (x + fx - flip * 0.03, y - d / 2 + 0.03, top + fz), M(col, 0.6), (0.7, 0.4, 1.2))
-        eye = sph(f"AqEye{k}", 0.004, (x + fx + flip * 0.015, y - d / 2 + 0.017, top + fz + 0.005), M("brown"))
-        parts += [body, tail, eye]
+              rbox("AqRim", (w + 0.012, d + 0.012, 0.02), (x, y, top + h), M("mint", 0.7), r=0.4),
+              rbox("AqSand", (w - 0.02, d - 0.02, 0.03), (x, y, top + 0.02), M("pebble", 0.9), r=0.4)]
+    for k, (px, col) in enumerate(((-0.07, "coral"), (-0.04, "lemon"), (0.075, "lav"))):
+        parts.append(sph(f"AqPebble{k}", 0.014, (x + px, y - 0.02, top + 0.038), M(col, 0.8), (1.2, 1, 0.7)))
     for k in range(3):
-        parts.append(sph(f"AqWeed{k}", 0.02, (x + 0.08 - k * 0.015, y + 0.03, top + 0.04 + k * 0.025), M("leaf"), (0.6, 0.6, 1.5)))
+        parts.append(sph(f"AqWeed{k}", 0.022, (x + 0.085 - k * 0.012, y + 0.02, top + 0.06 + k * 0.03), M("leaf"), (0.6, 0.6, 1.6)))
+    # fish face the camera-ish, big enough to read at room scale
+    for k, (fx, fz, col, flip) in enumerate(((-0.05, 0.12, "orange", 1), (0.035, 0.075, "lemon", -1))):
+        fy = y - 0.01
+        body = sph(f"AqFish{k}", 0.032, (x + fx, fy, top + fz), M(col, 0.6), (1.35, 0.7, 1.0))
+        tail = sph(f"AqTail{k}", 0.02, (x + fx - flip * 0.045, fy, top + fz), M(col, 0.6), (0.6, 0.35, 1.25))
+        eye = sph(f"AqEye{k}", 0.006, (x + fx + flip * 0.02, fy - 0.02, top + fz + 0.008), M("brown"))
+        parts += [body, tail, eye]
+    for k, (bx, bz, r) in enumerate(((-0.02, 0.155, 0.006), (-0.012, 0.172, 0.008))):
+        parts.append(sph(f"AqBubble{k}", r, (x + bx, y - 0.02, top + bz), M("off", 0.3)))
     return group("aquarium", parts)
 
 
