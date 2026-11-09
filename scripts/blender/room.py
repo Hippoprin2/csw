@@ -12,7 +12,7 @@ W = 1.35           # half width  (x -1.35 .. 1.35)
 YF, YB = -2.0, 0.85   # floor runs past the bottom of the frame; back wall face
 H = 3.0            # wall height above floor (taller than the frame so no gap at the top)
 ELEV = 0.12
-WX, WZ, WW, WH = 0.2, 0.78, 0.84, 0.74   # window centre x/z, size (sill = 창턱 수확 선반)
+WX, WZ, WW, WH = 0.1, 0.78, 0.84, 0.74   # window centre x/z, size (sill = 창턱 수확 선반)
 
 # ------------------------------------------------------------------ palette (ART_BIBLE 4장 + room additions)
 P = {
@@ -30,6 +30,11 @@ P = {
     "squirrel": (0.85, 0.57, 0.36),     # #D9925B 다람쥐 (new)
     "brown": (0.345, 0.21, 0.157),      # #583628 눈·코
     "potato": (0.55, 0.35, 0.55), "basket": (0.80, 0.62, 0.45),
+    "orange": (0.98, 0.62, 0.35),       # 물고기·라디오 포인트
+    "water": (0.62, 0.84, 0.95), "pebble": (0.85, 0.82, 0.78),
+    "string": (0.55, 0.45, 0.38),
+    "confetti_r": (0.98, 0.45, 0.45), "confetti_y": (0.99, 0.80, 0.30), "confetti_g": (0.50, 0.80, 0.55),
+    "confetti_b": (0.45, 0.70, 0.98), "confetti_p": (0.85, 0.55, 0.95), "confetti_k": (1.0, 0.65, 0.75),
 }
 _M = {}
 def M(k, rough=0.75, emit=0.0):
@@ -124,7 +129,7 @@ def base():
     for i, (cx, cz, s) in enumerate(((-0.08, 0.1, 1.0), (0.04, 0.12, 0.8), (0.16, -0.12, 0.7))):   # little clouds
         sph(f"Cloud{i}", 0.04 * s, (wx + cx, YB - 0.05, wz + cz), M("off", 0.6, 0.4), (2.2, 0.3, 1))
         parts.append(bpy.data.objects[f"Cloud{i}"])
-    parts.append(rbox("Sill", (ww + 0.22, 0.16, 0.045), (wx, YB - 0.08, wz - wh / 2 - 0.02), M("wood"), r=0.3))
+    parts.append(rbox("Sill", (ww + 0.14, 0.16, 0.045), (wx, YB - 0.08, wz - wh / 2 - 0.02), M("wood"), r=0.3))
     for o in parts:
         if o.name.startswith(("BackWall", "LeftWall", "Wainscot", "Floor", "Seam")):
             o.visible_shadow = False   # walls/floor receive but never cast (no big wall shadow)
@@ -147,7 +152,7 @@ def harvest_sweet_potato():
 
 # ------------------------------------------------------------------ items (id = supabase items.id)
 def bed():
-    x0, x1 = -1.2, -0.22; L = x1 - x0; y = YB - 0.36; Wd = 0.62
+    x0, x1 = -1.05, -0.07; L = x1 - x0; y = YB - 0.36; Wd = 0.62
     cx = (x0 + x1) / 2
     top = FLOOR + 0.31                      # mattress top
     parts = [
@@ -168,7 +173,7 @@ def bed():
 
 
 def bookshelf():
-    x, w, d, h = 0.92, 0.58, 0.3, 1.02; y = YB - d / 2 - 0.01
+    x, w, d, h = 0.86, 0.58, 0.3, 1.02; y = YB - d / 2 - 0.01
     parts = [rbox("ShelfBack", (w, 0.03, h), (x, YB - 0.02, FLOOR + h / 2), M("wood2"), r=0.3)]
     for sx in (-1, 1):
         parts.append(rbox(f"ShelfSide{sx}", (0.05, d, h), (x + sx * (w / 2 - 0.025), y, FLOOR + h / 2), M("wood"), r=0.35))
@@ -227,7 +232,7 @@ def squirrel():
 
 
 def lamp():
-    x, y = -1.12, -0.7
+    x, y = -1.0, -0.72
     parts = [
         cyl("LampBase", 0.1, 0.035, (x, y, FLOOR + 0.0175), M("wood2"), bevel=0.4),
         cyl("LampPole", 0.014, 0.78, (x, y, FLOOR + 0.42), M("wood2"), bevel=0),
@@ -237,7 +242,317 @@ def lamp():
     return group("lamp", parts)
 
 
-ITEMS = {"bed": bed, "bookshelf": bookshelf, "squirrel": squirrel, "lamp": lamp}
+def tri(name, w, h, loc, m, thick=0.012):
+    """little rounded pennant hanging from its top edge, tip pointing down, facing the camera"""
+    bm = bmesh.new()
+    vs = [bm.verts.new(v) for v in ((-w / 2, 0, 0), (0, 0, -h), (w / 2, 0, 0))]
+    f = bm.faces.new(vs)
+    ext = bmesh.ops.extrude_face_region(bm, geom=[f])
+    bmesh.ops.translate(bm, vec=(0, thick, 0), verts=[v for v in ext["geom"] if isinstance(v, bmesh.types.BMVert)])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=thick * 0.45, segments=2, affect="EDGES", clamp_overlap=True)
+    o = _link(bm, name, m); o.location = (loc[0], loc[1] - thick, loc[2] + 0.06)
+    o.rotation_euler = (0, 0, math.radians(-19))      # square to the 3/4 camera
+    return o
+
+
+def sag(x0, x1, z, depth, n):
+    """points along a hanging string on the back wall"""
+    return [(x0 + (x1 - x0) * t, z - depth * 4 * t * (1 - t)) for t in [k / (n - 1) for k in range(n)]]
+
+
+def rope(name, pts, y, m, r=0.006):
+    parts = []
+    for k in range(len(pts) - 1):
+        (xa, za), (xb, zb) = pts[k], pts[k + 1]
+        L = math.hypot(xb - xa, zb - za)
+        o = cyl(f"{name}{k}", r, L + r, ((xa + xb) / 2, y, (za + zb) / 2), m, bevel=0, seg=8)
+        o.rotation_euler = (0, -math.atan2(zb - za, xb - xa) + math.pi / 2, 0)
+        parts.append(o)
+    return parts
+
+
+WALL_Y = YB - 0.02          # things hung on the back wall
+
+
+# --- free base decoration: small calendar (대표 결정: 처음 방 벽에 무료 장식 1개)
+def calendar():
+    x, z = -1.36, 0.95
+    parts = [
+        rbox("CalPaper", (0.24, 0.02, 0.3), (x, WALL_Y - 0.01, z), M("off", 0.85), r=0.3),
+        rbox("CalTop", (0.26, 0.03, 0.05), (x, WALL_Y - 0.02, z + 0.15), M("coral"), r=0.4),
+        rbox("CalPic", (0.18, 0.012, 0.11), (x, WALL_Y - 0.025, z + 0.05), M("skyglass", 0.7), r=0.3),
+        sph("CalSun", 0.022, (x + 0.045, WALL_Y - 0.032, z + 0.075), M("yellow", 0.6), (1, 0.3, 1)),
+        sph("CalHill", 0.07, (x - 0.02, WALL_Y - 0.03, z + 0.0), M("leaf"), (1.2, 0.2, 0.45)),
+        sph("CalPin", 0.014, (x, WALL_Y - 0.04, z + 0.17), M("brown", 0.5)),
+    ]
+    for r in range(2):      # a couple of text-like lines (no dates, nothing to tick off)
+        parts.append(rbox(f"CalLine{r}", (0.15 - r * 0.04, 0.008, 0.012), (x, WALL_Y - 0.025, z - 0.06 - r * 0.035), M("wainscot"), r=0.4))
+    return group("calendar", parts)
+
+
+# --- wall
+def frame():
+    """액자(단짝 그림): pink frame, little hippo face drawing"""
+    x, z = -0.78, 0.92
+    P.setdefault("hippo", (0.95, 0.81, 0.65))
+    parts = [
+        rbox("FrOuter", (0.34, 0.03, 0.28), (x, WALL_Y - 0.01, z), M("pink"), r=0.3),
+        rbox("FrInner", (0.27, 0.02, 0.21), (x, WALL_Y - 0.022, z), M("off", 0.85), r=0.25),
+        sph("FrHead", 0.06, (x, WALL_Y - 0.033, z - 0.012), M("hippo", 0.8), (1.3, 0.15, 1.0)),
+    ]
+    for sx in (-1, 1):
+        parts += [sph(f"FrEar{sx}", 0.018, (x + sx * 0.05, WALL_Y - 0.033, z + 0.045), M("hippo", 0.8), (1, 0.15, 1)),
+                  sph(f"FrEye{sx}", 0.008, (x + sx * 0.03, WALL_Y - 0.042, z + 0.005), M("brown", 0.5), (1, 0.3, 1.2)),
+                  sph(f"FrNose{sx}", 0.006, (x + sx * 0.018, WALL_Y - 0.042, z - 0.04), M("brown", 0.5), (1, 0.3, 1)),
+                  sph(f"FrCheek{sx}", 0.011, (x + sx * 0.055, WALL_Y - 0.04, z - 0.025), M("pink", 0.8), (1, 0.2, 0.7))]
+    return group("frame", parts)
+
+
+def wall_clock():
+    x, z = 0.86, 0.86
+    parts = [
+        cyl("ClRim", 0.13, 0.05, (x, WALL_Y - 0.02, z), M("yellow", 0.6), bevel=0.4, rot=(math.radians(90), 0, 0)),
+        cyl("ClFace", 0.105, 0.02, (x, WALL_Y - 0.04, z), M("off", 0.8), bevel=0.3, rot=(math.radians(90), 0, 0)),
+        sph("ClCenter", 0.012, (x, WALL_Y - 0.055, z), M("brown", 0.5)),
+    ]
+    h1 = rbox("ClHour", (0.014, 0.008, 0.055), (x + 0.018, WALL_Y - 0.052, z + 0.02), M("brown", 0.5), r=0.4); h1.rotation_euler = (0, math.radians(40), 0)
+    h2 = rbox("ClMin", (0.01, 0.008, 0.08), (x - 0.005, WALL_Y - 0.054, z + 0.038), M("coral"), r=0.4); h2.rotation_euler = (0, math.radians(-8), 0)
+    parts += [h1, h2]
+    for k in range(4):
+        a = k * math.pi / 2
+        parts.append(sph(f"ClTick{k}", 0.009, (x + 0.08 * math.sin(a), WALL_Y - 0.05, z + 0.08 * math.cos(a)), M("lav"), (1, 0.4, 1)))
+    return group("wall_clock", parts)
+
+
+GARLAND = (-1.45, 0.75, 1.62, 0.16)    # x0, x1, z, sag
+
+
+def garland():
+    x0, x1, z, d = GARLAND
+    pts = sag(x0, x1, z, d, 24)
+    parts = rope("GaRope", pts, WALL_Y - 0.03, M("string", 0.8))
+    cols = ["confetti_r", "confetti_y", "confetti_g", "confetti_b", "confetti_p", "confetti_k"]
+    for k, (px, pz) in enumerate(sag(x0, x1, z, d, 11)[1:-1]):
+        parts.append(tri(f"GaFlag{k}", 0.11, 0.13, (px, WALL_Y - 0.035, pz - 0.06), M(cols[k % 6], 0.8)))
+    return group("garland", parts)
+
+
+def string_lights():
+    x0, x1, z, d = GARLAND
+    parts = rope("SlWire", sag(x0, x1, z, d, 24), WALL_Y - 0.03, M("string", 0.8), r=0.004)
+    cols = ["lemon", "confetti_k", "lemon", "mint", "lemon", "lav"]
+    for k, (px, pz) in enumerate(sag(x0, x1, z, d, 14)[1:-1]):
+        parts.append(cyl(f"SlCap{k}", 0.012, 0.02, (px, WALL_Y - 0.035, pz - 0.012), M("string", 0.7), bevel=0.3))
+        parts.append(sph(f"SlBulb{k}", 0.026, (px, WALL_Y - 0.04, pz - 0.045), M(cols[k % 6], 0.4, 1.6), (0.9, 0.9, 1.25)))
+    return group("string_lights", parts)
+
+
+def mobile():
+    """천장 모빌: wooden bar with a cloud, star, moon hanging (strings go up out of frame)"""
+    x, z = -0.42, 1.42; y = 0.35
+    parts = [rbox("MoBar", (0.42, 0.025, 0.025), (x, y, z), M("wood2"), r=0.4)]
+    parts += rope("MoTop", [(x, z), (x, z + 0.8)], y, M("string", 0.8), r=0.004)
+    hangs = [(-0.18, 0.2, "cloud"), (0.0, 0.3, "star"), (0.18, 0.17, "moon")]
+    for k, (dx, L, kind) in enumerate(hangs):
+        hx, hz = x + dx, z - L
+        parts += rope(f"MoStr{k}", [(hx, z), (hx, hz + 0.04)], y, M("string", 0.8), r=0.003)
+        if kind == "cloud":
+            for j, (cx, cz, r) in enumerate(((-0.03, 0, 0.035), (0.01, 0.015, 0.045), (0.045, -0.003, 0.032))):
+                parts.append(sph(f"MoCloud{j}", r, (hx + cx, y, hz + cz), M("off", 0.8), (1, 0.6, 1)))
+        elif kind == "star":
+            bm = bmesh.new()
+            pts = [(0.06 if q % 2 == 0 else 0.026) for q in range(10)]
+            verts = [bm.verts.new((pts[q] * math.sin(q * math.pi / 5), 0, pts[q] * math.cos(q * math.pi / 5))) for q in range(10)]
+            f = bm.faces.new(verts)
+            ext = bmesh.ops.extrude_face_region(bm, geom=[f])
+            bmesh.ops.translate(bm, vec=(0, 0.025, 0), verts=[v for v in ext["geom"] if isinstance(v, bmesh.types.BMVert)])
+            bmesh.ops.bevel(bm, geom=list(bm.edges), offset=0.008, segments=2, affect="EDGES", clamp_overlap=True)
+            o = _link(bm, "MoStar", M("yellow", 0.6)); o.location = (hx, y - 0.012, hz); parts.append(o)
+        else:
+            o = sph("MoMoon", 0.045, (hx, y, hz), M("lemon", 0.6), (1, 0.45, 1))
+            cut = sph("MoMoonCut", 0.04, (hx + 0.025, y, hz + 0.012), M("lemon"), (1, 0.6, 1))
+            bo = o.modifiers.new("cut", "BOOLEAN"); bo.object = cut; bo.operation = "DIFFERENCE"; cut.hide_render = True
+            parts += [o, cut]
+    return group("mobile", parts)
+
+
+def curtain():
+    """커튼: two gathered pink panels tied back + rod over the window"""
+    x0, x1 = WX - WW / 2, WX + WW / 2; top = WZ + WH / 2 + 0.06; y = YB - 0.07
+    parts = [cyl("CuRod", 0.012, WW + 0.36, (WX, y, top), M("wood2"), bevel=0, rot=(0, math.radians(90), 0))]
+    for sx, xe in ((-1, x0), (1, x1)):
+        parts.append(sph(f"CuKnob{sx}", 0.024, (WX + sx * (WW / 2 + 0.18), y, top), M("wood2")))
+        for k in range(3):                       # three soft folds per panel
+            fx = xe + sx * (0.02 + k * 0.045)
+            parts.append(rbox(f"CuFold{sx}{k}", (0.06, 0.05, WH + 0.05), (fx, y - 0.01 * (k % 2), top - (WH + 0.05) / 2), M("pink", 0.9), r=0.45))
+        parts.append(rbox(f"CuTie{sx}", (0.17, 0.065, 0.035), (xe + sx * 0.065, y - 0.02, top - WH * 0.58), M("off", 0.8), r=0.45))
+    return group("curtain", parts)
+
+
+# --- floor / furniture
+HIPPO = (0.05, -0.25)
+
+
+def rug():
+    x, y = HIPPO
+    parts = [cyl("RugEdge", 0.62, 0.016, (x, y + 0.05, FLOOR + 0.008), M("off", 0.9), bevel=0.4),
+             cyl("RugIn", 0.53, 0.02, (x, y + 0.05, FLOOR + 0.01), M("lav", 0.9), bevel=0.4)]
+    for o in parts: o.scale = (1.35, 1, 1)
+    return group("rug", parts)
+
+
+FRONT_CENTER = (-0.62, -0.62)
+
+
+def cushion():
+    """쿠션(방석): round floor cushion with a button and piping"""
+    x, y = FRONT_CENTER
+    parts = [cyl("CuBase", 0.2, 0.09, (x, y, FLOOR + 0.045), M("yellow", 0.85), bevel=0.45),
+             sph("CuTop", 0.19, (x, y, FLOOR + 0.085), M("yellow", 0.85), (1, 1, 0.22)),
+             sph("CuButton", 0.022, (x, y, FLOOR + 0.13), M("coral"), (1, 1, 0.6))]
+    for k in range(4):
+        a = k * math.pi / 2 + math.pi / 4
+        parts.append(sph(f"CuTuft{k}", 0.025, (x + 0.205 * math.cos(a), y + 0.205 * math.sin(a), FLOOR + 0.06), M("coral", 0.85)))
+    return group("cushion", parts)
+
+
+def big_plant():
+    """큰 화분: off-white pot with coral band, round leaves on short stems"""
+    x, y = 1.3, -0.82
+    parts = [cyl("PlPot", 0.12, 0.2, (x, y, FLOOR + 0.1), M("off", 0.8), r2=0.1, bevel=0.2),
+             cyl("PlBand", 0.126, 0.035, (x, y, FLOOR + 0.17), M("coral"), bevel=0.3),
+             cyl("PlSoil", 0.11, 0.02, (x, y, FLOOR + 0.195), M("string", 0.9), bevel=0)]
+    base_z = FLOOR + 0.2
+    leaves = [(0, 0.34, 0.075), (-28, 0.27, 0.07), (30, 0.28, 0.07), (-55, 0.2, 0.06), (58, 0.21, 0.06), (-10, 0.22, 0.065), (12, 0.25, 0.065)]
+    for k, (tilt, h, r) in enumerate(leaves):
+        a = math.radians(tilt); dy = 0.03 * ((k % 3) - 1)
+        tip = Vector((x + math.sin(a) * h, y + dy, base_z + math.cos(a) * h))
+        stem = cyl(f"PlStem{k}", 0.007, h, (x + math.sin(a) * h / 2, y + dy, base_z + math.cos(a) * h / 2), M("green"), bevel=0, seg=8)
+        stem.rotation_euler = (0, a, 0)
+        leaf = sph(f"PlLeaf{k}", r, tip, M("leaf", 0.75), (1.0, 0.3, 1.25))
+        leaf.rotation_euler = (math.radians(10), a * 0.8, math.radians(-19))
+        parts += [stem, leaf]
+    return group("big_plant", parts)
+
+
+def low_table():
+    """좌식 탁자 + 찻주전자·찻잔"""
+    x, y = 0.82, -0.32; w, d, h = 0.48, 0.32, 0.2
+    parts = [rbox("TbTop", (w, d, 0.045), (x, y, FLOOR + h), M("wood"), r=0.4)]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            parts.append(cyl(f"TbLeg{sx}{sy}", 0.022, h - 0.02, (x + sx * (w / 2 - 0.05), y + sy * (d / 2 - 0.05), FLOOR + (h - 0.02) / 2), M("wood2"), bevel=0.3))
+    t = FLOOR + h + 0.0225
+    parts += [sph("TbPot", 0.06, (x - 0.08, y + 0.03, t + 0.055), M("mint", 0.7), (1.1, 1.1, 0.9)),
+              sph("TbPotLid", 0.025, (x - 0.08, y + 0.03, t + 0.11), M("off", 0.7)),
+              cyl("TbSpout", 0.012, 0.07, (x - 0.15, y + 0.03, t + 0.07), M("mint", 0.7), r2=0.008, bevel=0, rot=(0, math.radians(-50), 0)),
+              cyl("TbCup", 0.03, 0.045, (x + 0.1, y - 0.05, t + 0.0225), M("off", 0.7), r2=0.025, bevel=0.3),
+              cyl("TbTea", 0.026, 0.004, (x + 0.1, y - 0.05, t + 0.044), M("orange", 0.5), bevel=0)]
+    return group("low_table", parts)
+
+
+BEDSIDE = (-1.45, YB - 0.2)
+
+
+def _bedside_table(x, y, parts):
+    w, d, h = 0.26, 0.26, 0.3
+    parts += [rbox("BsBody", (w, d, h), (x, y, FLOOR + h / 2), M("wood"), r=0.25),
+              rbox("BsDrawer", (w - 0.05, 0.02, 0.09), (x, y - d / 2 - 0.005, FLOOR + h - 0.08), M("wood2"), r=0.3),
+              sph("BsKnob", 0.014, (x, y - d / 2 - 0.02, FLOOR + h - 0.08), M("off"))]
+    return FLOOR + h
+
+
+def radio_stand():
+    x, y = BEDSIDE; parts = []
+    top = _bedside_table(x, y, parts)
+    parts += [rbox("RaBody", (0.22, 0.11, 0.13), (x, y, top + 0.065), M("coral", 0.7), r=0.35),
+              cyl("RaSpeaker", 0.042, 0.012, (x - 0.045, y - 0.056, top + 0.06), M("off", 0.8), bevel=0.3, rot=(math.radians(90), 0, 0)),
+              sph("RaDial", 0.018, (x + 0.06, y - 0.058, top + 0.075), M("yellow", 0.6), (1, 0.5, 1)),
+              rbox("RaHandle", (0.14, 0.02, 0.02), (x, y, top + 0.15), M("brown", 0.6), r=0.45)]
+    ant = cyl("RaAntenna", 0.005, 0.16, (x + 0.07, y, top + 0.2), M("string", 0.5), bevel=0, seg=8); ant.rotation_euler = (0, math.radians(25), 0)
+    parts += [ant, sph("RaAntTip", 0.012, (x + 0.104, y, top + 0.272), M("coral"))]
+    for k in range(3):
+        parts.append(sph(f"RaDot{k}", 0.006, (x - 0.045 + (k - 1) * 0.018, y - 0.064, top + 0.06), M("lav"), (1, 0.4, 1)))
+    return group("radio_stand", parts)
+
+
+def aquarium():
+    x, y = BEDSIDE; parts = []
+    top = _bedside_table(x, y, parts)
+    w, d, h = 0.24, 0.16, 0.18
+    glass = rbox("AqGlass", (w, d, h), (x, y, top + h / 2), mat("R_aqglass", (0.85, 0.95, 1.0), 0.15, alpha=0.35), r=0.12)
+    m = glass.active_material
+    try:
+        m.surface_render_method = "BLENDED"
+    except Exception:
+        m.blend_method = "BLEND"
+    parts += [glass,
+              rbox("AqWater", (w - 0.02, d - 0.02, h * 0.72), (x, y, top + 0.01 + h * 0.36), M("water", 0.3, 0.15), r=0.12),
+              rbox("AqRim", (w + 0.01, d + 0.01, 0.018), (x, y, top + h), M("mint", 0.7), r=0.4),
+              rbox("AqSand", (w - 0.025, d - 0.025, 0.025), (x, y, top + 0.02), M("pebble", 0.9), r=0.4)]
+    for k, (fx, fz, col, flip) in enumerate(((-0.04, 0.08, "orange", 1), (0.05, 0.05, "confetti_y", -1))):
+        body = sph(f"AqFish{k}", 0.022, (x + fx, y - d / 2 + 0.03, top + fz), M(col, 0.6), (1.4, 0.6, 1))
+        tail = sph(f"AqTail{k}", 0.013, (x + fx - flip * 0.03, y - d / 2 + 0.03, top + fz), M(col, 0.6), (0.7, 0.4, 1.2))
+        eye = sph(f"AqEye{k}", 0.004, (x + fx + flip * 0.015, y - d / 2 + 0.017, top + fz + 0.005), M("brown"))
+        parts += [body, tail, eye]
+    for k in range(3):
+        parts.append(sph(f"AqWeed{k}", 0.02, (x + 0.08 - k * 0.015, y + 0.03, top + 0.04 + k * 0.025), M("leaf"), (0.6, 0.6, 1.5)))
+    return group("aquarium", parts)
+
+
+LEAN = (0.4, YB - 0.16)
+
+
+def easel():
+    """이젤: A-frame with a small canvas (sun over a hill)"""
+    x, y = LEAN; z0 = FLOOR
+    parts = []
+    for sx in (-1, 1):
+        leg = cyl(f"EaLeg{sx}", 0.012, 0.72, (x + sx * 0.09, y, z0 + 0.35), M("wood2"), bevel=0, seg=10); leg.rotation_euler = (0, math.radians(-sx * 9), 0)
+        parts.append(leg)
+    back = cyl("EaBack", 0.011, 0.66, (x, y + 0.12, z0 + 0.32), M("wood2"), bevel=0, seg=10); back.rotation_euler = (math.radians(-18), 0, 0)
+    parts += [back, rbox("EaLedge", (0.26, 0.05, 0.025), (x, y - 0.04, z0 + 0.3), M("wood"), r=0.4),
+              rbox("EaCanvas", (0.3, 0.025, 0.26), (x, y - 0.04, z0 + 0.445), M("off", 0.85), r=0.15),
+              sph("EaSun", 0.035, (x + 0.06, y - 0.055, z0 + 0.5), M("yellow", 0.7), (1, 0.25, 1)),
+              sph("EaHill", 0.11, (x - 0.03, y - 0.054, z0 + 0.36), M("leaf", 0.8), (1.25, 0.15, 0.55)),
+              sph("EaHill2", 0.08, (x + 0.08, y - 0.056, z0 + 0.35), M("mint", 0.8), (1.1, 0.15, 0.5))]
+    parts[1].rotation_euler.x = 0
+    for o in parts[:2]:
+        o.rotation_euler.x = math.radians(6)
+    return group("easel", parts)
+
+
+def guitar():
+    """기타: leaning on the wall"""
+    x, y = LEAN
+    parts = [cyl("GuLow", 0.12, 0.06, (0, 0, 0.13), M("wood"), bevel=0.4, rot=(math.radians(90), 0, 0)),
+             cyl("GuUp", 0.09, 0.06, (0, 0, 0.29), M("wood"), bevel=0.4, rot=(math.radians(90), 0, 0)),
+             cyl("GuHole", 0.035, 0.01, (0, -0.031, 0.235), M("brown", 0.8), bevel=0, rot=(math.radians(90), 0, 0)),
+             rbox("GuBridge", (0.08, 0.012, 0.018), (0, -0.032, 0.12), M("brown", 0.6), r=0.4),
+             rbox("GuNeck", (0.045, 0.03, 0.3), (0, -0.005, 0.5), M("wood2"), r=0.35),
+             rbox("GuHead", (0.07, 0.035, 0.09), (0, -0.005, 0.69), M("wood2"), r=0.4),
+             rbox("GuGuard", (0.05, 0.008, 0.06), (0.05, -0.032, 0.19), M("coral"), r=0.45)]
+    for k in range(4):
+        parts.append(sph(f"GuPeg{k}", 0.008, ((-1) ** k * 0.04, -0.005, 0.66 + (k // 2) * 0.04), M("off")))
+    for k in range(3):
+        parts.append(rbox(f"GuStr{k}", (0.0025, 0.004, 0.48), ((k - 1) * 0.011, -0.034, 0.36), M("off", 0.4), r=0.3))
+    parts.append(rbox("GuHook", (0.05, 0.04, 0.03), (0, 0.03, 0.7), M("wood2"), r=0.4))
+    g = group("guitar", parts)
+    # hung on the wall (on the floor it hid behind the low table / plant)
+    g.location = (x - 0.02, WALL_Y - 0.06, FLOOR + 0.3); g.rotation_euler = (0, math.radians(-6), math.radians(-19))
+    return g
+
+
+ITEMS = {"bed": bed, "bookshelf": bookshelf, "squirrel": squirrel, "lamp": lamp,
+         "frame": frame, "wall_clock": wall_clock, "garland": garland, "string_lights": string_lights,
+         "mobile": mobile, "curtain": curtain, "rug": rug, "cushion": cushion, "big_plant": big_plant,
+         "low_table": low_table, "radio_stand": radio_stand, "aquarium": aquarium, "easel": easel, "guitar": guitar}
+# slot alternatives (same slot -> only one shown at a time)
+SET_A = ["bed", "bookshelf", "squirrel", "lamp", "frame", "wall_clock", "garland", "mobile", "curtain", "rug",
+         "big_plant", "low_table", "radio_stand", "easel"]
+SET_B = ["bed", "bookshelf", "cushion", "lamp", "frame", "wall_clock", "string_lights", "mobile", "curtain", "rug",
+         "big_plant", "low_table", "aquarium", "guitar"]
 
 # ------------------------------------------------------------------ scene, camera, render
 def setup_render(rx, ry, ortho):
@@ -262,22 +577,68 @@ def setup_render(rx, ry, ortho):
 TARGET = Vector((0.0, 0.0, 0.66))   # frame bottom ≈ floor, top = wall
 ORTHO = 2.7
 
+def item_parts(g):
+    out = []
+    def rec(o):
+        for c in o.children:
+            if c.type == "MESH" and not c.hide_render: out.append(c)
+            rec(c)
+    rec(g)
+    return out
+
+
+THUMB_ELEV = 0.45    # shop thumbnails look a bit from above so rugs/cushions/tables read (room itself stays 0.12)
+
+
+def frame_on(cam, objs, elev=THUMB_ELEV, pad=1.12):
+    """point a fixed-direction ortho camera at the screen-space bbox of objs"""
+    d = Vector((0.35, -1, elev)).normalized()           # target -> camera
+    right = Vector((1, 0.35, 0)).normalized()
+    up = d.cross(right).normalized()
+    if up.z < 0: up = -up
+    bpy.context.view_layer.update()
+    pts = [o.matrix_world @ Vector(c) for o in objs for c in o.bound_box]
+    xs = [p.dot(right) for p in pts]; ys = [p.dot(up) for p in pts]; zs = [p.dot(d) for p in pts]
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    cam.data.ortho_scale = max(max(xs) - min(xs), max(ys) - min(ys)) * pad
+    center = right * cx + up * cy + d * ((min(zs) + max(zs)) / 2)
+    cam.location = center + d * 12
+    cam.rotation_euler = (center - cam.location).to_track_quat("-Z", "Y").to_euler()
+
+
 if __name__ == "__main__":
     argv = sys.argv[sys.argv.index("--") + 1:]
     mode, out = argv[0], argv[1]
     ids = argv[2:] or ["all"]
-    if ids == ["all"]:
-        ids = list(ITEMS)
-    elif ids == ["none"]:
-        ids = []
-    sc, cam = setup_render(1080, 1080, ORTHO)
-    cam.location = TARGET + Vector((0.35, -1, ELEV)).normalized() * 12
-    cam.rotation_euler = (TARGET - cam.location).to_track_quat("-Z", "Y").to_euler()
-    sc.frame_set(1)
-    base(); harvest_sweet_potato()
-    for i in ids:
-        ITEMS[i]()
-    rig = bpy.data.objects["HippoRig"]; rig.location = (0.05, -0.25, 0)
-    sc.render.filepath = out
-    bpy.ops.render.render(write_still=True)
-    print("WROTE", out)
+    ids = {"all": SET_A, "a": SET_A, "b": SET_B, "none": []}.get(ids[0], ids) if len(ids) == 1 else ids
+    if mode == "preview":
+        sc, cam = setup_render(1080, 1080, ORTHO)
+        cam.location = TARGET + Vector((0.35, -1, ELEV)).normalized() * 12
+        cam.rotation_euler = (TARGET - cam.location).to_track_quat("-Z", "Y").to_euler()
+        sc.frame_set(1)
+        base(); calendar(); harvest_sweet_potato()
+        for i in ids:
+            ITEMS[i]()
+        rig = bpy.data.objects["HippoRig"]; rig.location = (*HIPPO, 0)
+        sc.render.filepath = out
+        bpy.ops.render.render(write_still=True)
+        print("WROTE", out)
+    elif mode == "thumbs":
+        # shop thumbnails: each item alone, same light/direction, framed tight, transparent 512x512
+        sc, cam = setup_render(512, 512, 1.0)
+        for o in ("Hippo", "EyeDecal", "HippoRig"):
+            bpy.data.objects[o].hide_render = True
+        os.makedirs(out, exist_ok=True)
+        groups = {i: ITEMS[i]() for i in (ids or list(ITEMS))}
+        for i, g in groups.items():
+            for j, h in groups.items():
+                for c in item_parts(h) if j != i else []:
+                    c.hide_render = True
+            frame_on(cam, [c for c in item_parts(g) if not c.name.startswith("MoTop")])
+            sc.render.filepath = os.path.join(out, f"{i}.png")
+            bpy.ops.render.render(write_still=True)
+            for j, h in groups.items():
+                for c in h.children_recursive:
+                    if c.type == "MESH" and not c.name.startswith(("MoMoonCut",)):
+                        c.hide_render = False
+            print("THUMB", i)
