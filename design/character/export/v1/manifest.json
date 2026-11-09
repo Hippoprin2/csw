@@ -101,6 +101,30 @@
       "duration_ms": 833,
       "loop": false,
       "source_clip": "sit_out"
+    },
+    "eat_strawberry": {
+      "file": "hippo_eat_strawberry.webp",
+      "poster": "hippo_eat_strawberry_poster.png",
+      "frames": 52,
+      "duration_ms": 2167,
+      "loop": false,
+      "source_clip": "eat_strawberry"
+    },
+    "garden_idle": {
+      "file": "hippo_garden_idle.webp",
+      "poster": "hippo_garden_idle_poster.png",
+      "frames": 48,
+      "duration_ms": 2000,
+      "loop": true,
+      "source_clip": "idle25"
+    },
+    "garden_cheer": {
+      "file": "hippo_garden_cheer.webp",
+      "poster": "hippo_garden_cheer_poster.png",
+      "frames": 40,
+      "duration_ms": 1667,
+      "loop": false,
+      "source_clip": "cheer25"
     }
   }
 }

@@ -20,6 +20,9 @@ CLIPS = {
     "sit_in":   ("sit_in", False),
     "sit_loop": ("sit_loop", True),
     "sit_out":  ("sit_out", False),
+    "eat_strawberry": ("eat_strawberry", False),   # 방에서 '먹이기'(딸기)
+    "garden_idle":    ("idle25", True),            # 텃밭 25도 (WORLD.md W2)
+    "garden_cheer":   ("cheer25", False),          # 텃밭 수확 만세, 25도
 }
 os.makedirs(OUT, exist_ok=True)
 manifest = {"version": 1, "fps": FPS, "width": 600, "height": 800, "background": "transparent",

@@ -384,3 +384,57 @@ def laptop(loc, rot_z=0.0):
     lap = _finish(parts + [lid, scr, st], "Laptop", Vector((0, 0, 0)))
     lap.location = loc; lap.rotation_euler = (0, 0, rot_z)
     return lap
+
+
+# ---------------------------------------------------------------- strawberry (eat_strawberry)
+def strawberry(size=0.075):
+    """cartoon strawberry, origin at its centre, tip pointing down (-Z)"""
+    import random as _r
+    _r.seed(11)
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=32, radius=1.0)
+    for v in bm.verts:
+        z = v.co.z
+        w = 1.0 - 0.55 * max(0.0, -z) ** 1.6 + 0.08 * max(0.0, z)     # wide shoulders, pointed tip
+        v.co.x *= w; v.co.y *= w
+        v.co.z = z * 1.12 if z < 0 else z * 0.8                          # flatter top
+    for f in bm.faces: f.smooth = True
+    berry = obj_from_bm(bm, "BerryBody", [mat("Berry_Red", (0.93, 0.27, 0.3), 0.45)])
+    parts = [berry]
+    seed_m = mat("Berry_Seed", (1.0, 0.86, 0.45), 0.5)
+    for i in range(46):                                   # seeds on a golden-angle spiral
+        zz = -0.95 + 1.6 * (i + 0.5) / 46
+        if zz > 0.55: continue
+        a = i * 2.39996
+        w = 1.0 - 0.55 * max(0.0, -zz) ** 1.6 + 0.08 * max(0.0, zz)
+        r = math.sqrt(max(0.0, 1 - zz * zz)) * w
+        z_s = zz * 1.12 if zz < 0 else zz * 0.8
+        bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=0.07)
+        for v in bm.verts: v.co.z *= 1.5
+        sd = obj_from_bm(bm, f"BerrySeed{i}", [seed_m])
+        sd.location = (r * math.cos(a) * 1.01, r * math.sin(a) * 1.01, z_s)
+        sd.rotation_euler = (0, math.atan2(r, -z_s) if z_s < 0 else 0, a)
+        parts.append(sd)
+    # leafy calyx: 6 pointed leaves + stem
+    leaf_m = mat("Berry_Leaf", (0.45, 0.72, 0.4), 0.6)
+    bm = bmesh.new(); c = bm.verts.new((0, 0, 0.82)); ring = []
+    for i in range(12):
+        a = math.pi / 6 * i; r = 0.95 if i % 2 == 0 else 0.3
+        ring.append(bm.verts.new((r * math.cos(a), r * math.sin(a), 0.78 - (0.12 if i % 2 == 0 else 0.0))))
+    for i in range(12): bm.faces.new((c, ring[i], ring[(i + 1) % 12]))
+    leaves = obj_from_bm(bm, "BerryLeaves", [leaf_m])
+    sol = leaves.modifiers.new("t", "SOLIDIFY"); sol.thickness = 0.06
+    stem = obj_from_bm(cylinder(0.07, 0.3), "BerryStem", [leaf_m]); stem.location = (0.03, 0, 0.95); stem.rotation_euler = (0, 0.25, 0)
+    parts += [leaves, stem]
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in parts:
+        o.select_set(True); bpy.context.view_layer.objects.active = o
+        if o.modifiers:
+            bpy.ops.object.modifier_apply(modifier=o.modifiers[0].name)
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        o.select_set(False)
+    s = join(parts, "Strawberry")
+    s.scale = (size,) * 3
+    bpy.ops.object.select_all(action="DESELECT"); s.select_set(True); bpy.context.view_layer.objects.active = s
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    return s

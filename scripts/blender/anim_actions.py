@@ -371,6 +371,33 @@ def eat():  # 잘 먹기: both hands hold a sweet potato up to the mouth, bites 
         sp.keyframe_insert("scale", frame=f)
     return F
 
+def eat_strawberry():  # 잘 먹기(딸기): same chew motion, a big strawberry held upright between the hands
+    F = 52; rest(1)
+    arms(7, ly=55, lz=80); arms(44, ly=55, lz=80)
+    for f in (7, 44):
+        S(f, "arm.L", (1.1, 1.5, 1.1)); S(f, "arm.R", (1.1, 1.5, 1.1))
+    R(7, "head", x=6)
+    for i, f in enumerate(range(10, 42, 4)):
+        R(f, "head", x=16 if i % 2 else 4)
+        S(f, "body", (1.02, 0.98, 1.02) if i % 2 else (1, 1, 1))
+        L(f, "root", 0.012 if i % 2 else 0.0)
+    ears_bounce([(1, 0), (12, 6), (20, -4), (28, 6), (36, -4), (44, 0)])
+    rest(F); eyes([(1, 0), (9, 1), (42, 1), (43, 0), (F, 0)]); wag(6, 46, 16, 4)
+    # --- strawberry held upright between the hands, shrinks with each bite ---
+    sc.frame_set(20); bpy.context.view_layer.update()
+    tl = rig.matrix_world @ P["arm.L"].tail; tr = rig.matrix_world @ P["arm.R"].tail
+    hands = (tl + tr) / 2
+    sb = props.strawberry(0.09)
+    sb.location = Vector((0, hands.y - 0.07, hands.z + 0.03))     # resting on both hands
+    sb.rotation_euler = (math.radians(28), 0, math.radians(15))     # tip toward the viewer so the leaves show
+    body_m = rig.matrix_world @ P["body"].matrix
+    sb.parent = rig; sb.parent_type = "BONE"; sb.parent_bone = "body"
+    sb.matrix_parent_inverse = (body_m @ Matrix.Translation((0, P["body"].length, 0))).inverted()
+    sc.frame_set(1)
+    props.key_scale(sb, [(1, 0), (5, 0), (8, 1.1), (10, 1.0), (16, 1.0), (17, 0.86), (26, 0.86), (27, 0.72),
+                         (36, 0.72), (37, 0.58), (43, 0.58), (47, 0), (F, 0)])
+    return F
+
 def stretch_spin():  # 나 돌보기: big stretch up (arms up, body tall), then a happy spin
     F = 60; rest(1, ("body", "head", "ear.L", "ear.R", "arm.L", "arm.R", "leg.L", "leg.R", "tail"))
     arms(10, ly=80); S(10, "arm.L", (1.12, 1.4, 1.12)); S(10, "arm.R", (1.12, 1.4, 1.12))
@@ -417,7 +444,7 @@ def wave():  # 사람·마음: raise the right arm and wave, head tilt
     props.key_scale(lt, [(1, 0), (6, 0), (9, 1.8), (11, 1.65), (42, 1.65), (46, 0), (F, 0)])
     return F
 
-ACTIONS = {"sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
+ACTIONS = {"eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
 F = ACTIONS[ACTION]()
 sc.frame_start, sc.frame_end = 1, F
 for fc in fcurves(rig.animation_data.action):

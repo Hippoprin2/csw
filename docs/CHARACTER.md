@@ -73,6 +73,8 @@
 - 2026-11-08 대표 결정: 앱 형식 A(미리 렌더한 움직이는 WebP). 내보내기 v1 → design/character/export/v1/ (README.md, manifest.json, hippo_<key>.webp 12개 + 포스터, 600x800 투명 24fps, 합계 7.5MB). key는 앱 categories.ts 기준 + work + idle + 곁에 앉기 3종.
   - 앱에 이미 '곁에 앉기(sit)' 동작이 있어서 새로 만듦: sit_in(바닥에 앉기) → sit_loop(천천히 숨쉬기, 느린 깜빡임) → sit_out(일어나기). share/hippo_sit_v1.mp4.
 
+- 2026-11-09: 공간 스레드 요청분 → export v1에 추가(합계 15클립 9.3MB). eat_strawberry(방 먹이기, 군고구마 냠냠과 같은 동작 + 스크립트 딸기: 빨강·노란 씨·초록 꽃받침, 3번 베어 물면 작아짐), garden_idle·garden_cheer(25° = 고도 0.5, render_clip.py로 기존 .blend를 다른 카메라로 렌더. 25°에서는 색종이 시작점이 콧등에 겹쳐서 머리 위로 올림). share/hippo_strawberry_garden25_v1.mp4.
+
 ## 앱 형식 비교 (2026-11-08, 결정 대기)
 - 측정: 원본 PNG 9클립 약 137MB. 프레임별 WebP(q80): 300px 4.6MB / 450px 7.2MB. 움직이는 WebP 1파일(600px, 원본 해상도): 만세 578KB → 9클립 추정 5~6MB. GLB(애니 포함, 미최적화) 6.3MB → 최적화 시 2~3MB 추정.
 - A. 미리 렌더한 움직이는 WebP(추천, MVP): expo-image로 재생, Pet.tsx만 교체, 1~2일. 렌더와 픽셀 단위로 같음. 단점: 고정 각도, 펫 꾸미기 아이템은 아이템마다 오버레이 시퀀스 추가 렌더 필요. 확인 필요: expo-image 재생 끝 감지/메모리(실기기).
