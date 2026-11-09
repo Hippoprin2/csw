@@ -75,6 +75,13 @@
 - 대표와 Expo Go로 화면 다듬기
 
 ### 2단계 — 텃밭 + 좌우 공간 (출시 범위)
+- 진행 (2026-11-09): 구현 완료(임시 그림 = 이모지). 웹에서 심기→다음 날 수확→창턱 장식→먹이기, 소품 구매·바꿔 끼우기, 졸고 있음→탭해서 깸, 마당 잠금 확인. `scripts/test_garden.py` 26개 통과
+  - 화면: `(tabs)/index.tsx` = 좌우 넘기기(텃밭 ← 방 → 마당, 위 탭으로도 이동), `screens/RoomPage|GardenPage|YardPage.tsx`. 입력창·축하·곁에 앉기·먹이기/선물하기는 방에서만(대표 결정)
+  - DB: items(space/slot/layer) + owned_items.placed + place_item(), crops/plots/harvest_bag/harvest_unlocks, plant/harvest/use_harvest/garden_state/touch_seen
+  - 성장 = 심은 날 다음부터 "기록한 날"(seed_ledger 'win' 행의 KST 날짜) 수 → 기록을 지워도 안 줄어듦. 첫 작물 고구마 무료·1일, 그 뒤 3씨앗·9일
+  - 졸고 있음 = 이전 접속(touch_seen)이 3일 이상 전 → 앱 세션 동안 💤, 탭하면 깸(서버 진행 영향 없음)
+  - 보안: Supabase 기본 권한(authenticated 테이블 ALL) 때문에 profiles 모든 열 수정이 가능했음 → `20261109000003_tighten_grants.sql`로 최소 권한 재부여. **새 테이블 만들 때마다 authenticated 권한을 revoke all 후 필요한 것만 grant**
+  - 남은 것: 공간 스레드 렌더(배경·소품·작물 이미지 + 위치 JSON)로 이모지 교체(`data/itemSlots.ts` 대체), 텃밭용 25° 단짝 클립(대기·만세)·딸기 먹기 클립(캐릭터 스레드), 실기기 확인
 - 한 화면 좌우 넘기기(방 ↔ 텃밭, 마당은 잠금 표시 "구슬 10개면 열려"), 입력창은 하단 공통, 펫은 보고 있는 공간에서 축하
 - 서버: crops(작물 카탈로그·가격·수확물), plots(칸·심은 작물·심은 시각), plant/harvest 함수
   - 성장 = 심은 뒤 "기록한 날" 수 / 3 (3단계 = 9일, 첫 작물만 1일). 쉬어도 리셋 없음, 진행 안 줄어듦

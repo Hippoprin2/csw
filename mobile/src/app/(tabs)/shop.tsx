@@ -9,20 +9,41 @@ import { useApp } from '@/state/app';
 import { H, Seeds, Sub } from '@/ui/kit';
 import { C } from '@/ui/theme';
 
+// 방 소품 상점. 소품마다 정해진 자리가 있고, 같은 자리 소품을 여러 개 가지면 하나만 놓인다(바꿔 끼우기, WORLD W3)
 export default function Shop() {
-  const { items, owned, setOwned, balance, setBalance, profile, celebrate } = useApp();
+  const { items, owned, balance, setBalance, profile, celebrate, reloadRoom } = useApp();
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState('');
+
+  const ownedMap = new Map(owned.map((o) => [o.item_id, o.placed]));
+  const slotCount = (slot: string) => items.filter((i) => i.slot === slot && ownedMap.has(i.id)).length;
+  const roomItems = items.filter((i) => i.space === 'room');
 
   async function buy(id: string) {
     setBusy(id); setErr('');
     try {
       const b = await api.buy(id);
       setBalance(b);
-      setOwned((o) => [...o, id]);
+      await reloadRoom();
       track('item_bought', { item: id });
       const it = items.find((i) => i.id === id);
-      celebrate({ itemId: id, line: `${it?.name ?? '선물'} 고마워! 방이 더 좋아졌어` });
+      celebrate({ kind: 'cheer', itemId: id, line: `${it?.name ?? '선물'} 고마워! 방이 더 좋아졌어` });
+      router.navigate('/');
+    } catch (e) {
+      setErr(friendlyError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function place(id: string) {
+    setBusy(id); setErr('');
+    try {
+      await api.placeItem(id);
+      await reloadRoom();
+      track('item_placed', { item: id });
+      const it = items.find((i) => i.id === id);
+      celebrate({ kind: 'cheer', itemId: id, line: `${it?.name}(으)로 바꿨어!` });
       router.navigate('/');
     } catch (e) {
       setErr(friendlyError(e));
@@ -38,19 +59,24 @@ export default function Shop() {
           <H>방 꾸미기</H>
           <Seeds n={balance} />
         </View>
-        <Sub>기록할 때마다 씨앗 3개. 산 물건은 {profile?.pet_name ?? '꼬마하마'} 방에 놓여요.</Sub>
+        <Sub>
+          기록할 때마다 씨앗 3개. 산 물건은 {profile?.pet_name ?? '단짝'} 방 제자리에 놓여요. 같은 자리 물건은 눌러서 바꿔 놓을 수 있어요.
+        </Sub>
         {err ? <Text style={st.err}>{err}</Text> : null}
         <View style={st.grid}>
-          {items.map((it) => {
-            const own = owned.includes(it.id);
-            const can = !own && balance >= it.price;
+          {roomItems.map((it) => {
+            const own = ownedMap.has(it.id);
+            const placed = ownedMap.get(it.id) === true;
+            const swappable = own && !placed;
+            const can = (!own && balance >= it.price) || swappable;
+            const label = placed ? (slotCount(it.slot) > 1 ? '놓여 있음' : '방에 있음') : swappable ? '바꿔 놓기' : `씨앗 ${it.price}`;
             return (
-              <Pressable key={it.id} disabled={!can || !!busy} onPress={() => buy(it.id)}
-                style={({ pressed }) => [st.item, own && { opacity: 0.5 }, pressed && { transform: [{ scale: 0.97 }] }]}
-                accessibilityRole="button" accessibilityLabel={`${it.name} 씨앗 ${it.price}`} accessibilityState={{ disabled: !can }}>
+              <Pressable key={it.id} disabled={!can || !!busy} onPress={() => (swappable ? place(it.id) : buy(it.id))}
+                style={({ pressed }) => [st.item, placed && { opacity: 0.55 }, pressed && { transform: [{ scale: 0.97 }] }]}
+                accessibilityRole="button" accessibilityLabel={`${it.name} ${label}`} accessibilityState={{ disabled: !can }}>
                 <Text style={st.emoji}>{it.emoji}</Text>
                 <Text style={st.name}>{it.name}</Text>
-                <Text style={[st.price, !own && !can && { color: C.muted }]}>{own ? '방에 있음' : `씨앗 ${it.price}`}</Text>
+                <Text style={[st.price, !own && !can && { color: C.muted }, swappable && { color: C.accent }]}>{label}</Text>
               </Pressable>
             );
           })}
