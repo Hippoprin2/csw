@@ -302,6 +302,38 @@ def desk_laptop():  # 공부·일 (앉아서): typing on a laptop, glancing at t
     props.key_scale(lp, [(1, 0), (4, 0), (8, 1.06), (10, 1), (52, 1), (57, 0), (F, 0)])
     return F
 
+SIT_DROP = -0.115     # root down so the bottom rests on the floor
+def _sit_pose(f, breathe=0.0, tilt=6):
+    L(f, "root", SIT_DROP)
+    for b in ("leg.L", "leg.R"):
+        R(f, b, x=-85)
+    arms(f, ly=-18, lz=28)
+    R(f, "head", x=5, y=tilt)
+    S(f, "body", (1 - 0.4 * breathe, 1 + breathe, 1 - 0.4 * breathe))
+    R(f, "body", x=3)
+
+def sit_in():  # 곁에 앉기 (조용히): stand -> sit down on the floor. ends seated.
+    F = 24; rest(1)
+    S(6, "body", (1.03, 0.97, 1.03)); L(6, "root", 0.0)
+    _sit_pose(16); L(13, "root", SIT_DROP - 0.012); S(16, "body", (1.04, 0.96, 1.04))
+    _sit_pose(F)
+    eyes([(1, 0), (F, 0)]); return F
+
+def sit_loop():  # seated, slow breathing, one slow blink. loops.
+    F = 72
+    for f, b in ((1, 0.0), (19, 0.012), (37, 0.0), (55, 0.012), (F, 0.0)):
+        _sit_pose(f, b, tilt=6 + (2 if b else 0))
+    for f, a in ((1, 0), (30, 4), (F, 0)):
+        R(f, "tail", z=a)
+    eyes([(1, 0), (44, 0), (45, 1), (50, 1), (51, 0), (F, 0)]); return F
+
+def sit_out():  # seated -> stand back up to the idle rest pose
+    F = 20
+    _sit_pose(1)
+    L(8, "root", SIT_DROP + 0.02); S(8, "body", (0.97, 1.04, 0.97))
+    rest(16); L(16, "root", 0.01); rest(F)
+    eyes([(1, 0), (F, 0)]); return F
+
 def eat():  # 잘 먹기: both hands hold a sweet potato up to the mouth, bites + chew, happy eyes
     F = 52; rest(1)
     arms(7, ly=55, lz=80); arms(44, ly=55, lz=80)
@@ -385,7 +417,7 @@ def wave():  # 사람·마음: raise the right arm and wave, head tilt
     props.key_scale(lt, [(1, 0), (6, 0), (9, 1.8), (11, 1.65), (42, 1.65), (46, 0), (F, 0)])
     return F
 
-ACTIONS = {"sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
+ACTIONS = {"sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
 F = ACTIONS[ACTION]()
 sc.frame_start, sc.frame_end = 1, F
 for fc in fcurves(rig.animation_data.action):

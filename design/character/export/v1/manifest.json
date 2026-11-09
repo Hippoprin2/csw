@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "fps": 24,
+  "width": 600,
+  "height": 800,
+  "background": "transparent",
+  "note": "One-shot clips start and end on the idle rest pose (sit_in ends seated, sit_out starts seated). Play one-shots once, then switch back to idle (use duration_ms; do not rely on the decoder's loop count).",
+  "clips": {
+    "idle": {
+      "file": "hippo_idle.webp",
+      "poster": "hippo_idle_poster.png",
+      "frames": 48,
+      "duration_ms": 2000,
+      "loop": true,
+      "source_clip": "idle"
+    },
+    "tidy": {
+      "file": "hippo_tidy.webp",
+      "poster": "hippo_tidy_poster.png",
+      "frames": 48,
+      "duration_ms": 2000,
+      "loop": false,
+      "source_clip": "sweep"
+    },
+    "move": {
+      "file": "hippo_move.webp",
+      "poster": "hippo_move_poster.png",
+      "frames": 40,
+      "duration_ms": 1667,
+      "loop": false,
+      "source_clip": "hop"
+    },
+    "study": {
+      "file": "hippo_study.webp",
+      "poster": "hippo_study_poster.png",
+      "frames": 64,
+      "duration_ms": 2667,
+      "loop": false,
+      "source_clip": "desk_write"
+    },
+    "work": {
+      "file": "hippo_work.webp",
+      "poster": "hippo_work_poster.png",
+      "frames": 64,
+      "duration_ms": 2667,
+      "loop": false,
+      "source_clip": "desk_laptop"
+    },
+    "eat": {
+      "file": "hippo_eat.webp",
+      "poster": "hippo_eat_poster.png",
+      "frames": 52,
+      "duration_ms": 2167,
+      "loop": false,
+      "source_clip": "eat"
+    },
+    "care": {
+      "file": "hippo_care.webp",
+      "poster": "hippo_care_poster.png",
+      "frames": 60,
+      "duration_ms": 2500,
+      "loop": false,
+      "source_clip": "stretch_spin"
+    },
+    "people": {
+      "file": "hippo_people.webp",
+      "poster": "hippo_people_poster.png",
+      "frames": 52,
+      "duration_ms": 2167,
+      "loop": false,
+      "source_clip": "wave"
+    },
+    "cheer": {
+      "file": "hippo_cheer.webp",
+      "poster": "hippo_cheer_poster.png",
+      "frames": 40,
+      "duration_ms": 1667,
+      "loop": false,
+      "source_clip": "cheer"
+    },
+    "sit_in": {
+      "file": "hippo_sit_in.webp",
+      "poster": "hippo_sit_in_poster.png",
+      "frames": 24,
+      "duration_ms": 1000,
+      "loop": false,
+      "source_clip": "sit_in"
+    },
+    "sit_loop": {
+      "file": "hippo_sit_loop.webp",
+      "poster": "hippo_sit_loop_poster.png",
+      "frames": 72,
+      "duration_ms": 3000,
+      "loop": true,
+      "source_clip": "sit_loop"
+    },
+    "sit_out": {
+      "file": "hippo_sit_out.webp",
+      "poster": "hippo_sit_out_poster.png",
+      "frames": 20,
+      "duration_ms": 833,
+      "loop": false,
+      "source_clip": "sit_out"
+    }
+  }
+}
