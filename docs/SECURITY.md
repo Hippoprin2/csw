@@ -20,7 +20,7 @@
 - [ ] (대표) 2단계 인증: Supabase, Google Cloud, Kakao Developers, OpenAI, Apple, Expo, GitHub
 - [ ] Supabase Pro 전환(매일 백업 7일) → 처리방침에 "삭제 후 백업 사본은 7일 내 소멸"
 - [ ] 열쇠 교체: service role/secret 키, OpenAI 키(새 키 → supabase secrets set), 카카오·구글 시크릿, DB 비밀번호. 교체 후 test_backend 재실행
-- [ ] 이 맥 FileVault 켜짐 확인 (비밀값 파일 보호)
+- [x] 이 맥 FileVault 켜짐 (2026-11-09 확인)
 - [ ] 처리방침: 수집 항목(이메일, 카카오 닉네임, 기록, 이용 이벤트), 보관 기간, 국외 이전(Supabase 일본 도쿄 / OpenAI 미국), 운영자 기록 열람 금지, 자해 감지는 익명 집계만, 14세 이상
 - [ ] 이후 검토: 앱 잠금(Face ID), OpenAI 무보관(ZDR) 신청 가능 여부
 
