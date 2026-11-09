@@ -8,7 +8,7 @@
   - 검증: `scripts/test_backend.py`, `scripts/test_garden.py` (직접 insert/수정 차단, 보호 열 수정 차단 포함)
 - 인증: 비밀번호 저장 없음(카카오·구글·Apple·이메일 코드). OAuth 리다이렉트는 csw:// 고정
 - 전송·저장: HTTPS, Supabase 디스크 암호화(AES-256)
-- 기기 안 세션: AES-256 암호화 후 앱 저장공간, 열쇠는 iOS 키체인(AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY) — `mobile/src/lib/supabase.ts`. 예전 평문 세션은 처음 읽을 때 자동 암호화
+- 기기 안 세션: AES-256 암호화 후 앱 저장공간, 열쇠는 iOS 키체인(AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY) — `mobile/src/lib/supabase.ts`. 예전 평문 세션은 처음 읽을 때 자동 암호화 (2026-11-09 대표 아이폰 Expo Go에서 리로드 후 로그인 유지 확인)
 - AI 분류(OpenAI): 문장만 전송(사용자 식별자 없음), store=false. OpenAI는 악용 감시용으로 최대 30일 보관 가능, 학습 미사용(API 기본). 사용자당 하루 80회 한도(`classify_usage`, 넘으면 429 → 앱은 키워드 분류로 저장, 기기 키워드 자해 감지는 계속 동작)
 - 자해 감지 기록: 사용자 ID 없이 날짜·출처별 횟수만(`safety_daily`, 앱에서 읽기 불가)
 - 분석(`app_events`): 이벤트 이름 + 작은 메타만, 기록 본문 금지
