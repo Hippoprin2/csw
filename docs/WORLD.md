@@ -143,6 +143,14 @@
 - 결과: design/world/blockout/ v1 (camera_compare.png 등) — **단짝·소품 색이 밝게 날아감**: 배경색을 World 색(밝은 크림/하늘)으로 넣어서 그게 사방에서 비추는 조명으로 작용, 하이라이트가 255로 잘림. 캐릭터 렌더는 World 기본(어두운 회색)이라 이런 빛이 없음
 - v2 (design/world/blockout/v2/): World를 캐릭터 렌더와 같게 + 투명 배경으로 렌더 후 배경색은 따로 합성 → 단짝 색이 export v1과 같음. 공간 렌더 규칙: **World 색으로 배경을 칠하지 말 것**, 배경은 배경 메시나 합성으로
 
+### 방 시안 v5 (2026-11-09, 대표 확인 대기)
+- 스크립트: scripts/blender/room.py — 기본 방 + 소품(앱 items.id 이름 그대로 함수: bed, bookshelf, squirrel, lamp) + 실제 하마. `blender -b design/character/3d/rig/hippo_rig_idle.blend --python scripts/blender/room.py -- preview <절대경로.png> [all|none|id...]`
+- 결과: design/world/room/room_concept_v5_compare.png (왼쪽 = 처음 방(무료 기본 + 고구마 바구니), 오른쪽 = 침대·책장·다람쥐 인형·스탠드)
+- 구도: 정사각형(앱 방 카드 361×360pt와 같은 비율), 보이는 너비 2.7 → 단짝 키가 카드 높이의 약 37%. 지금 앱(PET_W 210)은 약 54%라 확정되면 앱에서 단짝을 줄여야 함(단짝 1단위 = 카드 너비 / 2.7)
+- 옆벽 없음(뒷벽만): 이 낮은 카메라에선 옆벽이 어두운 띠로만 보이고 뒷벽에 큰 그림자를 만들었음
+- 처음 방은 위쪽 벽이 비어 보임 → 벽 자리(액자·가랜드·벽시계·모빌·전구줄, 대부분 9~12씨앗)가 첫 구매로 채워지는 곳
+- 렌더 함정: 베벨 박스를 스무스 셰이딩하면 큰 면 전체에 그라데이션 → Weighted Normal(면적) 모디파이어 필수. 베벨 폭은 가장 짧은 변의 42% 이하(넘으면 모서리가 깨짐). 방 조명은 ART_BIBLE 태양 4개 그대로 + 그림자 부드럽게(angle 12°)
+
 ## 5. 개발 스레드 전달 사항 (확정 후 반영)
 - items 테이블: id, name, price + `space`(room|yard), `slot`, `layer`(back|mid|front) 추가. 같은 slot 여러 개 가지면 `owned_items.placed` 하나만 true
 - crops(4종: id, name, kind flower|edible, price 3, first_free), plots(3칸), harvest_bag(user, crop, count), harvest_unlocks(user, crop — 첫 수확 장식)
