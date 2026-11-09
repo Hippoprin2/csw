@@ -50,9 +50,9 @@ check('wins 직접 insert 차단', s >= 400, s)
 s, w = req('POST', '/rest/v1/seed_ledger', {'user_id': uid, 'delta': 999, 'reason': 'win'}, token=T)
 check('씨앗 직접 insert 차단', s >= 400, s)
 
-s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'plant'}, token=T); check('화분 구매(9)', r == 27, r)
-s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'plant'}, token=T); check('중복 구매 거부', s >= 400)
-s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'aquarium'}, token=T); check('씨앗 부족 거부(33>27)', s >= 400, r)
+s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'big_plant'}, token=T); check('큰 화분 구매(9)', r == 27, r)
+s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'big_plant'}, token=T); check('중복 구매 거부', s >= 400)
+s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'bed'}, token=T); check('씨앗 부족 거부(30>27)', s >= 400, r)
 
 s, r = req('POST', '/rest/v1/rpc/edit_win', {'p_id': win_id, 'p_text': '이불 개켰다', 'p_category': 'tidy'}, token=T)
 check('기록 수정', s == 200 and r['text'] == '이불 개켰다' and r['category_source'] == 'user', r)
