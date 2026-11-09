@@ -29,10 +29,10 @@ export default function NamePet() {
     <SafeAreaView style={st.wrap}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'center', gap: 12 }}>
         <View style={{ alignItems: 'center' }}>
-          <Pet action={{ kind: 'care', key: 1 }} size={170} />
+          <Pet action={{ kind: 'care', key: 1 }} size={190} />
         </View>
         <Text style={st.h}>내 이름을 지어줄래?</Text>
-        <TextInput style={st.input} value={name} onChangeText={setName} maxLength={12} accessibilityLabel="펫 이름" onSubmitEditing={() => next()} />
+        <TextInput style={st.input} value={name} onChangeText={setName} maxLength={12} accessibilityLabel="단짝 이름" onSubmitEditing={() => next()} />
         <Btn title="이 이름으로 할래" onPress={() => next()} disabled={!name.trim()} loading={busy} />
         <Btn title="나중에 정할게" kind="ghost" onPress={() => next(true)} />
       </KeyboardAvoidingView>

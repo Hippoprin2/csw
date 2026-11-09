@@ -40,7 +40,7 @@ export default function Welcome() {
         <View style={st.bubble}>
           <Text style={st.bubbleText}>안녕! 오늘 해낸 걸 알려줘.{'\n'}아주 작은 것도 좋아.</Text>
         </View>
-        <Pet action={{ kind: 'people', key: 1 }} size={200} />
+        <Pet action={{ kind: 'people', key: 1 }} size={230} />
       </View>
       <View style={st.bottom}>
         {apple && (

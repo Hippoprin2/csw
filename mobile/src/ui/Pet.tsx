@@ -1,193 +1,76 @@
-import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming,
-} from 'react-native-reanimated';
-import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
+import { Image } from 'expo-image';
+import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 
-import { CATS, type Category } from '@/lib/categories';
-import { C } from './theme';
+import { PET_ASPECT, PET_CLIPS, PET_POSTER, type ClipKey } from '@/data/petClips';
+import type { Category } from '@/lib/categories';
 
-// 임시 꼬마하마 (프로토타입 SVG 이식). 최종 캐릭터 에셋이 나오면 이 컴포넌트만 교체한다.
-// 동작 = 공통 7종 + 'sit'(곁에 앉기: 자해 표현 대응용 조용한 동작)
-export type PetAction = { kind: Category | 'sit'; key: number } | null;
+// 단짝(하마). 캐릭터 스레드가 렌더한 움직이는 WebP(design/character/export/v1)를 재생한다.
+// - 대기(idle)는 항상 아래에 깔려 반복 재생
+// - 동작은 위에 겹쳐 한 번 재생 → duration_ms 타이머로 끝을 판단하고 걷어낸다 (디코더 반복 횟수는 믿지 않음)
+// - 동작 클립은 대기 자세로 시작·끝나서 바꿔 끼워도 튀지 않는다
+// - 'sit'(곁에 앉기, 자해 표현 대응): sit_in → sit_loop(SIT_HOLD_MS) → sit_out
+export type PetKind = Category | 'sit';
+export type PetAction = { kind: PetKind; key: number } | null;
 
-const PROP_POS: Record<Category, object> = {
-  tidy: { left: '58%', bottom: 0 },
-  move: { right: -6, top: 20 },
-  study: { left: '35%', bottom: 40 },
-  eat: { left: '38%', top: '46%' },
-  care: { right: 0, top: 0 },
-  people: { right: -10, top: 30 },
-  cheer: { left: -10, top: 0 },
-};
+const SIT_HOLD_MS = 9000;
+
+function sequence(kind: PetKind): { clip: ClipKey; ms: number }[] {
+  if (kind === 'sit') {
+    return [
+      { clip: 'sit_in', ms: PET_CLIPS.sit_in.durationMs },
+      { clip: 'sit_loop', ms: SIT_HOLD_MS },
+      { clip: 'sit_out', ms: PET_CLIPS.sit_out.durationMs },
+    ];
+  }
+  return [{ clip: kind, ms: PET_CLIPS[kind].durationMs }];
+}
 
 export function Pet({ action, size = 200 }: { action: PetAction; size?: number }) {
-  const hy = useSharedValue(0);
-  const hx = useSharedValue(0);
-  const hr = useSharedValue(0);
-  const hry = useSharedValue(0);
-  const hsy = useSharedValue(1);
-  const armL = useSharedValue(0);
-  const armR = useSharedValue(0);
-  const headR = useSharedValue(0);
-  const snout = useSharedValue(1);
-  const eyes = useSharedValue(1);
-  const idle = useSharedValue(0);
-  const propO = useSharedValue(0);
-  const propS = useSharedValue(0.4);
+  const width = size;
+  const height = Math.round(size * PET_ASPECT);
+  const [prog, setProg] = useState({ key: -1, step: 0 });
+  const [shownKey, setShownKey] = useState('');
 
-  // 기본: 숨쉬기 + 눈 깜빡임
+  const seq = action ? sequence(action.kind) : [];
+  const step = action && prog.key === action.key ? prog.step : 0;
+  const cur = action && step < seq.length ? seq[step] : null;
+  const overlayKey = cur && action ? `${action.key}-${step}` : '';
+  const overlayVisible = !!overlayKey && shownKey === overlayKey;
+
+  // 다음 단계로 넘기는 타이머 (setState는 타이머 콜백 안에서만)
+  const curMs = cur?.ms ?? 0;
+  const actionKey = action?.key ?? -1;
   useEffect(() => {
-    idle.value = withRepeat(withSequence(withTiming(-3, { duration: 1500 }), withTiming(0, { duration: 1500 })), -1);
-    eyes.value = withRepeat(withSequence(withTiming(1, { duration: 4200 }), withTiming(0.1, { duration: 110 }), withTiming(1, { duration: 110 })), -1);
-  }, [idle, eyes]);
+    if (actionKey < 0 || !curMs) return;
+    const t = setTimeout(() => setProg({ key: actionKey, step: step + 1 }), curMs);
+    return () => clearTimeout(t);
+  }, [actionKey, curMs, step]);
 
-  useEffect(() => {
-    if (!action) return;
-    const all = [hy, hx, hr, hry, hsy, armL, armR, headR, snout];
-    all.forEach((v) => cancelAnimation(v));
-    hy.value = 0; hx.value = 0; hr.value = 0; hry.value = 0; hsy.value = 1;
-    armL.value = 0; armR.value = 0; headR.value = 0; snout.value = 1;
-    const ease = Easing.inOut(Easing.quad);
-    const rep = (to: number, ms: number, n: number, rest = 0) =>
-      withRepeat(withSequence(withTiming(to, { duration: ms / 2, easing: ease }), withTiming(rest, { duration: ms / 2, easing: ease })), n);
-    const jump = (n: number) =>
-      withRepeat(withSequence(
-        withTiming(-38, { duration: 300, easing: Easing.out(Easing.quad) }),
-        withTiming(0, { duration: 300, easing: Easing.in(Easing.quad) }),
-      ), n);
-
-    switch (action.kind) {
-      case 'tidy':
-        hr.value = withRepeat(withSequence(withTiming(-7, { duration: 125 }), withTiming(7, { duration: 250 }), withTiming(0, { duration: 125 })), 5);
-        armR.value = rep(40, 500, 5);
-        break;
-      case 'move':
-        hy.value = jump(4);
-        break;
-      case 'study':
-        headR.value = rep(8, 700, 4);
-        break;
-      case 'eat':
-        snout.value = rep(0.82, 300, 8, 1);
-        break;
-      case 'care':
-        hry.value = withRepeat(withSequence(withTiming(360, { duration: 1200, easing: ease }), withTiming(0, { duration: 0 })), 2);
-        armL.value = rep(70, 1200, 2);
-        armR.value = rep(-70, 1200, 2);
-        break;
-      case 'people':
-        armR.value = rep(-120, 400, 7);
-        break;
-      case 'cheer':
-        armL.value = rep(130, 600, 4);
-        armR.value = rep(-130, 600, 4);
-        hy.value = jump(4);
-        break;
-      case 'sit':
-        // 곁에 앉기: 앞으로 살짝 다가와 낮게 앉고, 천천히 숨쉰다. 폭죽·점프 없음.
-        hsy.value = withSequence(withTiming(0.92, { duration: 900, easing: ease }),
-          withRepeat(withSequence(withTiming(0.95, { duration: 1600 }), withTiming(0.92, { duration: 1600 })), 3),
-          withTiming(1, { duration: 900 }));
-        hy.value = withSequence(withTiming(8, { duration: 900, easing: ease }), withDelay(9600, withTiming(0, { duration: 900 })));
-        hx.value = withSequence(withTiming(-24, { duration: 900, easing: ease }), withDelay(9600, withTiming(0, { duration: 900 })));
-        headR.value = withSequence(withTiming(-6, { duration: 900 }), withDelay(9600, withTiming(0, { duration: 900 })));
-        break;
-    }
-    if (action.kind !== 'sit') {
-      propO.value = withSequence(withTiming(1, { duration: 300 }), withDelay(1900, withTiming(0, { duration: 400 })));
-      propS.value = withSequence(withTiming(1.1, { duration: 300 }), withTiming(1, { duration: 200 }));
-    }
-  }, [action, hy, hx, hr, hry, hsy, armL, armR, headR, snout, propO, propS]);
-
-  const body = useAnimatedStyle(() => ({
-    transform: [
-      { perspective: 600 },
-      { translateX: hx.value },
-      { translateY: hy.value + idle.value },
-      { rotate: `${hr.value}deg` },
-      { rotateY: `${hry.value}deg` },
-      { scaleY: hsy.value },
-    ],
-  }));
-  const aL = useAnimatedStyle(() => ({ transform: [{ rotate: `${armL.value}deg` }] }));
-  const aR = useAnimatedStyle(() => ({ transform: [{ rotate: `${armR.value}deg` }] }));
-  const head = useAnimatedStyle(() => ({ transform: [{ rotate: `${headR.value}deg` }, { translateY: headR.value * 0.4 }] }));
-  const sn = useAnimatedStyle(() => ({ transform: [{ scaleY: snout.value }] }));
-  const ey = useAnimatedStyle(() => ({ transform: [{ scaleY: eyes.value }] }));
-  const prop = useAnimatedStyle(() => ({ opacity: propO.value, transform: [{ scale: propS.value }] }));
-
-  const layer = { position: 'absolute' as const, width: size, height: size, left: 0, top: 0 };
+  const fill = { position: 'absolute' as const, left: 0, top: 0, width, height };
 
   return (
-    <View style={{ width: size, height: size }} accessibilityLabel="꼬마하마">
-      <View style={layer}>
-        <L size={size}><Ellipse cx={100} cy={186} rx={52} ry={8} fill="#00000012" /></L>
-      </View>
-      <Animated.View style={[layer, { transformOrigin: '50% 90%' }, body]}>
-        <View style={layer}>
-          <L size={size}>
-            <Rect x={70} y={150} width={22} height={32} rx={10} fill={C.hippoDark} />
-            <Rect x={108} y={150} width={22} height={32} rx={10} fill={C.hippoDark} />
-          </L>
-        </View>
-        <Animated.View style={[layer, { transformOrigin: '31% 59%' }, aL]}>
-          <L size={size}><Ellipse cx={58} cy={132} rx={11} ry={18} transform="rotate(20 58 132)" fill={C.hippoDark} /></L>
-        </Animated.View>
-        <Animated.View style={[layer, { transformOrigin: '69% 59%' }, aR]}>
-          <L size={size}><Ellipse cx={142} cy={132} rx={11} ry={18} transform="rotate(-20 142 132)" fill={C.hippoDark} /></L>
-        </Animated.View>
-        <View style={layer}>
-          <L size={size}>
-            <Ellipse cx={100} cy={138} rx={46} ry={40} fill={C.hippo} />
-            <Ellipse cx={100} cy={146} rx={28} ry={24} fill={C.belly} />
-          </L>
-        </View>
-        <Animated.View style={[layer, { transformOrigin: '50% 55%' }, head]}>
-          <View style={layer}>
-            <L size={size}>
-              <Ellipse cx={68} cy={44} rx={10} ry={9} fill={C.hippoDark} />
-              <Ellipse cx={132} cy={44} rx={10} ry={9} fill={C.hippoDark} />
-              <Ellipse cx={68} cy={45} rx={5} ry={4} fill={C.cheek} />
-              <Ellipse cx={132} cy={45} rx={5} ry={4} fill={C.cheek} />
-              <Ellipse cx={100} cy={76} rx={46} ry={38} fill={C.hippo} />
-              <Ellipse cx={66} cy={88} rx={7} ry={4.5} fill={C.cheek} opacity={0.7} />
-              <Ellipse cx={134} cy={88} rx={7} ry={4.5} fill={C.cheek} opacity={0.7} />
-            </L>
-          </View>
-          <Animated.View style={[layer, { transformOrigin: '50% 32%' }, ey]}>
-            <L size={size}>
-              <Circle cx={82} cy={64} r={5.5} fill={C.ink} />
-              <Circle cx={118} cy={64} r={5.5} fill={C.ink} />
-              <Circle cx={84} cy={62} r={1.8} fill="#fff" />
-              <Circle cx={120} cy={62} r={1.8} fill="#fff" />
-            </L>
-          </Animated.View>
-          <Animated.View style={[layer, { transformOrigin: '50% 46%' }, sn]}>
-            <L size={size}>
-              <Ellipse cx={100} cy={94} rx={34} ry={21} fill={C.belly} />
-              <Ellipse cx={89} cy={88} rx={3.5} ry={4.5} fill={C.hippoDark} />
-              <Ellipse cx={111} cy={88} rx={3.5} ry={4.5} fill={C.hippoDark} />
-              <Path d="M90 100 Q100 108 110 100" stroke={C.ink} strokeWidth={2.6} fill="none" strokeLinecap="round" />
-            </L>
-          </Animated.View>
-        </Animated.View>
-      </Animated.View>
-      {action && action.kind !== 'sit' && (
-        <Animated.View key={action.key} pointerEvents="none" style={[styles.prop, PROP_POS[action.kind], prop]}>
-          <Text style={styles.propText}>{CATS[action.kind].prop}</Text>
-        </Animated.View>
+    <View style={{ width, height }} accessible accessibilityLabel="단짝">
+      {/* 대기: 동작 첫 프레임이 화면에 뜬 뒤에만 숨긴다 (빈 화면 깜빡임 방지) */}
+      <Image
+        source={PET_CLIPS.idle.source}
+        placeholder={PET_POSTER}
+        style={[fill, { opacity: overlayVisible ? 0 : 1 }]}
+        contentFit="contain"
+        autoplay={!overlayVisible}
+      />
+      {cur && (
+        <Image
+          key={overlayKey}
+          source={PET_CLIPS[cur.clip].source}
+          style={fill} /* 투명 배경이라 로딩 중엔 아래 대기가 비쳐 보임. opacity 0으로 숨기면 웹에서 lazy 로딩이 멈춤 */
+          contentFit="contain"
+          autoplay
+          cachePolicy="none"
+          onDisplay={() => setShownKey(overlayKey)}
+          onLoad={() => setShownKey(overlayKey)}
+        />
       )}
     </View>
   );
 }
-
-function L({ size, children }: { size: number; children: React.ReactNode }) {
-  return <Svg width={size} height={size} viewBox="0 0 200 200">{children}</Svg>;
-}
-
-const styles = StyleSheet.create({
-  prop: { position: 'absolute' },
-  propText: { fontSize: 40 },
-});

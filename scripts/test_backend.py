@@ -36,10 +36,12 @@ check('어제 기록 가능', s == 200 and not r['first'], r)
 s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '옛날 일', 'p_category': 'cheer', 'p_win_date': '2026-01-01'}, token=T)
 check('그저께 이전 날짜 거부', s >= 400, r)
 
+s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '보고서 마감', 'p_category': 'work'}, token=T); check('업무(work) 카테고리 저장', s == 200 and r['win']['category'] == 'work', r)
+s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': 'x', 'p_category': 'nope'}, token=T); check('없는 카테고리 거부', s >= 400)
 s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': ' ', 'p_category': 'cheer'}, token=T); check('빈 기록 거부', s >= 400)
 s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '가' * 101, 'p_category': 'cheer'}, token=T); check('100자 초과 거부', s >= 400)
 
-for i in range(10):
+for i in range(9):  # 첫 기록·어제·업무 포함 하루 보상 10개 채우기
     s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '물 마셨다', 'p_category': 'eat'}, token=T)
 check('하루 10개 넘으면 씨앗 0, 기록은 저장', s == 200 and r['earned'] == 0 and r['balance'] == 6 + 30, r)
 

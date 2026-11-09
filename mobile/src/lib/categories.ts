@@ -1,7 +1,8 @@
-// 공통 동작 7종 (docs/GAME_DESIGN.md). 한마디는 카테고리별 템플릿 (FEATURES D2=A).
-export type Category = 'tidy' | 'move' | 'study' | 'eat' | 'care' | 'people' | 'cheer';
+// 공통 동작 8종 (docs/GAME_DESIGN.md, 2026-11-08 '공부·일' → 공부/업무 분리). 한마디는 카테고리별 템플릿 (FEATURES D2=A).
+export type Category = 'tidy' | 'move' | 'study' | 'work' | 'eat' | 'care' | 'people' | 'cheer';
 
-export const CATEGORY_ORDER: Category[] = ['tidy', 'move', 'study', 'eat', 'care', 'people', 'cheer'];
+// 키워드 분류는 이 순서로 먼저 맞는 것을 고른다 (업무를 공부보다 먼저: '업무 관련 책 읽기' → 업무)
+export const CATEGORY_ORDER: Category[] = ['tidy', 'move', 'work', 'study', 'eat', 'care', 'people', 'cheer'];
 
 export const CATS: Record<Category, { name: string; prop: string; color: string; kw: string[]; say: string[] }> = {
   tidy: {
@@ -11,13 +12,18 @@ export const CATS: Record<Category, { name: string; prop: string; color: string;
   },
   move: {
     name: '몸 움직이기', prop: '💦', color: '#f6b26b',
-    kw: ['운동', '산책', '걷', '스트레칭', '요가', '헬스', '러닝', '뛰', '계단', '자전거', '수영', '필라테스', '등산', '춤'],
+    kw: ['운동', '산책', '걷', '걸었', '스트레칭', '요가', '헬스', '러닝', '뛰', '계단', '자전거', '수영', '필라테스', '등산', '춤'],
     say: ['몸을 움직였구나! 최고야', '오늘도 한 걸음!', '땀 흘린 너를 응원해', '몸이 고마워하고 있을 거야', '움직인 만큼 가벼워졌지?', '폴짝! 같이 신나'],
   },
   study: {
-    name: '공부·일', prop: '📖', color: '#a4c2f4',
-    kw: ['공부', '책', '읽', '과제', '숙제', '업무', '일했', '회의', '보고서', '메일', '강의', '출근', '코딩', '시험', '발표', '복습'],
-    say: ['집중한 너, 대단해', '오늘 한 만큼 분명히 쌓였어', '머리 쓰느라 고생했어', '한 줄이라도 나아간 거야', '끄덕끄덕, 잘했어', '해야 할 걸 해낸 너, 멋져'],
+    name: '공부', prop: '📒', color: '#a4c2f4',
+    kw: ['공부', '책', '읽', '과제', '숙제', '강의', '시험', '복습', '예습', '수업', '단어', '학원', '인강', '필기', '자격증', '외웠'],
+    say: ['집중한 너, 대단해', '오늘 한 만큼 분명히 쌓였어', '머리 쓰느라 고생했어', '한 줄이라도 나아간 거야', '차곡차곡 쌓이는 중이야', '배우는 너, 멋져'],
+  },
+  work: {
+    name: '업무', prop: '💻', color: '#b4a7d6',
+    kw: ['업무', '일했', '일 했', '일 끝', '회의', '미팅', '보고서', '메일', '출근', '퇴근', '야근', '발표', '기획', '회사', '알바', '마감', '결재', '엑셀', '업무 처리'],
+    say: ['오늘도 일해낸 너, 수고했어', '해야 할 걸 해낸 너, 멋져', '타닥타닥, 잘 마무리했네', '출근한 것만으로도 대단해', '하나씩 처리한 너, 최고야', '오늘 일한 만큼 쉬어도 돼'],
   },
   eat: {
     name: '잘 먹기', prop: '🍙', color: '#f9cb9c',

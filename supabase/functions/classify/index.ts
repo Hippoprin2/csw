@@ -1,13 +1,14 @@
 // 기록 분류(7종) + 자해 표현 2차 판정. 키워드 결과를 보정하는 용도라 실패해도 앱은 키워드 결과로 동작한다.
 // 본문만 보내고 사용자 식별자는 OpenAI로 보내지 않는다. 본문은 저장·로그하지 않는다.
-const CATEGORIES = ["tidy", "move", "study", "eat", "care", "people", "cheer"] as const;
+const CATEGORIES = ["tidy", "move", "study", "work", "eat", "care", "people", "cheer"] as const;
 const MODEL = Deno.env.get("CLASSIFY_MODEL") ?? "gpt-5.4-nano";
 
 const INSTRUCTIONS = `너는 작은 성취 기록 앱의 분류기다. 사용자가 오늘 해낸 일 한 줄을 주면 JSON으로만 답한다.
 category (하나만):
 - tidy: 정리·청소·빨래·설거지·집안일
 - move: 운동·산책·스트레칭 등 몸 움직이기
-- study: 공부·독서·업무·과제·일
+- study: 공부·독서·과제(학교 과제 제출 포함)·수업·강의·시험 준비 등 배우기
+- work: 출근·회사 일·회의·보고서·메일·알바·마감·엑셀/문서 작업 등 일하기 ("정리"라도 업무 자료면 work)
 - eat: 밥·요리·물 마시기 등 잘 먹기
 - care: 씻기·잠·약·휴식·병원·명상 등 나 돌보기
 - people: 연락·가족·친구·감사·선물 등 사람·마음

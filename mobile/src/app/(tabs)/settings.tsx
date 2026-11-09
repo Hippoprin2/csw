@@ -59,7 +59,7 @@ export default function Settings() {
       await api.deleteAllWins();
       setWins([]);
       setStep(null);
-      setMsg('기록을 모두 지웠어. 펫과 방, 씨앗은 그대로야.');
+      setMsg('기록을 모두 지웠어. 단짝과 방, 씨앗은 그대로야.');
     } catch (e) { setMsg(friendlyError(e)); setStep(null); }
   }
 
@@ -79,7 +79,7 @@ export default function Settings() {
         <H>설정</H>
         {msg ? <Text style={st.msg}>{msg}</Text> : null}
 
-        <Text style={st.sec}>펫</Text>
+        <Text style={st.sec}>단짝</Text>
         <View style={st.group}>
           <Row label={`이름: ${profile?.pet_name ?? ''}`} onPress={() => { setName(profile?.pet_name ?? ''); setNameEdit(true); }} />
         </View>
@@ -113,8 +113,8 @@ export default function Settings() {
       </ScrollView>
 
       <Sheet visible={nameEdit} onClose={() => setNameEdit(false)}>
-        <Text style={sheetSt.title}>펫 이름 바꾸기</Text>
-        <TextInput style={st.input} value={name} onChangeText={setName} maxLength={12} accessibilityLabel="펫 이름" />
+        <Text style={sheetSt.title}>단짝 이름 바꾸기</Text>
+        <TextInput style={st.input} value={name} onChangeText={setName} maxLength={12} accessibilityLabel="단짝 이름" />
         <View style={sheetSt.row}>
           <Btn title="취소" kind="ghost" onPress={() => setNameEdit(false)} style={{ flex: 1 }} />
           <Btn title="저장" disabled={!name.trim()} onPress={async () => { await updateProfile({ pet_name: name.trim() }); setNameEdit(false); }} style={{ flex: 1 }} />
@@ -133,11 +133,11 @@ export default function Settings() {
         </View>
       </Sheet>
 
-      <Confirm visible={step === 'wins1'} title="모든 기록을 지울까?" body="유리병의 기록이 모두 사라져. 펫과 방, 씨앗은 그대로 남아." confirm="다음" danger
+      <Confirm visible={step === 'wins1'} title="모든 기록을 지울까?" body="유리병의 기록이 모두 사라져. 단짝과 방, 씨앗은 그대로 남아." confirm="다음" danger
         onConfirm={() => setStep('wins2')} onCancel={() => setStep(null)} />
       <Confirm visible={step === 'wins2'} title="정말 지울까?" body="지운 기록은 되돌릴 수 없어. 먼저 내보내기로 저장해둘 수 있어." confirm="모두 지우기" danger
         onConfirm={deleteAllWins} onCancel={() => setStep(null)} />
-      <Confirm visible={step === 'acct1'} title="계정을 삭제할까?" body="기록, 펫, 방, 씨앗이 모두 바로 삭제돼." confirm="다음" danger
+      <Confirm visible={step === 'acct1'} title="계정을 삭제할까?" body="기록, 단짝, 방, 씨앗이 모두 바로 삭제돼." confirm="다음" danger
         onConfirm={() => setStep('acct2')} onCancel={() => setStep(null)} />
       <Confirm visible={step === 'acct2'} title="정말 삭제할까?" body="삭제하면 되돌릴 수 없어. 백업에 남은 사본은 보관 기간이 지나면 사라져." confirm="계정 삭제" danger
         onConfirm={deleteAccount} onCancel={() => setStep(null)} />
