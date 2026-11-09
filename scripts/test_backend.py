@@ -59,11 +59,24 @@ check('기록 수정', s == 200 and r['text'] == '이불 개켰다' and r['categ
 s, _ = req('DELETE', f'/rest/v1/wins?id=eq.{win_id}', token=T)
 s, b = req('POST', '/rest/v1/rpc/seed_balance', {}, token=T); check('기록 삭제해도 씨앗 유지', b == 27, b)
 
-s, _ = req('POST', '/rest/v1/safety_events', {'user_id': uid, 'source': 'keyword'}, token=T); check('safety_event 기록', s in (200, 201), s)
+s, _ = req('POST', '/rest/v1/rpc/log_safety', {'p_source': 'keyword'}, token=T); check('자해 감지 익명 집계', s in (200, 204), s)
+s, rows = req('GET', '/rest/v1/safety_daily?select=*', token=T); check('집계는 앱에서 못 읽음', s >= 400 or rows == [], (s, rows))
+s, rows = req('GET', '/rest/v1/safety_daily?select=day,source,count&order=day.desc&limit=2', token=SERVICE, key=SERVICE)
+check('집계에 사용자 ID 없음', s == 200 and rows and 'user_id' not in rows[0], rows)
 s, _ = req('POST', '/rest/v1/app_events', {'user_id': uid, 'name': 'win_recorded', 'props': {'category': 'eat'}}, token=T); check('app_event 기록', s in (200, 201), s)
 
 s, r = req('POST', '/functions/v1/classify', {'text': '설거지 다 했다'}, token=T)
 check('분류 함수', s == 200 and r.get('category') == 'tidy', r)
+# 호출 한도: 오늘 사용량을 한도(80)로 맞춘 뒤 한 번 더 → 429
+from datetime import datetime, timedelta, timezone
+kday = datetime.now(timezone(timedelta(hours=9))).date().isoformat()
+req('POST', '/rest/v1/classify_usage', {'user_id': uid, 'day': kday, 'count': 80}, token=SERVICE, key=SERVICE)
+req('PATCH', f'/rest/v1/classify_usage?user_id=eq.{uid}&day=eq.{kday}', {'count': 80}, token=SERVICE, key=SERVICE)
+s, r = req('POST', '/functions/v1/classify', {'text': '설거지 다 했다'}, token=T)
+check('분류 하루 한도 넘으면 429', s == 429, (s, r))
+s, r = req('POST', '/functions/v1/classify', {'text': '설거지'})
+check('로그인 없이 분류 호출 불가', s in (401, 403), (s, r))
+s, rows = req('GET', '/rest/v1/classify_usage?select=*', token=T); check('사용량은 앱에서 못 읽음', s >= 400 or rows == [], (s, rows))
 
 s, _ = req('POST', '/rest/v1/rpc/delete_all_wins', {}, token=T)
 s, w = req('GET', '/rest/v1/wins?select=id', token=T); check('모든 기록 지우기', w == [], w)

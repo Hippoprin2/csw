@@ -1,4 +1,4 @@
-// 기록 분류(7종) + 자해 표현 2차 판정. 키워드 결과를 보정하는 용도라 실패해도 앱은 키워드 결과로 동작한다.
+// 기록 분류(8종) + 자해 표현 2차 판정. 키워드 결과를 보정하는 용도라 실패해도 앱은 키워드 결과로 동작한다.
 // 본문만 보내고 사용자 식별자는 OpenAI로 보내지 않는다. 본문은 저장·로그하지 않는다.
 const CATEGORIES = ["tidy", "move", "study", "work", "eat", "care", "people", "cheer"] as const;
 const MODEL = Deno.env.get("CLASSIFY_MODEL") ?? "gpt-5.4-nano";
@@ -42,6 +42,23 @@ Deno.serve(async (req) => {
 
   const key = Deno.env.get("OPENAI_API_KEY");
   if (!key) return json({ error: "not_configured" }, 503);
+
+  // 사용자당 하루 호출 한도 (AI 비용 악용 방지). 넘으면 429 → 앱은 기기 키워드 결과로 저장
+  // 하루 기록 상한 50개 + 수정·재시도 여유
+  const limit = Number(Deno.env.get("CLASSIFY_DAILY_LIMIT") ?? "80");
+  const auth = req.headers.get("Authorization") ?? "";
+  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  try {
+    const u = await fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/rpc/bump_classify_usage`, {
+      method: "POST",
+      headers: { apikey: anon, Authorization: auth, "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!u.ok) return json({ error: "usage_check_failed" }, 401);
+    if (Number(await u.json()) > limit) return json({ error: "rate_limited" }, 429);
+  } catch {
+    return json({ error: "usage_check_failed" }, 503);
+  }
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 6000);

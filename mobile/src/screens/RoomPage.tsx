@@ -29,7 +29,7 @@ const store = {
 
 // 방 = 홈. 기록 입력창·축하 8종·곁에 앉기·먹이기/선물하기는 방에서만 (STATUS 2026-11-09 결정)
 export function RoomPage() {
-  const { profile, wins, setWins, setBalance, owned, items, updateProfile, session, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
+  const { profile, wins, setWins, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
   const [text, setText] = useState('');
   const [chosen, setChosen] = useState<Category | null>(null);
@@ -90,7 +90,7 @@ export function RoomPage() {
         const shownToday = store.get(SAFETY_DAY_KEY) === today;
         setSafety(shownToday ? 'banner' : 'card');
         store.set(SAFETY_DAY_KEY, today);
-        if (session) api.logSafety(session.user.id, kwSafety ? 'keyword' : 'llm').catch(() => {});
+        api.logSafety(kwSafety ? 'keyword' : 'llm').catch(() => {});
         track('safety_shown', { repeat: shownToday });
       } else {
         setAction({ kind: category, key: Date.now() });

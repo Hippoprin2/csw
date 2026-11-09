@@ -90,7 +90,8 @@ export const api = {
     }
   },
 
-  async logSafety(userId: string, source: 'keyword' | 'llm') {
-    await supabase.from('safety_events').insert({ user_id: userId, source });
+  // 익명 집계: 누가 감지됐는지는 남기지 않고 날짜·출처별 횟수만 (safety_daily)
+  async logSafety(source: 'keyword' | 'llm') {
+    await supabase.rpc('log_safety', { p_source: source });
   },
 };
