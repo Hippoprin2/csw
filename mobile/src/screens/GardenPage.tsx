@@ -7,6 +7,7 @@ import { useApp } from '@/state/app';
 import { Btn } from '@/ui/kit';
 import { Pet, type PetAction } from '@/ui/Pet';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
+import { useSpaceSize } from '@/ui/layout';
 import { C, R } from '@/ui/theme';
 
 // 텃밭 (docs/FEATURES.md 7장, docs/WORLD.md 1·2장)
@@ -53,6 +54,7 @@ export function GardenPage() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const seq = useRef(0);
+  const { spaceH, gardenPetW } = useSpaceSize();
 
   const firstFree = !profile?.first_crop_used;
   const bySlot = Object.fromEntries(plots.map((p) => [p.slot, p]));
@@ -108,7 +110,7 @@ export function GardenPage() {
 
   return (
     <ScrollView style={st.wrap} contentContainerStyle={{ paddingBottom: 32 }}>
-      <View style={st.garden}>
+      <View style={[st.garden, { height: spaceH }]}>
         <View style={st.hedge} />
         <View style={st.fence} />
         <Text style={st.sign}>🪧</Text>
@@ -118,7 +120,7 @@ export function GardenPage() {
             <PlotTile key={slot} plot={bySlot[slot]} crop={cropOf(bySlot[slot]?.crop_id)} dozing={dozing && !!bySlot[slot]} onPress={() => onPlot(slot)} />
           ))}
         </View>
-        <View style={st.pet}><Pet action={action} size={108} /></View>
+        <View style={st.pet}><Pet action={action} size={gardenPetW} /></View>
       </View>
       {msg ? <Text style={st.msg}>{msg}</Text> : null}
       <Text style={st.help}>
@@ -150,7 +152,7 @@ export function GardenPage() {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg },
-  garden: { marginHorizontal: 16, height: 360, borderRadius: 28, overflow: 'hidden', backgroundColor: '#cfe8c4' },
+  garden: { marginHorizontal: 16, borderRadius: 28, overflow: 'hidden', backgroundColor: '#cfe8c4' },
   hedge: { position: 'absolute', left: 0, right: 0, top: 0, height: '30%', backgroundColor: '#9cc98f', borderBottomLeftRadius: 60, borderBottomRightRadius: 60 },
   fence: { position: 'absolute', left: 0, right: 0, top: '27%', height: 10, backgroundColor: '#fffaf2', opacity: 0.9 },
   sign: { position: 'absolute', left: 14, top: '30%', fontSize: 28 },

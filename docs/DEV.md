@@ -42,6 +42,13 @@
 - 맥이 잠들거나 서버가 꺼지면 주소가 바뀔 수 있음 → 다시 켜고 새 QR.
 - 주의: 터널(ngrok 포함)로 열면 Expo Go가 "Expo Go와 Expo CLI 둘 다 로그인 필요" 오류를 낸다. 계정 없이 하려면 같은 와이파이에서 `npx expo start --lan` → `exp://<맥 IP>:8081` (맥 IP: `ifconfig | grep "inet "`, 이 맥은 en1 와이파이 192.168.0.x). 밖에서 보려면 대표가 Expo 계정을 만들고 폰 Expo Go + 맥 터미널 `npx expo login` 둘 다 로그인 후 `--tunnel`.
 
+## 기종별 화면 대응
+- 세로 고정, 태블릿 미지원(app.json), 넓은 화면은 최대 너비 520으로 가운데 정렬. 노치·홈 바는 SafeAreaView
+- 공간 그림 높이 = 화면 높이의 42%(280~380), 단짝 크기는 그 높이에 비례 (`ui/layout.ts` useSpaceSize). 소품 위치는 공간 그림 기준 %
+- 좌우 넘기기 페이지 너비: onLayout 측정값, 없으면 화면 너비(웹에서 onLayout이 간헐적으로 안 와서 빈 화면 나던 문제 수정)
+- 웹 확인 크기: 375×667(SE), 360×800(안드로이드 보급형), 393×852(15), 430×932(Pro Max) — 2026-11-10 모두 단짝·입력창 정상
+- 남은 확인: 큰 글씨 설정(Dynamic Type)에서 넘침, 안드로이드 실기기, 키보드 올라올 때 입력창 가림
+
 ## 배포·운영 메모
 - 마이그레이션: `supabase db push --linked` (CLI: `/Users/soniakang/.bun/install/global/node_modules/supabase/bin/supabase`, 비번은 루트 .env.local `SUPABASE_DB_PASSWORD`)
 - 함수: `supabase functions deploy classify --use-api --project-ref xbifxrvgdimwwijijthl` (Docker 불필요). 비밀값 `OPENAI_API_KEY`는 supabase secrets에 설정됨.

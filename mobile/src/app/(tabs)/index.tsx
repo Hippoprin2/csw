@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { track } from '@/lib/analytics';
@@ -18,16 +18,26 @@ const HOME = 1;
 
 export default function Spaces() {
   const { profile, balance } = useApp();
-  const [w, setW] = useState(0);
-  const [page, setPage] = useState(HOME);
+  const win = useWindowDimensions();
+  const [measured, setMeasured] = useState(0);
+  // onLayout이 안 오는 경우(웹에서 간헐적)를 대비해 화면 너비(최대 520)를 기본값으로 쓴다
+  const w = measured || Math.min(win.width, 520);
+  const [page, setPageState] = useState(HOME);
+  const pageRef = useRef(HOME);
+  const setPage = (p: number) => { pageRef.current = p; setPageState(p); };
   const ref = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const pet = profile?.pet_name ?? '단짝';
 
+  // 너비가 정해지거나 바뀌면 보고 있던 공간(처음엔 방)으로 맞춘다
+  useEffect(() => {
+    const t = setTimeout(() => ref.current?.scrollTo({ x: w * pageRef.current, animated: false }), 0);
+    return () => clearTimeout(t);
+  }, [w]);
+
   function onLayout(e: LayoutChangeEvent) {
     const nw = Math.round(e.nativeEvent.layout.width);
-    if (nw && nw !== w) {
-      setW(nw);
-      requestAnimationFrame(() => ref.current?.scrollTo({ x: nw * page, animated: false }));
+    if (nw && nw !== measured) {
+      setMeasured(nw);
     }
   }
   function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {

@@ -15,10 +15,10 @@ import { useApp } from '@/state/app';
 import { Btn, HelpLines } from '@/ui/kit';
 import { Pet, type PetAction } from '@/ui/Pet';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
+import { useSpaceSize } from '@/ui/layout';
 import { C, R } from '@/ui/theme';
 
 const DAILY_REWARD_CAP = 10;
-const PET_W = 210;
 const NOTIF_ASKED_KEY = 'csw.notifAsked';
 const SAFETY_DAY_KEY = 'csw.safetyShownDay';
 
@@ -31,6 +31,7 @@ const store = {
 export function RoomPage() {
   const { profile, wins, setWins, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
+  const { spaceH, petW } = useSpaceSize();
   const [text, setText] = useState('');
   const [chosen, setChosen] = useState<Category | null>(null);
   const [picking, setPicking] = useState(false);
@@ -159,7 +160,7 @@ export function RoomPage() {
   return (
     <View style={st.wrap}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
-        <View style={st.room}>
+        <View style={[st.room, { height: spaceH }]}>
           <View style={st.floor} />
           <View style={st.window}><View style={st.windowBar} /></View>
           <View style={st.shelf} accessibilityLabel="창턱 수확 선반">
@@ -171,7 +172,7 @@ export function RoomPage() {
               <Text style={st.bubbleText}>{shownBubble}</Text>
             </View>
           ) : null}
-          <View style={st.stage}><Pet action={petAction} size={PET_W} /></View>
+          <View style={[st.stage, { marginLeft: -petW / 2 }]}><Pet action={petAction} size={petW} /></View>
           {placed.filter((i) => i.layer === 'front').map(drawItem)}
 
           {float && (
@@ -279,7 +280,7 @@ export function RoomPage() {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg },
-  room: { marginHorizontal: 16, height: 360, borderRadius: 28, overflow: 'hidden', backgroundColor: C.wall },
+  room: { marginHorizontal: 16, borderRadius: 28, overflow: 'hidden', backgroundColor: C.wall },
   floor: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '38%', backgroundColor: C.floor },
   window: { position: 'absolute', left: 24, top: 28, width: 84, height: 70, borderRadius: 14, backgroundColor: '#cfe6f2', borderWidth: 6, borderColor: '#fff' },
   windowBar: { position: 'absolute', left: '50%', marginLeft: -2.5, top: 0, bottom: 0, width: 5, backgroundColor: '#fff' },
@@ -290,7 +291,7 @@ const st = StyleSheet.create({
   bagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   bagName: { flex: 1, fontSize: 15, color: C.ink, fontWeight: '600' },
   item: { position: 'absolute', fontSize: 34 },
-  stage: { position: 'absolute', left: '50%', marginLeft: -PET_W / 2, bottom: -6 }, // 프레임 아래 12%가 빈 공간 → 발이 바닥 위에 오게
+  stage: { position: 'absolute', left: '50%', bottom: -6 }, // 프레임 아래 12%가 빈 공간 → 발이 바닥 위에 오게
   bubble: { position: 'absolute', alignSelf: 'center', top: 12, maxWidth: '80%', backgroundColor: '#fff', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14, zIndex: 5 },
   bubbleText: { fontSize: 14, fontWeight: '600', color: C.ink, textAlign: 'center', lineHeight: 20 },
   float: { position: 'absolute', right: 28, top: 80, fontSize: 16, fontWeight: '800', color: C.seed },

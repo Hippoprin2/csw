@@ -57,6 +57,7 @@ export function Pet({ action, size = 200 }: { action: PetAction; size?: number }
         placeholder={PET_POSTER}
         style={[fill, { opacity: overlayVisible ? 0 : 1 }]}
         contentFit="contain"
+        loading="eager" /* 웹: 가로 넘기기 안 화면 밖에서 시작하면 lazy 로딩이 늦게 풀림 (네이티브 영향 없음) */
         autoplay={!overlayVisible}
       />
       {cur && (
@@ -66,6 +67,7 @@ export function Pet({ action, size = 200 }: { action: PetAction; size?: number }
           style={fill} /* 투명 배경이라 로딩 중엔 아래 대기가 비쳐 보임. opacity 0으로 숨기면 웹에서 lazy 로딩이 멈춤 */
           contentFit="contain"
           autoplay
+          loading="eager"
           cachePolicy="none"
           onDisplay={() => setShownKey(overlayKey)}
           onLoad={() => setShownKey(overlayKey)}
