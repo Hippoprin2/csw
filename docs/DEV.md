@@ -132,7 +132,7 @@
 ## 마당 (2026-11-11, WORLD 7장 '다른 스레드 요청 정리' 개발 9개)
 - 서버 `supabase/migrations/20261111000001_yard.sql`: `yard_state()`(open·record_days·zones·tester·dev_open) — 열림 = 기록한 날(seed_ledger 'win' KST 날짜) 누적 7일, 열리는 순간 `profiles.yard_opened_at` 저장 = 영구. `buy_zone(2|3)` 60·120 영구, `buy_item`은 마당 소품이면 마당이 열려야 구매(`yard_locked`), 소품은 자리 1개씩 바로 놓임. `memory_card(p_seen)` = 7일 넘은 기록 하나(한 달 전 오늘 우선 'month', 아니면 무작위 'past', 버틴 하루 제외). 테스트 스위치 `dev_yard`/`dev_all_zones`/`dev_seeds`(+500)는 `testers` 표에 있는 계정만(표는 service role로만 추가)
 - 테스트: `python3 scripts/test_yard.py` (2026-11-11 31개 FAILS 0 — 열림 6일/7일·영구, 구역 가격·중복·없는 구역, 직접 insert 차단, 소품 잠금, 추억 카드 규칙, 테스터 권한). test_garden은 방 소품만 세도록 수정
-- 테스터 추가: `python3 scripts/list_users.py`로 uid 확인 → testers 표에 service role로 insert
+- 테스터 추가: `python3 scripts/add_tester.py <이메일>` (확인: `python3 scripts/list_users.py`). 대표 계정(카카오) 테스터 등록됨
 - 그림·데이터: `python3 scripts/gen_world.py`가 manifest `spaces.yard`를 `src/data/yard.ts`(YARD + YARD_IMG require 표)로 그대로 생성 + assets/world/yard. 타입 `data/yardTypes.ts`. ⚠ 방 넓은 export(aac03d9) 이후 gen_world.py를 돌리면 방 좌표가 +540 바뀜 → RoomPage 확장과 같이 돌릴 것. 이번 커밋의 world.ts는 그 전 방 좌표 + 마당 썸네일만
 - 기하·길찾기 `lib/yardGeo.ts`(React 없음): 구역·걷기 격자·A*·카메라 범위·정렬선(sort_line)·나무 단계(10/30/60)·밤(19~06시). 테스트 페이지(design/yard_test) 이식
 - 화면 `ui/YardScene.tsx`: 2160×3100 캔버스를 카드 폭 1080px 기준으로 축소, 보이는 타일만, README draw_order대로 zIndex(sort_y + sort_line), 밤 = 그림마다 tintColor 덮개(정원등·텐트는 night_file), 끌기 = 둘러보기(3초 뒤 1.2초 복귀), 탭 = 걸어감, 두 손가락 줌 0.6~1(저장, 나갔다 와도 유지), 왼쪽 끝에서 오른쪽으로 끌면 방으로(`onLeave`). gesture-handler v3 hooks + reanimated, 루트에 GestureHandlerRootView
