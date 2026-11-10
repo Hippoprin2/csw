@@ -3,7 +3,7 @@
 #   blender -b design/character/3d/rig/hippo_rig_idle.blend --python scripts/blender/room.py -- preview <out.png> [item ids...|all]
 # Camera = character default (elev 0.12 ≈ 6.5°, docs/WORLD.md W2). Units: hippo height 1.0, feet z=-0.5, front = -Y.
 import bpy, bmesh, math, os, sys
-from mathutils import Vector
+from mathutils import Vector, Matrix
 sys.path.insert(0, os.path.dirname(__file__))
 from props import mat, obj_from_bm
 
@@ -140,14 +140,70 @@ SILL_Z = WZ - WH / 2 - 0.02 + 0.0225   # top of sill
 SILL_Y = YB - 0.09
 
 
+# 창턱 수확 선반: 3 spots right of the hippo's head (the left part of the sill is hidden behind it)
+SILL_VASE, SILL_PLATE, SILL_BASKET = 0.07, 0.24, 0.41
+P.update({"berry": (0.93, 0.33, 0.36), "sun_y": (1.0, 0.82, 0.30), "sun_c": (0.55, 0.36, 0.22), "skin": (0.62, 0.36, 0.55),
+          "stem": (0.40, 0.68, 0.43), "glassv": (0.80, 0.91, 0.96)})
+
+
 def harvest_sweet_potato():
-    """고구마 바구니 on the sill (first crop decoration)"""
-    x = WX + 0.3
-    parts = [cyl("BasketBody", 0.075, 0.06, (x, SILL_Y, SILL_Z + 0.03), M("basket", 0.8), r2=0.09, bevel=0.25)]
+    """고구마 바구니 (first crop decoration)"""
+    x = SILL_BASKET
+    parts = [cyl("BasketBody", 0.075, 0.06, (x, SILL_Y, SILL_Z + 0.03), M("basket", 0.8), r2=0.09, bevel=0.25),
+             cyl("BasketRim", 0.09, 0.014, (x, SILL_Y, SILL_Z + 0.062), M("wood2", 0.8), bevel=0.4)]
     for i, (dx, dz, rz) in enumerate(((-0.03, 0.07, 0.4), (0.035, 0.075, -0.3), (0.0, 0.095, 0.1))):
-        o = sph(f"Potato{i}", 0.035, (x + dx, SILL_Y, SILL_Z + dz), M("potato", 0.7), (1.6, 0.9, 0.9))
+        o = sph(f"Potato{i}", 0.035, (x + dx, SILL_Y, SILL_Z + dz), M("skin", 0.7), (1.6, 0.9, 0.9))
         o.rotation_euler = (0, rz, 0.3); parts.append(o)
     return group("harvest_sweet_potato", parts)
+
+
+def _vase(x, col):
+    return [cyl("VaseBody", 0.04, 0.09, (x, SILL_Y, SILL_Z + 0.045), M(col, 0.6), r2=0.03, bevel=0.35),
+            cyl("VaseNeck", 0.022, 0.03, (x, SILL_Y, SILL_Z + 0.1), M(col, 0.6), bevel=0.3)]
+
+
+def harvest_tulip():
+    """튤립 꽃병 (vase spot, swaps with sunflower)"""
+    x = SILL_VASE; parts = _vase(x, "off")
+    for k, (dx, h, col) in enumerate(((-0.03, 0.13, "coral"), (0.0, 0.16, "coral"), (0.032, 0.12, "pink"))):
+        top = (x + dx * 1.6, SILL_Y, SILL_Z + 0.1 + h)
+        st = cyl(f"TvStem{k}", 0.004, h, (x + dx * 0.8, SILL_Y, SILL_Z + 0.1 + h / 2), M("stem"), bevel=0, seg=8)
+        st.rotation_euler = (0, math.atan2(dx * 0.8, h) * 1.0, 0)
+        parts += [st, sph(f"TvCup{k}", 0.022, top, M(col, 0.7), (1, 1, 1.2))]
+        for q in range(3):
+            a = q * 2.1 + 0.3
+            parts.append(sph(f"TvTip{k}{q}", 0.011, (top[0] + 0.014 * math.cos(a), top[1] + 0.014 * math.sin(a), top[2] + 0.02), M(col, 0.7), (0.8, 0.8, 1.3)))
+    parts.append(sph("TvLeaf", 0.03, (x - 0.03, SILL_Y - 0.01, SILL_Z + 0.13), M("leaf"), (0.4, 0.25, 1.2)))
+    return group("harvest_tulip", parts)
+
+
+def harvest_sunflower():
+    """해바라기 꽃병 (vase spot)"""
+    x = SILL_VASE; parts = _vase(x, "blue")
+    h = 0.19; top = Vector((x + 0.01, SILL_Y - 0.01, SILL_Z + 0.1 + h))
+    parts.append(cyl("SvStem", 0.006, h, (x + 0.005, SILL_Y, SILL_Z + 0.1 + h / 2), M("stem"), bevel=0, seg=8))
+    parts.append(sph("SvLeaf", 0.03, (x + 0.03, SILL_Y, SILL_Z + 0.17), M("leaf"), (1.0, 0.3, 0.55)))
+    face = Matrix.Rotation(math.radians(-19), 3, "Z") @ Matrix.Rotation(math.radians(-85), 3, "X")
+    disc = cyl("SvDisc", 0.03, 0.014, top, M("sun_c", 0.85), bevel=0.4); disc.rotation_euler = face.to_euler(); parts.append(disc)
+    for q in range(12):
+        a = q * 2 * math.pi / 12
+        pe = sph(f"SvPetal{q}", 0.019, top + face @ Vector((math.cos(a) * 0.042, math.sin(a) * 0.042, -0.003)), M("sun_y", 0.7), (0.55, 1.0, 0.2))
+        pe.rotation_euler = (face @ Matrix.Rotation(a + math.pi / 2, 3, "Z")).to_euler(); parts.append(pe)
+    return group("harvest_sunflower", parts)
+
+
+def harvest_strawberry():
+    """딸기 접시"""
+    x = SILL_PLATE
+    parts = [cyl("Plate", 0.07, 0.014, (x, SILL_Y, SILL_Z + 0.007), M("off", 0.6), r2=0.055, bevel=0.4)]
+    for k, (dx, dy, dz) in enumerate(((-0.025, 0.01, 0.03), (0.028, 0.0, 0.03), (0.0, -0.02, 0.05))):
+        c = (x + dx, SILL_Y + dy, SILL_Z + dz)
+        parts += [sph(f"PbBerry{k}", 0.022, c, M("berry", 0.55), (1, 0.95, 1.2)),
+                  sph(f"PbCalyx{k}", 0.014, (c[0], c[1], c[2] + 0.022), M("leaf"), (1.2, 1.2, 0.35))]
+    return group("harvest_strawberry", parts)
+
+
+HARVEST = {"sweet_potato": harvest_sweet_potato, "tulip": harvest_tulip, "sunflower": harvest_sunflower, "strawberry": harvest_strawberry}
 
 
 # ------------------------------------------------------------------ items (id = supabase items.id)
@@ -633,7 +689,9 @@ if __name__ == "__main__":
         cam.location = TARGET + Vector((0.35, -1, ELEV)).normalized() * 12
         cam.rotation_euler = (TARGET - cam.location).to_track_quat("-Z", "Y").to_euler()
         sc.frame_set(1)
-        base(); calendar(); harvest_sweet_potato()
+        base(); calendar()
+        for h in os.environ.get("HARVEST", "sweet_potato").split(","):
+            if h: HARVEST[h]()
         for i in ids:
             ITEMS[i]()
         rig = bpy.data.objects["HippoRig"]; rig.location = (*HIPPO, 0)

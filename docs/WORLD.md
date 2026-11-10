@@ -163,6 +163,19 @@
 - 모든 소품 모서리가 계단처럼 보이던 원인: bmesh 베벨 기본 profile이 0(둥글지 않음) → profile=0.5로 고쳐 전부 재렌더. scripts/blender/props.py(캐릭터 소품: 책상·의자·공책 등)도 같은 코드라 같은 문제가 있음 → 캐릭터 스레드에 알림(STATUS)
 - 다음(3단계 텃밭, 4단계 앱용 내보내기): 4단계에서 소품마다 제자리 투명 렌더 + 위치 JSON(그림자는 바닥/벽 그림자 캐처로 같이 굽기)
 
+### 텃밭 그림 (2026-11-09, 3단계)
+- 스크립트: scripts/blender/garden.py (room.py 도우미 재사용). 카메라 고도 0.5(25°), 방향·조명 동일, 보이는 너비 2.7 = 방과 같은 단짝 크기
+  - `... garden.py -- preview <절대경로.png> 작물:단계[:doze] ×3` / `-- crops <폴더>` / `-- icons <폴더>`
+- 구도: 텃밭 시안 design/world/garden/concept_v2.png. 단짝은 **가운데 밭 뒤**(울타리 앞)에 섬 → 밭 3칸이 다 보임. 단짝이 밭 앞에 서면 25°에서 가운데 밭을 가림. 지금 앱(단짝 아래·밭 위)과 반대라 4단계 위치 JSON으로 앱이 맞추면 됨
+- 배경: 잔디 + 흰 울타리 + 둥근 생울타리 + 뒤쪽 둥근 나무(하늘은 안 보이게) + 나무틀 밭 3칸 + 팻말 + 물뿌리개 + 징검돌
+- 작물: design/world/garden/crops/ — `mound.png`(심은 직후, 4종 공통) + `<작물>_<1|2|3>.png` + `<작물>_<1|2|3>_doze.png` = 25장. 모아보기 crops_sheet.png
+  - 1 = 싹, 2 = 자람(고구마 덩굴 / 튤립 봉오리 / 해바라기 초록 봉오리 / 딸기 흰 꽃), 3 = 수확(고구마가 흙 위로 빼꼼 / 튤립 3송이 / 해바라기 / 빨간 딸기)
+  - 졸음 = 위로 갈수록 더 휘는 굽힘(오른쪽 + 앞으로), Zzz는 앱에서
+  - 25장 모두 같은 카메라: 512px = 1.5 단위, 화면 가운데 = 밭 흙 가운데에서 0.42 위 → 앱은 밭 기준점에 그대로 얹으면 됨(4단계 JSON에 픽셀 기준점)
+- 수확 장식(방 창턱, room.py HARVEST): 튤립 꽃병(흰 병) / 해바라기 꽃병(파란 병) — 같은 꽃병 자리 바꿔 끼우기, 딸기 접시, 고구마 바구니. 창턱 자리는 단짝 머리 오른쪽 3칸(x 0.07 / 0.24 / 0.41) — 왼쪽은 단짝 머리에 가려짐. 시안 design/world/room/harvest_sill.png
+- 아이콘: design/world/garden/icons/ — `produce_<작물>.png`(수확 바구니 목록용) + `packet_<작물>.png`(심기 고를 때 씨앗 봉투) 512² 투명. 모아보기 icons_sheet.png
+- 렌더 함정: 위치·회전을 바꾼 직후 matrix_world는 갱신 전 → 메시에 변환을 굽기 전에 view_layer.update() (안 하면 부품이 원점에 떠 있음)
+
 ## 5. 개발 스레드 전달 사항 (확정 후 반영)
 - items 테이블: id, name, price + `space`(room|yard), `slot`, `layer`(back|mid|front) 추가. 같은 slot 여러 개 가지면 `owned_items.placed` 하나만 true
 - crops(4종: id, name, kind flower|edible, price 3, first_free), plots(3칸), harvest_bag(user, crop, count), harvest_unlocks(user, crop — 첫 수확 장식)
