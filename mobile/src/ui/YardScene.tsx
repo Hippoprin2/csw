@@ -37,6 +37,7 @@ const ACT_OVER: Record<string, (key: string) => boolean> = {
 };
 type Phase = { clip: ClipKey; ms: number; move?: { from: Pt; to: Pt; f0: number; f1: number } };
 type Act = { id: string; action: string; stand: Pt; enter?: Pt; seq: Phase[]; i: number; reqAt: number; shownAt: number | null; fire: { i: number; frac: number }; then: null | (() => void) };
+const clock = () => performance.now(); // 이벤트 처리용 (렌더 중 호출 아님)
 const clipMs = (c: ClipKey) => PET_CLIPS[c].durationMs;
 
 // 자리 동작 순서. 앉기·눕기·물장구 = in → loop(반복 횟수로 5~10초, 루프 끝 = out 시작 자세) → out
@@ -149,7 +150,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
 
   const G = useRef({
     cam: { x: 0, y: 0 }, zoom: keptZoom, s: 1, vw: 1080, vh: 1860, started: false,
-    pet: { x: YARD.walk.home[0], y: YARD.walk.home[1], dir: 1, face: 'side' as Face, t: 0, state: 'idle' as 'idle' | 'walk' | 'act', path: [] as Pt[], act: null as null | Act, until: 0, walks: 0, pending: null as null | (() => void) },
+    pet: { x: YARD.walk.home[0], y: YARD.walk.home[1], dir: 1, face: 'side' as Face, t: 0, state: 'idle' as 'idle' | 'walk' | 'act', path: [] as Pt[], act: null as null | Act, until: 0, walks: 0 },
     dragging: false, lastDrag: -1e9, glide: null as null | { t0: number; x: number; y: number }, glided: true,
     panStart: { x: 0, y: 0 }, pinchStart: 1, left: false,
   });
@@ -211,7 +212,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   function onShown(l: Layer) {
     setBase(l);
     const a = G.current.pet.act;
-    if (a && G.current.pet.state === 'act' && curRef.current.n === l.n && a.shownAt === null) a.shownAt = performance.now();
+    if (a && G.current.pet.state === 'act' && curRef.current.n === l.n && a.shownAt === null) a.shownAt = clock();
   }
   function startAct(a: Act) {
     const pet = G.current.pet;
@@ -230,21 +231,13 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   // 걷기 시작. 자리 동작 중이면 지금 동작을 자연스럽게 마치고(루프는 한 바퀴 끝에서 out) 출발
   function goTo(pt: Pt, a?: Act | null, then?: () => void) {
     const g = G.current, pet = g.pet;
-    if (pet.state === 'act' && pet.act) {
-      const A = pet.act, now = performance.now();
-      pet.pending = () => goTo(pt, a, then);
-      const ph = A.seq[A.i], last = A.seq.length - 1;
-      if (A.i < last && A.i > 0 && ph.clip === A.seq[last - 1].clip) { // 루프 중: 이번 바퀴 끝에서 out으로
-        const L = clipMs(ph.clip), el = A.shownAt === null ? 0 : now - A.shownAt;
-        ph.ms = Math.max(L, Math.ceil((el + 1) / L) * L);
-        A.seq = [...A.seq.slice(0, A.i + 1), A.seq[last]];
-        if (A.fire.i > A.i) A.fire = { i: -1, frac: 0 };
-      } else if (A.i === 0 && last >= 2) { // 앉는 중: 한 바퀴만 앉았다가 일어남
-        const loop = A.seq[last - 1];
-        A.seq = [A.seq[0], { ...loop, ms: clipMs(loop.clip) }, A.seq[last]];
-        A.fire = { i: -1, frac: 0 };
-      }
-      return;
+    // 다른 곳을 누르면 하던 동작은 바로 멈추고 출발 (대표 결정 2026-11-11). 물장구 중이면 연못 가장자리에서 나옴
+    const prev = pet.act;
+    if (prev && prev !== a) {
+      if (pet.state === 'act') { [pet.x, pet.y] = prev.enter ?? prev.stand; pet.state = 'idle'; }
+      // 못 끝낸 콜백: 열매 카드는 그래도 열어 줌(열매는 이미 땄음), 먹이기는 안 먹은 걸로 (바구니 그대로)
+      if (prev.then && prev.action === 'show_fruit') prev.then();
+      prev.then = null; pet.act = null;
     }
     const m = getWalk();
     const target = a ? (a.enter ?? a.stand) : pt;
@@ -366,8 +359,6 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
             else {
               if (A.then) { const f = A.then; A.then = null; f(); } // 놓친 콜백(먹기 등)은 끝에서라도
               pet.act = null; pet.state = 'idle'; pet.until = now + 2000 + Math.random() * 3000;
-              const go = pet.pending; pet.pending = null;
-              go?.();
             }
           }
         }
