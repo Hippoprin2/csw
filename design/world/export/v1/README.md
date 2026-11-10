@@ -25,7 +25,7 @@
 - 추억 나무: `tree[stage-1]` + 그 단계의 `fruits` 좌표마다 `fruit.webp`(80×80)를 가운데 맞춰. 단계 기준은 WORLD.md 7장(기록한 날 10/30/60)
 - 손님: `sparrow_perch`(새 모이통 있을 때, 모이통 바로 뒤에) / `sparrow_ground`·`butterfly_open|closed`는 `anchor`를 원하는 점에 두는 움직이는 그림
 - 밤(19~06시): 낮과 같은 순서로 그리되, 그림마다(타일·울타리·소품·단짝·손님·열매) 자기 픽셀에만 `night.overlay` rgba를 덮어(source-atop) 그려. `night_file` 있는 소품(정원등·텐트)은 그 그림을 덮개 없이 그 순서에 그려. 켜진 그림을 맨 위에 다시 그리면 텐트가 앞에 선 단짝·새 모이통을 덮는 오류가 남
-- 걷기(텃밭은 `spaces.garden.walk`): 산 구역 `area` 안 + `walk.blocked`·구역 `blocked` 밖 + 가진 소품의 `item_blocked` 밖. 잠긴 구역과 맞닿은 변에서는 70px 떨어져. `interact[id]` = 서는 점·방향·동작. 단짝 발 (fx, fy)에 600×800 클립을 `pet.w×pet.h`로, 가운데 = 발 + `pet.feet_to_center`
+- 걷기(텃밭은 `spaces.garden.walk`): 산 구역 `area` 안 + `walk.blocked`·구역 `blocked` 밖 + 가진 소품의 `item_blocked` 밖. 잠긴 구역과 맞닿은 변에서는 70px 떨어져. `interact[id]` = 서는 점·방향·동작. 산 소품(그림의 보이는 부분, 앞에 있는 것 먼저)·나무·연못을 탭하면 단짝이 그리로 가서 그 동작을 5~10초(오리 튜브 = 연못 물장구, 피크닉 매트는 먹이기로 대신해도 됨). 동작 없는 소품은 그 앞까지 걸어감 단짝 발 (fx, fy)에 600×800 클립을 `pet.w×pet.h`로, 가운데 = 발 + `pet.feet_to_center`
 - 합성 확인: `scripts/blender/compose_yard_preview.py` (기본 = 낮|밤 화면, `map` = 캔버스 전체, `walk` = 걷기 영역, `own=1,2` = 산 구역) → design/world/yard/yard_v2_*.jpg
 
 ## 그 밖

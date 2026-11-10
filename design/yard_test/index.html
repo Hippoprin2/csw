@@ -272,6 +272,24 @@ card.addEventListener("pointerup", e => {
   else tap(cam.x + (e.clientX - card.getBoundingClientRect().left) / view.s, cam.y + (e.clientY - card.getBoundingClientRect().top) / view.s);
   ptr = null;
 });
+// pixel hit test on a sprite (ignores transparent padding)
+const HIT = {};
+function hitSprite(file, ex, ey, ew, eh, x, y) {
+  if (x < ex || y < ey || x >= ex + ew || y >= ey + eh) return false;
+  const i = IMG[file]; if (!i) return false;
+  if (!HIT[file]) { const c = document.createElement("canvas"); c.width = i.naturalWidth; c.height = i.naturalHeight; const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(i, 0, 0); HIT[file] = g; }
+  const px = Math.floor((x - ex) / ew * i.naturalWidth), py = Math.floor((y - ey) / eh * i.naturalHeight);
+  return HIT[file].getImageData(px, py, 1, 1).data[3] > 40;
+}
+const ITEM_ACT = { duck_float: "pond" };     // tapping the duck = splash in the pond
+function tapItem(x, y) {
+  const tr = Y.tree.find(t => t.stage === S.stage);
+  const cands = (S.items ? Y.items : []).map(e => ({ id: e.id, file: e.file, x: e.x, y: e.y, w: e.w, h: e.h, sy: e.sort_y }));
+  cands.push({ id: "tree", file: tr.file, x: tr.x, y: tr.y, w: tr.w, h: tr.h, sy: tr.sort_y });
+  cands.sort((a, b) => b.sy - a.sy);            // front-most first
+  for (const c of cands) if (hitSprite(c.file, c.x, c.y, c.w, c.h, x, y)) return c;
+  return null;
+}
 function tap(x, y) {
   // fruit?
   const tr = Y.tree.find(t => t.stage === S.stage);
@@ -282,6 +300,14 @@ function tap(x, y) {
     toast(`${Z.name_ko} 구역 · 🌱 ${Z.price}`, "테스트로 열기", () => { S.own[z] = true; buildGrid(); buildPanel(); });
     return;
   }
+  const it = tapItem(x, y);
+  if (it) {
+    const key = ITEM_ACT[it.id] || it.id, v = Y.walk.interact[key];
+    if (v) { const a = { id: key, ...v }; goTo(a.enter || a.stand, a); return; }   // item with an action: walk there and do it
+    const fb = Y.walk.item_blocked[it.id];                                        // no action: walk up to its front edge
+    if (fb) { const b = fb.reduce((m, q) => q[1] > m[1] ? q : m); goTo([b[0], b[1] + 40]); return; }
+  }
+  if (inPoly(x, y, Y.walk.blocked.pond)) { const a = { id: "pond", ...Y.walk.interact.pond }; goTo(a.enter, a); return; }
   goTo([x, y]);
 }
 let toastCb = null;
