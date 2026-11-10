@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AppProvider, useApp } from '@/state/app';
 import { C } from '@/ui/theme';
@@ -44,9 +45,11 @@ function Gate() {
 
 export default function RootLayout() {
   return (
-    <AppProvider>
-      <StatusBar style="dark" />
-      <Gate />
-    </AppProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppProvider>
+        <StatusBar style="dark" />
+        <Gate />
+      </AppProvider>
+    </GestureHandlerRootView>
   );
 }

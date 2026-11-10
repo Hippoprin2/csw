@@ -12,24 +12,30 @@ import { useApp } from '@/state/app';
 import { H, Seeds, Sub } from '@/ui/kit';
 import { C } from '@/ui/theme';
 
-// 방 소품 상점. 소품마다 정해진 자리가 있고, 같은 자리 소품을 여러 개 가지면 하나만 놓인다(바꿔 끼우기, WORLD W3)
+// 소품 상점. 방: 소품마다 정해진 자리, 같은 자리 소품은 바꿔 끼우기(WORLD W3)
+// 마당(WORLD 7장): 소품 10개, 자리 1개씩(바꿔 끼우기 없음), 마당이 열려야 살 수 있음. 산 소품만 마당에 보임
 export default function Shop() {
-  const { items, owned, balance, setBalance, profile, celebrate, reloadRoom } = useApp();
+  const { items, owned, balance, setBalance, profile, celebrate, reloadRoom, yard } = useApp();
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState('');
 
   const ownedMap = new Map(owned.map((o) => [o.item_id, o.placed]));
   const slotCount = (slot: string) => items.filter((i) => i.slot === slot && ownedMap.has(i.id)).length;
   const roomItems = items.filter((i) => i.space === 'room');
+  const yardItems = items.filter((i) => i.space === 'yard');
 
   async function buy(id: string) {
+    const it = items.find((i) => i.id === id);
     setBusy(id); setErr('');
     try {
       const b = await api.buy(id);
       setBalance(b);
       await reloadRoom();
       track('item_bought', { item: id });
-      const it = items.find((i) => i.id === id);
+      if (it?.space === 'yard') {
+        router.navigate({ pathname: '/', params: { space: 'yard' } });
+        return;
+      }
       celebrate({ kind: 'cheer', itemId: id, line: `${it?.name ?? '선물'} 고마워! 방이 더 좋아졌어` });
       router.navigate('/');
     } catch (e) {
@@ -84,6 +90,26 @@ export default function Shop() {
             );
           })}
         </View>
+        <View style={st.yardHead}>
+          <H>마당 꾸미기</H>
+        </View>
+        <Sub>{yard.open ? '산 물건은 마당 제자리에 놓여요. 단짝이 가서 놀기도 해요.' : '마당이 열리면 살 수 있어요.'}</Sub>
+        <View style={[st.grid, !yard.open && { opacity: 0.5 }]}>
+          {yardItems.map((it) => {
+            const own = ownedMap.has(it.id);
+            const can = yard.open && !own && balance >= it.price;
+            const label = own ? '마당에 있음' : `씨앗 ${it.price}`;
+            return (
+              <Pressable key={it.id} disabled={!can || !!busy} onPress={() => buy(it.id)}
+                style={({ pressed }) => [st.item, own && { opacity: 0.55 }, pressed && { transform: [{ scale: 0.97 }] }]}
+                accessibilityRole="button" accessibilityLabel={`${it.name} ${label}`} accessibilityState={{ disabled: !can }}>
+                <Image source={THUMBS[it.id]} style={st.thumb} contentFit="contain" accessibilityIgnoresInvertColors />
+                <Text style={st.name}>{it.name}</Text>
+                <Text style={[st.price, !own && !can && { color: C.muted }]}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -96,5 +122,6 @@ const st = StyleSheet.create({
   thumb: { width: 72, height: 72, marginBottom: 4 },
   name: { fontSize: 13, fontWeight: '600', color: C.ink },
   price: { fontSize: 12, color: C.seed, fontWeight: '700', marginTop: 3 },
+  yardHead: { marginTop: 28 },
   err: { color: '#c0392b', fontSize: 13, marginBottom: 10 },
 });

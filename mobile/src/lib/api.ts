@@ -29,6 +29,10 @@ export type Owned = { item_id: string; placed: boolean };
 export type Crop = { id: string; name: string; emoji: string; kind: 'flower' | 'edible'; price: number; deco_name: string; deco_emoji: string; sort: number };
 export type Plot = { slot: number; crop_id: string; planted_day: string; required_days: number; days: number };
 export const FIRST_CROP = 'sweet_potato';
+// 마당: 열림(기록한 날 누적 7일, 영구) · 전체 기록한 날(추억 나무) · 산 구역(2, 3) · 테스터(테스트 스위치)
+export type YardState = { open: boolean; record_days: number; zones: number[]; tester: boolean; dev_open: boolean };
+export type MemoryCard = { id: string; text: string; category: Category; win_date: string; kind: 'month' | 'past' };
+export const ZONE_PRICE: Record<number, number> = { 2: 60, 3: 120 };
 
 // 텃밭 단계: 0 심음(흙더미) · 1 싹 · 2 자람 · 3 다 자람. 기록한 날 3일마다 한 단계, 첫 작물은 1일에 바로 다 자람
 export function plotStage(p: Plot): { stage: 0 | 1 | 2 | 3; dots: number } {
@@ -46,6 +50,8 @@ const ERR_KO: Record<string, string> = {
   not_enough_seeds: '씨앗이 조금 모자라. 기록하면 씨앗이 생겨!',
   already_owned: '이미 방에 있어.',
   invalid_date: '오늘이나 어제 일만 적을 수 있어.',
+  yard_locked: '마당이 열리면 살 수 있어.',
+  forbidden: '테스트 계정에서만 쓸 수 있어.',
 };
 export function friendlyError(e: unknown) {
   const msg = (e as { message?: string })?.message ?? String(e);
@@ -103,6 +109,12 @@ export const api = {
   harvest: (slot: number) => rpc<{ crop_id: string; first_unlock: boolean }>('harvest', { p_slot: slot }),
   useHarvest: (cropId: string) => rpc<number>('use_harvest', { p_crop: cropId }),
   touchSeen: () => rpc<string | null>('touch_seen'),
+  yardState: () => rpc<YardState>('yard_state'),
+  buyZone: (zone: number) => rpc<number>('buy_zone', { p_zone: zone }),
+  memoryCard: (seen: string[]) => rpc<MemoryCard | null>('memory_card', { p_seen: seen }),
+  devYard: (open: boolean) => rpc<void>('dev_yard', { p_open: open }),
+  devAllZones: () => rpc<void>('dev_all_zones'),
+  devSeeds: () => rpc<number>('dev_seeds'),
   deleteAccount: () => rpc<void>('delete_my_account'),
 
   async classify(text: string): Promise<{ category: Category; self_harm: boolean } | null> {

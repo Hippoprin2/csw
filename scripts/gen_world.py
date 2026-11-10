@@ -16,6 +16,19 @@ files.update(i['file'] for i in room['items'])
 files.update(garden['crops'].values())
 files.update(m['shop_thumbnails'].values())
 files.update(m['icons'].values())
+yard = m['spaces'].get('yard')
+yard_files = set()
+if yard:
+    for t in yard['tiles']: yard_files.update([t['file'], t['night_file']])
+    yard_files.update(l['file'] for l in yard['locks'].values())
+    for e in yard['items']:
+        yard_files.add(e['file'])
+        if e.get('night_file'): yard_files.add(e['night_file'])
+    yard_files.update(e['file'] for e in yard['bed_flowers'])
+    yard_files.update(e['file'] for e in yard['tree'])
+    yard_files.add(yard['fruit']['file'])
+    yard_files.update(e['file'] for e in yard['extras'].values())
+    files.update(yard_files)
 if dst.exists():
     shutil.rmtree(dst)
 for f in sorted(files):
@@ -56,4 +69,18 @@ for k, f in sorted(m['icons'].items()):
     L.append(f"  {k}: {req(f)},")
 L += ["};", ""]
 (ROOT / 'mobile/src/data/world.ts').write_text("\n".join(L))
+
+# 마당: 큰 캔버스 데이터(JSON 그대로) + 그림 파일 → require 표 (mobile/src/data/yard.ts)
+if yard:
+    Y = [f"// 자동 생성: {src.relative_to(ROOT)}/manifest.json spaces.yard → 수정하지 말고 다시 생성 (scripts/gen_world.py)",
+         "// 좌표 = 마당 큰 캔버스 px (README '마당' 절). 그림은 YARD_IMG[file]",
+         "import type { YardData } from './yardTypes';",
+         "",
+         f"export const YARD: YardData = {json.dumps(yard, ensure_ascii=False)};",
+         "",
+         "export const YARD_IMG: Record<string, number> = {"]
+    for f in sorted(yard_files):
+        Y.append(f"  '{f}': {req(f)},")
+    Y += ["};", ""]
+    (ROOT / 'mobile/src/data/yard.ts').write_text("\n".join(Y))
 print('ok', len(files), 'files')

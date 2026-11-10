@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { AppState } from 'react-native';
 
-import { api, type Crop, type Item, type JarSummary, type Owned, type Plot, type Profile, type Win } from '@/lib/api';
+import { api, type Crop, type Item, type JarSummary, type Owned, type Plot, type Profile, type Win, type YardState } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { addDays, kstToday } from '@/lib/dates';
 import { reschedule } from '@/lib/notifications';
@@ -15,6 +15,7 @@ export type Celebration = { key: number; kind: PetKind; line: string; itemId?: s
 // 처음에 불러오는 기록 = 최근 13주(주간 카드 12주 + 이번 주) + 지금 채우는 병. 더 지난 기록은 선반의 병을 열거나 검색으로
 const RECENT_DAYS = 13 * 7;
 const EMPTY_JARS: JarSummary = { current_jar: 1, total: 0, jars: [] };
+const EMPTY_YARD: YardState = { open: false, record_days: 0, zones: [], tester: false, dev_open: false };
 
 const DOZE_AFTER_MS = 3 * 86400000; // 3일 이상 안 들어오면 텃밭이 "졸고 있음"
 
@@ -27,6 +28,8 @@ type Ctx = {
   wins: Win[];
   jars: JarSummary;
   reloadJars: () => Promise<void>;
+  yard: YardState;
+  reloadYard: () => Promise<void>;
   balance: number;
   items: Item[];
   owned: Owned[];
@@ -69,6 +72,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [bag, setBag] = useState<Record<string, number>>({});
   const [unlocks, setUnlocks] = useState<string[]>([]);
   const [dozing, setDozing] = useState(false);
+  const [yard, setYard] = useState<YardState>(EMPTY_YARD);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -105,6 +109,10 @@ export function AppProvider({ children }: PropsWithChildren) {
     if (u.data) setUnlocks(u.data.map((r) => r.crop_id as string));
   }, []);
 
+  const reloadYard = useCallback(async () => {
+    setYard((await api.yardState()) ?? EMPTY_YARD);
+  }, []);
+
   const reloadJars = useCallback(async () => {
     setJars((await api.jarSummary()) ?? EMPTY_JARS);
   }, []);
@@ -127,13 +135,14 @@ export function AppProvider({ children }: PropsWithChildren) {
       supabase.from('crops').select('*').order('sort'),
       reloadRoom(),
       reloadGarden(),
+      reloadYard(),
     ]);
     if (p.data) setProfile(p.data as Profile);
     if (w.data) setWins(w.data as Win[]);
     setBalance(b);
     if (it.data) setItems(it.data as Item[]);
     if (cr.data) setCrops(cr.data as Crop[]);
-  }, [uid, reloadRoom, reloadGarden, loadWins]);
+  }, [uid, reloadRoom, reloadGarden, reloadYard, loadWins]);
 
   useEffect(() => {
     if (!authReady || !uid) return;
@@ -162,7 +171,8 @@ export function AppProvider({ children }: PropsWithChildren) {
     if (!uid || !winsCount) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 서버 데이터 비동기 로드
     reloadGarden().catch(() => {});
-  }, [uid, winsCount, reloadGarden]);
+    reloadYard().catch(() => {});
+  }, [uid, winsCount, reloadGarden, reloadYard]);
 
   const updateProfile = useCallback(async (patch: Partial<Profile>) => {
     if (!uid) return;
@@ -187,11 +197,11 @@ export function AppProvider({ children }: PropsWithChildren) {
   const mine = !!uid && loadedUid === uid;
   const value = useMemo<Ctx>(() => ({
     ready: authReady && (!uid || loadedUid === uid), session,
-    profile: mine ? profile : null, wins: mine ? wins : [], jars: mine ? jars : EMPTY_JARS, reloadJars, balance: mine ? balance : 0,
+    profile: mine ? profile : null, wins: mine ? wins : [], jars: mine ? jars : EMPTY_JARS, reloadJars, yard: mine ? yard : EMPTY_YARD, reloadYard, balance: mine ? balance : 0,
     items, owned: mine ? owned : [], crops, plots: mine ? plots : [], bag: mine ? bag : {},
     unlocks: mine ? unlocks : [], dozing: mine && dozing, wakeGarden, celebration,
     refresh, reloadRoom, reloadGarden, setWins, setBalance, updateProfile, signOut, celebrate,
-  }), [authReady, uid, loadedUid, mine, session, profile, wins, jars, reloadJars, balance, items, owned, crops, plots, bag, unlocks,
+  }), [authReady, uid, loadedUid, mine, session, profile, wins, jars, reloadJars, yard, reloadYard, balance, items, owned, crops, plots, bag, unlocks,
     dozing, wakeGarden, celebration, refresh, reloadRoom, reloadGarden, updateProfile, signOut, celebrate]);
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

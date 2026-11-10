@@ -27,8 +27,8 @@ def garden(T):
 T, uid = temp_user()
 try:
     req('POST', '/rest/v1/rpc/grant_onboarding_gift', {}, token=T)
-    s, items = req('GET', '/rest/v1/items?select=id,price,slot&order=sort', token=T)
-    check('소품 18개 · 합계 264', len(items) == 18 and sum(i['price'] for i in items) == 264, (len(items), sum(i['price'] for i in items)))
+    s, items = req('GET', '/rest/v1/items?select=id,price,slot&space=eq.room&order=sort', token=T)
+    check('방 소품 18개 · 합계 264', len(items) == 18 and sum(i['price'] for i in items) == 264, (len(items), sum(i['price'] for i in items)))
 
     # ── 방: 같은 자리 바꿔 끼우기 ──
     for _ in range(10): add_record_day(uid, today - dt.timedelta(days=30))  # 씨앗 30 추가 → 36

@@ -1,5 +1,5 @@
 // 자동 생성: design/character/export/v1/manifest.json → 수정하지 말고 다시 생성 (scripts/gen_pet_clips.py)
-export type ClipKey = 'idle' | 'tidy' | 'move' | 'study' | 'work' | 'eat' | 'care' | 'people' | 'cheer' | 'sit_in' | 'sit_loop' | 'sit_out' | 'eat_strawberry' | 'garden_idle' | 'garden_cheer';
+export type ClipKey = 'idle' | 'tidy' | 'move' | 'study' | 'work' | 'eat' | 'care' | 'people' | 'cheer' | 'sit_in' | 'sit_loop' | 'sit_out' | 'eat_strawberry' | 'garden_idle' | 'garden_cheer' | 'walk_front' | 'walk_side' | 'walk_back';
 export const PET_ASPECT = 800 / 600; // 높이 / 너비
 export const PET_CLIPS: Record<ClipKey, { source: number; durationMs: number; loop: boolean }> = {
   idle: { source: require('@/assets/pet/hippo_idle.webp'), durationMs: 2000, loop: true },
@@ -17,5 +17,8 @@ export const PET_CLIPS: Record<ClipKey, { source: number; durationMs: number; lo
   eat_strawberry: { source: require('@/assets/pet/hippo_eat_strawberry.webp'), durationMs: 2167, loop: false },
   garden_idle: { source: require('@/assets/pet/hippo_garden_idle.webp'), durationMs: 2000, loop: true },
   garden_cheer: { source: require('@/assets/pet/hippo_garden_cheer.webp'), durationMs: 1667, loop: false },
+  walk_front: { source: require('@/assets/pet/hippo_walk_front.webp'), durationMs: 2000, loop: true },
+  walk_side: { source: require('@/assets/pet/hippo_walk_side.webp'), durationMs: 2000, loop: true },
+  walk_back: { source: require('@/assets/pet/hippo_walk_back.webp'), durationMs: 2000, loop: true },
 };
 export const PET_POSTER = require('@/assets/pet/hippo_idle_poster.png');

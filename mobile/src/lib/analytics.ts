@@ -5,7 +5,8 @@ export type EventName =
   | 'app_open' | 'signed_in' | 'onboarding_done' | 'win_recorded' | 'win_edited' | 'win_deleted'
   | 'item_bought' | 'item_placed' | 'notif_prompt' | 'safety_shown' | 'export_done' | 'weekly_viewed'
   | 'planted' | 'harvested' | 'harvest_used' | 'garden_woke' | 'space_viewed'
-  | 'jar_sealed' | 'jar_viewed';
+  | 'jar_sealed' | 'jar_viewed'
+  | 'yard_zone_bought' | 'memory_fruit';
 
 export function track(name: EventName, props: Record<string, string | number | boolean> = {}) {
   supabase.auth.getSession().then(({ data }) => {
