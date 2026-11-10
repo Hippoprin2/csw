@@ -305,7 +305,11 @@ function tap(x, y) {
     const key = ITEM_ACT[it.id] || it.id, v = Y.walk.interact[key];
     if (v) { const a = { id: key, ...v }; goTo(a.enter || a.stand, a); return; }   // item with an action: walk there and do it
     const fb = Y.walk.item_blocked[it.id];                                        // no action: walk up to its front edge
-    if (fb) { const b = fb.reduce((m, q) => q[1] > m[1] ? q : m); goTo([b[0], b[1] + 40]); return; }
+    if (fb) {                                   // stand beside it (not in front, the pet would hide it), the side nearer the pet
+      const L = fb.reduce((m, q) => q[0] < m[0] ? q : m), Rr = fb.reduce((m, q) => q[0] > m[0] ? q : m);
+      const opts = [[L[0] - 90, L[1] + 10], [Rr[0] + 90, Rr[1] + 10]].filter(p => walkable(...p)).sort((a, b) => Math.hypot(a[0] - pet.x, a[1] - pet.y) - Math.hypot(b[0] - pet.x, b[1] - pet.y));
+      const b = fb.reduce((m, q) => q[1] > m[1] ? q : m); goTo(opts[0] || [b[0], b[1] + 40]); return;
+    }
   }
   if (inPoly(x, y, Y.walk.blocked.pond)) { const a = { id: "pond", ...Y.walk.interact.pond }; goTo(a.enter, a); return; }
   goTo([x, y]);

@@ -65,7 +65,7 @@ def ground(X, Y, z=FLOOR):
 TREE_PX = (215, 790)
 POND_PX = (700, 1095); POND_R = (0.55, 0.36)
 SPOT_PX = {
-    "mailbox": (300, 585), "tent": (770, 640), "bench": (480, 860), "bird_feeder": (960, 900),
+    "mailbox": (720, 1745), "tent": (770, 640), "bench": (480, 860), "bird_feeder": (960, 900),
     "hammock": (250, 1180), "picnic_mat": (430, 1440), "flower_bed": (790, 1470), "garden_lamp": (110, 1560),
     "pinwheel": (1000, 1290),
 }
