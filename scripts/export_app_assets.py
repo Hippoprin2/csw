@@ -27,6 +27,23 @@ CLIPS = {
     "walk_front":     ("walk_front25", True),
     "walk_side":      ("walk_side25", True),
     "walk_back":      ("walk_back25", True),
+    # 마당 아이템 동작 25도 (anim_yard.py, 2026-11-11). 클립 원점(발 303,697) = manifest yard_actions의 stand 점
+    "sit_bench_in":        ("sit_bench_in25", False),
+    "sit_bench_loop":      ("sit_bench_loop25", True),
+    "sit_bench_out":       ("sit_bench_out25", False),
+    "sit_eat_in":          ("sit_eat_in25", False),
+    "sit_eat_loop":        ("sit_eat_loop25", True),
+    "sit_eat_strawberry":  ("sit_eat_strawberry25", False),
+    "sit_eat_sweetpotato": ("sit_eat_sweetpotato25", False),
+    "sit_eat_out":         ("sit_eat_out25", False),
+    "lie_in":              ("lie_in25", False),
+    "lie_loop":            ("lie_loop25", True),
+    "lie_out":             ("lie_out25", False),
+    "splash_in":           ("splash_in25", False),
+    "splash_loop":         ("splash_loop25", True),
+    "splash_out":          ("splash_out25", False),
+    "sniff":               ("sniff25", False),
+    "show_fruit":          ("show_fruit25", False),
 }
 os.makedirs(OUT, exist_ok=True)
 manifest = {"version": 1, "fps": FPS, "width": 600, "height": 800, "background": "transparent",
@@ -59,6 +76,27 @@ manifest["walk"] = {
             "ground distance = hypot(dx, dy / depth_factor); move so that ground distance grows by speed_px_s per second "
             "(pure horizontal = 360 px/s, pure vertical = 153 px/s). Clip: |dx| >= |dy / depth_factor| -> side (mirror when dx < 0), "
             "else dy > 0 -> front, dy < 0 -> back. Feet = same floor point as the garden clips (303, 697)." % (),
+}
+# yard item actions: where to place the clip (its feet point = (303, 697)) and how to chain the parts
+manifest["yard_actions"] = {
+    "note": "Draw the clip with its feet point on `stand` (yard canvas px). Holdouts are baked in: where the item is in front of the pet "
+            "the clip is transparent, so draw the item sprite first and the pet clip on top (bench, hammock, flower bed, pond water). "
+            "Shadow under the pet is baked in and switches off while it sits on the bench / lies in the hammock / stands in the water. "
+            "Seated/lying parts: play *_in once, repeat *_loop for 5-10 s, then *_out once (in ends where loop starts, loop ends where out starts).",
+    "sit_bench": {"parts": ["sit_bench_in", "sit_bench_loop", "sit_bench_out"], "stand": [437.7, 911.6],
+                  "stand_note": "NEW stand: 0.30 world units in front of the seat (world manifest bench stand 477.4,863.2 is ON the seat). "
+                                "The pet walks to the front of the bench and the clip hops it up; it then sorts in front of the bench."},
+    "sit_eat": {"parts": ["sit_eat_in", "sit_eat_loop", "sit_eat_out"], "stand": [392.2, 1434.4],
+                "eat": ["sit_eat_strawberry", "sit_eat_sweetpotato"],
+                "eat_note": "feeding (Y5): while seated, play one eat clip once (starts/ends on the sit_eat_loop pose), then back to the loop"},
+    "lie": {"parts": ["lie_in", "lie_loop", "lie_out"], "stand": [207.7, 1231.6],
+            "stand_note": "NEW stand: 0.32 world units in front of the hammock centre (world manifest stand 250,1180 is the cloth centre)."},
+    "splash": {"parts": ["splash_in", "splash_loop", "splash_out"], "stand": [681.1, 1092.2], "enter": [429.1, 1063.6],
+               "note": "splash_in: move the clip from enter to stand during frames 4-15 (the hop); splash_out: stand -> enter during frames 8-19. "
+                       "Lower body is already cut at the waterline: do NOT draw extras.pond_water over the pet (it would also cover the torso where it overlaps the far half of the pond)."},
+    "sniff": {"parts": ["sniff"], "stand": [845.5, 1402.3], "note": "one-shot, idle -> idle (behind the bed, flowers cover the feet)"},
+    "show_fruit": {"parts": ["show_fruit"], "stand": [288.6, 855.3],
+                   "note": "one-shot: starts facing the tree (back view), points at the fruit, turns to the camera, ends on idle"},
 }
 json.dump(manifest, open(f"{OUT}/manifest.json", "w"), ensure_ascii=False, indent=2)
 print("TOTAL webp KB", total)

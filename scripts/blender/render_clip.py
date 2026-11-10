@@ -43,6 +43,12 @@ for o in [o for o in bpy.data.objects if o.type in ("LIGHT", "CAMERA") or o.name
 for n, rot, en in (("key", (50, 0, 30), 3.0), ("fill", (60, 0, -120), 1.2), ("rim", (110, 0, 180), 2.0), ("bounce", (150, 0, 0), 0.7)):
     d = bpy.data.lights.new(n, "SUN"); d.energy = en
     o = bpy.data.objects.new(n, d); s.collection.objects.link(o); o.rotation_euler = [math.radians(x) for x in rot]
+# yard item reference geometry (anim_yard.py): holdouts cut the pet where the item is in front of it; the rest is hidden
+for o in bpy.data.objects:
+    if o.get("yard_ref") and not os.environ.get("YARD_SHOW"):   # YARD_SHOW=1: preview with the item visible
+        if hasattr(o, "visible_shadow"): o.visible_shadow = False
+        if o.get("holdout"): o.is_holdout = True
+        else: o.hide_render = True
 cd = bpy.data.cameras.new("cam"); cd.type = "ORTHO"; cd.ortho_scale = 1.45
 c = bpy.data.objects.new("cam", cd); s.collection.objects.link(c); s.camera = c
 t = Vector((0, 0, 0.07))
@@ -112,7 +118,11 @@ if "noshadow" not in flags:
         kx = k * (1.0 - 1.5 * sit)
         sh.scale = (BASE[0] * kx, BASE[1] * k, 1)
         sh.keyframe_insert("scale", frame=f)
-        strength.outputs[0].default_value = 0.55 * (0.35 + 0.65 * k) * (1.0 - 1.2 * sit)
+        if rig and "shadow" in rig.keys():   # yard clips key the shadow off while on a bench/hammock/in the water
+            k = max(0.5, k); sit = 0.0; kx = k
+            sh.scale = (BASE[0] * kx, BASE[1] * k, 1); sh.keyframe_insert("scale", frame=f)
+        mulv = float(rig["shadow"]) if rig and "shadow" in rig.keys() else 1.0
+        strength.outputs[0].default_value = 0.55 * (0.35 + 0.65 * k) * (1.0 - 1.2 * sit) * mulv
         strength.outputs[0].keyframe_insert("default_value", frame=f)
 
 os.makedirs(out, exist_ok=True)

@@ -149,6 +149,134 @@
       "duration_ms": 2000,
       "loop": true,
       "source_clip": "walk_back25"
+    },
+    "sit_bench_in": {
+      "file": "hippo_sit_bench_in.webp",
+      "poster": "hippo_sit_bench_in_poster.png",
+      "frames": 30,
+      "duration_ms": 1250,
+      "loop": false,
+      "source_clip": "sit_bench_in25"
+    },
+    "sit_bench_loop": {
+      "file": "hippo_sit_bench_loop.webp",
+      "poster": "hippo_sit_bench_loop_poster.png",
+      "frames": 96,
+      "duration_ms": 4000,
+      "loop": true,
+      "source_clip": "sit_bench_loop25"
+    },
+    "sit_bench_out": {
+      "file": "hippo_sit_bench_out.webp",
+      "poster": "hippo_sit_bench_out_poster.png",
+      "frames": 26,
+      "duration_ms": 1083,
+      "loop": false,
+      "source_clip": "sit_bench_out25"
+    },
+    "sit_eat_in": {
+      "file": "hippo_sit_eat_in.webp",
+      "poster": "hippo_sit_eat_in_poster.png",
+      "frames": 24,
+      "duration_ms": 1000,
+      "loop": false,
+      "source_clip": "sit_eat_in25"
+    },
+    "sit_eat_loop": {
+      "file": "hippo_sit_eat_loop.webp",
+      "poster": "hippo_sit_eat_loop_poster.png",
+      "frames": 96,
+      "duration_ms": 4000,
+      "loop": true,
+      "source_clip": "sit_eat_loop25"
+    },
+    "sit_eat_strawberry": {
+      "file": "hippo_sit_eat_strawberry.webp",
+      "poster": "hippo_sit_eat_strawberry_poster.png",
+      "frames": 56,
+      "duration_ms": 2333,
+      "loop": false,
+      "source_clip": "sit_eat_strawberry25"
+    },
+    "sit_eat_sweetpotato": {
+      "file": "hippo_sit_eat_sweetpotato.webp",
+      "poster": "hippo_sit_eat_sweetpotato_poster.png",
+      "frames": 56,
+      "duration_ms": 2333,
+      "loop": false,
+      "source_clip": "sit_eat_sweetpotato25"
+    },
+    "sit_eat_out": {
+      "file": "hippo_sit_eat_out.webp",
+      "poster": "hippo_sit_eat_out_poster.png",
+      "frames": 20,
+      "duration_ms": 833,
+      "loop": false,
+      "source_clip": "sit_eat_out25"
+    },
+    "lie_in": {
+      "file": "hippo_lie_in.webp",
+      "poster": "hippo_lie_in_poster.png",
+      "frames": 40,
+      "duration_ms": 1667,
+      "loop": false,
+      "source_clip": "lie_in25"
+    },
+    "lie_loop": {
+      "file": "hippo_lie_loop.webp",
+      "poster": "hippo_lie_loop_poster.png",
+      "frames": 96,
+      "duration_ms": 4000,
+      "loop": true,
+      "source_clip": "lie_loop25"
+    },
+    "lie_out": {
+      "file": "hippo_lie_out.webp",
+      "poster": "hippo_lie_out_poster.png",
+      "frames": 36,
+      "duration_ms": 1500,
+      "loop": false,
+      "source_clip": "lie_out25"
+    },
+    "splash_in": {
+      "file": "hippo_splash_in.webp",
+      "poster": "hippo_splash_in_poster.png",
+      "frames": 32,
+      "duration_ms": 1333,
+      "loop": false,
+      "source_clip": "splash_in25"
+    },
+    "splash_loop": {
+      "file": "hippo_splash_loop.webp",
+      "poster": "hippo_splash_loop_poster.png",
+      "frames": 48,
+      "duration_ms": 2000,
+      "loop": true,
+      "source_clip": "splash_loop25"
+    },
+    "splash_out": {
+      "file": "hippo_splash_out.webp",
+      "poster": "hippo_splash_out_poster.png",
+      "frames": 32,
+      "duration_ms": 1333,
+      "loop": false,
+      "source_clip": "splash_out25"
+    },
+    "sniff": {
+      "file": "hippo_sniff.webp",
+      "poster": "hippo_sniff_poster.png",
+      "frames": 72,
+      "duration_ms": 3000,
+      "loop": false,
+      "source_clip": "sniff25"
+    },
+    "show_fruit": {
+      "file": "hippo_show_fruit.webp",
+      "poster": "hippo_show_fruit_poster.png",
+      "frames": 84,
+      "duration_ms": 3500,
+      "loop": false,
+      "source_clip": "show_fruit25"
     }
   },
   "walk": {
@@ -163,5 +291,84 @@
     "depth_factor": 0.426,
     "speed_note": "speed_px_s = 0.9 unit/s x 400 px (대표 결정 2026-11-11, felt on the web test page). The clip's stride matches 0.42 unit/s (no_slide_px_s), so the feet glide a little at 0.9 - accepted.",
     "note": "speed in yard/garden canvas px at pet w=435. Screen-down/up movement is foreshortened by the 25 deg camera: ground distance = hypot(dx, dy / depth_factor); move so that ground distance grows by speed_px_s per second (pure horizontal = 360 px/s, pure vertical = 153 px/s). Clip: |dx| >= |dy / depth_factor| -> side (mirror when dx < 0), else dy > 0 -> front, dy < 0 -> back. Feet = same floor point as the garden clips (303, 697)."
+  },
+  "yard_actions": {
+    "note": "Draw the clip with its feet point on `stand` (yard canvas px). Holdouts are baked in: where the item is in front of the pet the clip is transparent, so draw the item sprite first and the pet clip on top (bench, hammock, flower bed, pond water). Shadow under the pet is baked in and switches off while it sits on the bench / lies in the hammock / stands in the water. Seated/lying parts: play *_in once, repeat *_loop for 5-10 s, then *_out once (in ends where loop starts, loop ends where out starts).",
+    "sit_bench": {
+      "parts": [
+        "sit_bench_in",
+        "sit_bench_loop",
+        "sit_bench_out"
+      ],
+      "stand": [
+        437.7,
+        911.6
+      ],
+      "stand_note": "NEW stand: 0.30 world units in front of the seat (world manifest bench stand 477.4,863.2 is ON the seat). The pet walks to the front of the bench and the clip hops it up; it then sorts in front of the bench."
+    },
+    "sit_eat": {
+      "parts": [
+        "sit_eat_in",
+        "sit_eat_loop",
+        "sit_eat_out"
+      ],
+      "stand": [
+        392.2,
+        1434.4
+      ],
+      "eat": [
+        "sit_eat_strawberry",
+        "sit_eat_sweetpotato"
+      ],
+      "eat_note": "feeding (Y5): while seated, play one eat clip once (starts/ends on the sit_eat_loop pose), then back to the loop"
+    },
+    "lie": {
+      "parts": [
+        "lie_in",
+        "lie_loop",
+        "lie_out"
+      ],
+      "stand": [
+        207.7,
+        1231.6
+      ],
+      "stand_note": "NEW stand: 0.32 world units in front of the hammock centre (world manifest stand 250,1180 is the cloth centre)."
+    },
+    "splash": {
+      "parts": [
+        "splash_in",
+        "splash_loop",
+        "splash_out"
+      ],
+      "stand": [
+        681.1,
+        1092.2
+      ],
+      "enter": [
+        429.1,
+        1063.6
+      ],
+      "note": "splash_in: move the clip from enter to stand during frames 4-15 (the hop); splash_out: stand -> enter during frames 8-19. Lower body is already cut at the waterline: do NOT draw extras.pond_water over the pet (it would also cover the torso where it overlaps the far half of the pond)."
+    },
+    "sniff": {
+      "parts": [
+        "sniff"
+      ],
+      "stand": [
+        845.5,
+        1402.3
+      ],
+      "note": "one-shot, idle -> idle (behind the bed, flowers cover the feet)"
+    },
+    "show_fruit": {
+      "parts": [
+        "show_fruit"
+      ],
+      "stand": [
+        288.6,
+        855.3
+      ],
+      "note": "one-shot: starts facing the tree (back view), points at the fruit, turns to the camera, ends on idle"
+    }
   }
 }

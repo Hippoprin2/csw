@@ -14,6 +14,7 @@
 - 방 '먹이기': `eat`(군고구마), `eat_strawberry`(딸기). 꽃 '선물하기'는 `care` 재사용(WORLD.md)
 - 텃밭(카메라 25°, WORLD.md W2): `garden_idle`(반복), `garden_cheer`(수확 만세, 한 번). 방 클립(6.5°)과 섞어 쓰지 말 것. 25°에서는 색종이 시작 위치를 머리 위로 올려 렌더함
 - 마당·텃밭 걷기(25°, 2026-11-11): `walk_front`(아래로), `walk_back`(위로), `walk_side`(오른쪽, 왼쪽은 좌우 뒤집어 그림) — 모두 반복. 제자리 걷기라 위치는 앱이 옮긴다. 발 기준점은 텃밭 클립과 같다(303, 697). 발이 미끄러지지 않는 속도와 방향 고르는 법은 manifest `walk` 참고(대표 결정 0.9단위/초 = 가로 360px/s, 세로 153px/s, 단짝 w=435 기준. 클립 보폭 기준 속도는 0.42라 발이 조금 미끄러짐 — 감수하기로 함)
+- 마당 아이템 동작(25°, 2026-11-11): 벤치 `sit_bench_in`/`_loop`/`_out`, 피크닉 매트 `sit_eat_in`/`_loop`/`_out` + 먹기 `sit_eat_strawberry`·`sit_eat_sweetpotato`(앉은 채 한 번, 앞뒤가 `sit_eat_loop` 자세), 해먹 `lie_in`/`_loop`/`_out`, 연못 `splash_in`/`_loop`/`_out`, 화단 `sniff`, 추억 나무 `show_fruit`(한 번씩). `_loop`는 4초(물장구 2초) 반복이라 5~10초 동안 돌린 뒤 `_out`. **클립의 발 점(303,697)을 manifest `yard_actions`의 `stand`에 맞춘다** — 벤치·해먹은 앞에 서는 새 stand(공간 manifest의 stand는 의자 위/천 가운데라 다름). 아이템이 하마 앞을 가리는 부분은 클립에서 이미 뚫려 있으니(홀드아웃) 아이템 그림을 먼저, 하마를 그 위에 그린다. 물장구 아랫몸도 물 높이에서 잘려 있음. 그림자는 의자 위·해먹·물속에서 꺼짐. 물장구 들어가기/나오기는 앱이 enter↔stand로 옮겨 줌(프레임 4~15 / 8~19)
 - `work`는 새 카테고리다. '공부·일'을 공부(study)와 업무(work)로 나눴다(STATUS.md 결정 사항). 분류 로직과 문구 추가가 필요하다.
 
 ## 바닥 그림자 (2026-11-10)
@@ -28,6 +29,6 @@
 - 실기기에서 확인할 것: expo-image의 움직이는 WebP 재생, 메모리 사용량, 저가 안드로이드 성능.
 
 ## 다시 만들기
-- 25° 마당 동작: `scripts/blender/anim_yard.py <rig_dir> <action>` → `render_clip.py <out> 0.5` (걷기 보폭·속도 측정 `measure_stride.py`)
+- 25° 마당 동작: `scripts/blender/anim_yard.py <rig_dir> <action>` → `render_clip.py <out> 0.5` (걷기 보폭·속도 측정 `measure_stride.py`). 아이템 동작 16개 한 번에: `scripts/blender/render_yard_actions.sh [action…]` (아이템은 yard.py로 같이 만들어 홀드아웃으로만 씀, 확인용으로 아이템 보이게 렌더 = `YARD_SHOW=1`)
 - 동작 수정: `scripts/blender/anim_actions.py`(idle은 `rig_idle.py`, cheer는 `anim_cheer.py`)로 .blend 저장 → 최종 렌더는 전부 `scripts/blender/rerender_all.sh`(render_clip.py: 공통 조명·카메라 + 바닥 그림자, 책상은 카메라 보간)
 - 내보내기: `python scripts/export_app_assets.py` (Pillow 필요)
