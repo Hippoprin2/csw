@@ -95,9 +95,10 @@ export function RoomPage() {
     // 카테고리를 직접 고르지 않았으면 서버 LLM으로 보정 (실패하면 키워드 결과)
     const llm = await api.classify(t);
     const userPicked = !!chosen && !raw;
-    const category: Category = userPicked ? chosen! : (llm?.category ?? classifyByKeyword(t));
-    const source = userPicked ? 'user' : llm ? 'llm' : 'auto';
     const unsafe = kwSafety || !!llm?.self_harm; // 둘 중 하나라도 걸리면 안내 (안전한 쪽으로)
+    // 자해 표현이 감지되면 '나 돌보기' 같은 분류로 남지 않게 항상 '버틴 하루'로 저장 (사용자가 고른 분류보다 우선)
+    const category: Category = unsafe ? 'endure' : userPicked ? chosen! : (llm?.category ?? classifyByKeyword(t));
+    const source = unsafe ? 'auto' : userPicked ? 'user' : llm ? 'llm' : 'auto';
     try {
       const winDate = day === 'today' ? today : kstYesterday();
       const r = await api.recordWin(t, category, source, winDate);

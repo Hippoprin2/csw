@@ -1,8 +1,9 @@
-// 공통 동작 8종 (docs/GAME_DESIGN.md, 2026-11-08 '공부·일' → 공부/업무 분리). 한마디는 카테고리별 템플릿 (FEATURES D2=A).
-export type Category = 'tidy' | 'move' | 'study' | 'work' | 'eat' | 'care' | 'people' | 'cheer';
+// 공통 동작 8종 + '버틴 하루'(endure: 힘든 마음을 털어놓은 기록 → 축하 대신 곁에 잠깐 앉기, 2026-11-10 대표 결정) (docs/GAME_DESIGN.md, 2026-11-08 '공부·일' → 공부/업무 분리). 한마디는 카테고리별 템플릿 (FEATURES D2=A).
+export type Category = 'tidy' | 'move' | 'study' | 'work' | 'eat' | 'care' | 'people' | 'cheer' | 'endure';
 
 // 키워드 분류는 이 순서로 먼저 맞는 것을 고른다 (업무를 공부보다 먼저: '업무 관련 책 읽기' → 업무)
-export const CATEGORY_ORDER: Category[] = ['tidy', 'move', 'work', 'study', 'eat', 'care', 'people', 'cheer'];
+// endure는 마지막: '힘들었지만 운동했다'는 운동(해낸 일)으로
+export const CATEGORY_ORDER: Category[] = ['tidy', 'move', 'work', 'study', 'eat', 'care', 'people', 'endure', 'cheer'];
 
 export const CATS: Record<Category, { name: string; prop: string; color: string; kw: string[]; say: string[] }> = {
   tidy: {
@@ -44,6 +45,11 @@ export const CATS: Record<Category, { name: string; prop: string; color: string;
     name: '그 밖의 승리', prop: '🎉', color: '#b6d7a8',
     kw: [],
     say: ['해냈다! 축하해', '작은 승리도 승리야', '오늘의 너, 칭찬해', '만세! 정말 잘했어', '이것도 분명한 한 걸음이야', '네가 해낸 거 다 기억할게'],
+  },
+  endure: {
+    name: '버틴 하루', prop: '🌙', color: '#c3c8d6',
+    kw: ['힘들', '힘드', '지쳤', '지친', '지쳐', '우울', '망했', '괴로', '속상', '슬퍼', '슬프', '외로', '외롭', '불안', '버거', '울었', '눈물', '무기력', '아무것도 못', '아무것도 안', '최악', '짜증'],
+    say: ['힘든 날이구나. 여기 와서 적어준 것만으로 충분해', '오늘은 버틴 것만으로 잘한 거야', '말해줘서 고마워. 내가 옆에 있을게', '천천히 해도 괜찮아', '그런 날도 있어. 오늘도 여기 와줬네', '같이 잠깐 앉아 있자'],
   },
 };
 

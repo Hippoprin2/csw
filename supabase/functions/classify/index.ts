@@ -1,6 +1,6 @@
-// 기록 분류(8종) + 자해 표현 2차 판정. 키워드 결과를 보정하는 용도라 실패해도 앱은 키워드 결과로 동작한다.
+// 기록 분류(8종 + 버틴 하루) + 자해 표현 2차 판정. 키워드 결과를 보정하는 용도라 실패해도 앱은 키워드 결과로 동작한다.
 // 본문만 보내고 사용자 식별자는 OpenAI로 보내지 않는다. 본문은 저장·로그하지 않는다.
-const CATEGORIES = ["tidy", "move", "study", "work", "eat", "care", "people", "cheer"] as const;
+const CATEGORIES = ["tidy", "move", "study", "work", "eat", "care", "people", "cheer", "endure"] as const;
 const MODEL = Deno.env.get("CLASSIFY_MODEL") ?? "gpt-5.4-nano";
 
 const INSTRUCTIONS = `너는 작은 성취 기록 앱의 분류기다. 사용자가 오늘 해낸 일 한 줄을 주면 JSON으로만 답한다.
@@ -12,10 +12,12 @@ category (하나만):
 - eat: 밥·요리·물 마시기 등 잘 먹기
 - care: 씻기·잠·약·휴식·병원·명상 등 나 돌보기
 - people: 연락·가족·친구·감사·선물 등 사람·마음
-- cheer: 위에 안 맞는 그 밖의 모든 승리
+- cheer: 위에 안 맞는 그 밖의 모든 승리 (해낸 일)
+- endure: 해낸 일이 아니라 힘든 마음·감정을 털어놓은 말 ("힘들다", "지쳤어", "우울해", "오늘 망했어", "아무것도 못 했어"). 해낸 일이 함께 있으면 감정보다 그 일의 분류가 먼저 ("힘들었지만 운동했다" → move, "힘들어서 일찍 잤다" → care, "우울했는데 설거지는 했다" → tidy)
 self_harm: 글쓴이가 자해·자살 생각, 계획, 시도, 또는 "살기 싫다/사라지고 싶다" 같은 마음을 드러내면 true.
 자살 수단·장소를 떠올리는 말(옥상·다리에 가고 싶다, 약을 모은다 등), 이미 한 자해(칼로 그었다, 상처 냈다), 약을 한꺼번에·많이 먹었다는 말, "나 없어도 된다/사라지고 싶다" 같은 말도 true.
-"죽을 만큼 맛있었다", "피곤해 죽겠다", "웃겨 죽는 줄" 같은 과장 표현은 false. 애매하면 true.`;
+"죽을 만큼 맛있었다", "피곤해 죽겠다", "웃겨 죽는 줄", "죽어라 공부했다", "배고파 죽을 뻔했다"처럼 해낸 일을 강조하는 과장 표현, "책에 밑줄 그었다/선을 그었다/줄을 그었다"처럼 몸이 아닌 것에 그은 말은 false. 애매하면 true.
+self_harm이 true면 category는 반드시 endure.`;
 
 const schema = {
   type: "object",
@@ -82,7 +84,8 @@ Deno.serve(async (req) => {
     const out = data.output?.find((o: { type: string }) => o.type === "message")?.content?.[0]?.text;
     const parsed = JSON.parse(out);
     if (!CATEGORIES.includes(parsed.category)) throw new Error("bad category");
-    return json({ category: parsed.category, self_harm: !!parsed.self_harm });
+    const selfHarm = !!parsed.self_harm;
+    return json({ category: selfHarm ? "endure" : parsed.category, self_harm: selfHarm });
   } catch (e) {
     return json({ error: "failed", detail: String(e).slice(0, 80) }, 502);
   } finally {
