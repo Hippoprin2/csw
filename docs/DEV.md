@@ -18,6 +18,8 @@
 - `(tabs)/shop` 꾸미기: 소품 18개(임시), 구매 → 방에 배치 + 펫 축하
 - `(tabs)/settings` 펫 이름, 알림 on/off·시간, 텍스트 내보내기, 모든 기록 지우기(2단계), 도움받을 수 있는 곳, 처리방침·약관·문의(URL은 env), 로그아웃, 계정 삭제(2단계)
 - 단짝: `mobile/src/ui/Pet.tsx` — 캐릭터 스레드의 움직이는 WebP(`design/character/export/v1`) 재생. 대기는 항상 깔고 동작은 위에 겹쳐 duration_ms 타이머로 걷어냄, 동작 첫 프레임이 뜬 뒤(onLoad/onDisplay)에만 대기를 숨김. sit = sit_in → sit_loop 9초 → sit_out. 에셋 갱신: `python3 scripts/gen_pet_clips.py` (mobile/assets/pet 복사 + src/data/petClips.ts 생성). 웹: 동작 이미지를 opacity 0으로 숨기면 lazy 로딩이 안 끝남 → 숨기지 말 것
+  - 2026-11-10 버그 수정(Expo Go에서 동작이 늦게·짧게·아예 안 나옴): 원인 = duration 타이머를 동작 이미지 마운트 시점부터 쟀음 + `cachePolicy="none"`이라 매번 1MB WebP를 다시 받고 디코딩(Expo Go는 require 에셋을 Metro에서 HTTP로 받음). 로딩 시간만큼 잘리고, duration보다 길면 안 보인 채 걷힘. 수정 = 타이머는 첫 프레임 표시(onDisplay/onLoad) 뒤부터(+150ms 여유), 5초 안에 안 뜨면 그 단계 건너뜀, `cachePolicy="disk"`(memory는 재생 위치 공유 위험), 앱 시작 때 클립 전부 `Image.prefetch(…, 'disk')`(네이티브만)
+  - 남은 지연: 기록 → 동작 시작까지 분류 LLM 1.1~1.8초(콜드 스타트면 더, 5초 타임아웃) + record_win 0.2~0.5초. 동작을 분류 직후(저장과 병렬)로 당기는 건 대표 결정 대기
 
 ## 서버 규칙 (전부 DB 함수에서 강제, 클라이언트는 wins/seed_ledger 직접 insert 불가)
 - `record_win`: 오늘/어제(KST)만, 1~100자, 하루 50개 상한(남용 방지), 하루 10개까지 씨앗 3개, 첫 기록 여부 반환
