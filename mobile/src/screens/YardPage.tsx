@@ -8,8 +8,8 @@ import { C } from '@/ui/theme';
 export const YARD_UNLOCK = 10;
 
 export function YardPage() {
-  const { wins } = useApp();
-  const open = wins.length >= YARD_UNLOCK;
+  const { jars } = useApp();
+  const open = jars.total >= YARD_UNLOCK;
   const { gardenSize } = useSpaceSize();
   return (
     <View style={st.wrap}>

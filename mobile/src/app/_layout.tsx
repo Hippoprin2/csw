@@ -35,6 +35,8 @@ function Gate() {
       <Stack.Protected guard={signedIn && onboarded}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="help" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="jar/[no]" />
+        <Stack.Screen name="jar/search" />
       </Stack.Protected>
     </Stack>
   );

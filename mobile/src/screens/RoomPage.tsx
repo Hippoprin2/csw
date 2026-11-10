@@ -7,7 +7,6 @@ import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput,
 import { CANVAS, ICONS, ROOM } from '@/data/world';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
-import { JAR_SIZE, justSealed } from '@/lib/jars';
 import { CATEGORY_ORDER, CATS, CHIPS, SAFETY_LINE, classifyByKeyword, pickLine, type Category } from '@/lib/categories';
 import { kstToday, kstYesterday } from '@/lib/dates';
 import { askPermission } from '@/lib/notifications';
@@ -32,7 +31,7 @@ const store = {
 
 // 방 = 홈. 기록 입력창·축하 8종·곁에 앉기·먹이기/선물하기는 방에서만 (STATUS 2026-11-09 결정)
 export function RoomPage() {
-  const { profile, wins, setWins, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
+  const { profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
   const { roomSize } = useSpaceSize();
   const sc = roomSize / CANVAS;
@@ -104,6 +103,7 @@ export function RoomPage() {
       const winDate = day === 'today' ? today : kstYesterday();
       const r = await api.recordWin(t, category, source, winDate);
       setWins((ws) => [r.win, ...ws]);
+      reloadJars().catch(() => {});
       setBalance(r.balance);
       setText(''); setChosen(null); setPicking(false); setDay('today');
       track('win_recorded', { category, source, first: r.first, yesterday: day === 'yesterday', earned: r.earned });
@@ -119,10 +119,9 @@ export function RoomPage() {
         track('safety_shown', { repeat: shownToday });
       } else {
         setAction({ kind: category, key: Date.now() });
-        const total = wins.length + 1;
-        if (justSealed(total)) {
+        if (r.sealed) {
           say('유리병이 꽉 찼어! 뚜껑 닫아서 선반에 올려둘게. 새 병 시작이야', 6000);
-          track('jar_sealed', { no: total / JAR_SIZE });
+          track('jar_sealed', { no: r.win.jar_no });
         } else say(r.first ? '첫 구슬이 유리병에 들어갔어!' : pickLine(category));
       }
       if (r.earned) {

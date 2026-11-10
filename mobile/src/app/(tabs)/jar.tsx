@@ -1,61 +1,33 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { api, friendlyError, type Win } from '@/lib/api';
+import type { JarInfo, Win } from '@/lib/api';
 import { track } from '@/lib/analytics';
-import { CATEGORY_ORDER, CATS, type Category } from '@/lib/categories';
+import { CATEGORY_ORDER, CATS } from '@/lib/categories';
 import { addDays, formatDay, kstToday, weekStart } from '@/lib/dates';
-import { splitJars, type GlassJar } from '@/lib/jars';
+import { jarMarbles, shelfByYear } from '@/lib/jars';
 import { useApp } from '@/state/app';
-import { Btn, Card, H, Sub } from '@/ui/kit';
-import { Confirm, Sheet, st as sheetSt } from '@/ui/Sheet';
+import { Card, H, Sub } from '@/ui/kit';
+import { WinList } from '@/ui/WinList';
 import { C, R } from '@/ui/theme';
 
-const COLLAPSE_OVER = 6; // 하루 기록이 많으면 접어서 표시
+const RECENT_LIST_DAYS = 14; // 유리병 화면 목록은 최근 2주만. 그 전은 선반의 병을 열거나 찾기 (FEATURES C6 J1-A)
 
-type Row = { key: string; text: string; category: Category; count: number; latest: Win };
-
-// 같은 날 같은 내용은 한 줄로 묶기 ("물 마셨다 ×4")
-function groupDay(ws: Win[]): Row[] {
-  const m = new Map<string, Row>();
-  for (const w of ws) {
-    const key = w.text.trim();
-    const r = m.get(key);
-    if (r) r.count++;
-    else m.set(key, { key: w.id, text: key, category: w.category, count: 1, latest: w });
-  }
-  return [...m.values()];
-}
-
-// 선반 위 닫힌 병 (뚜껑 + 구슬 색 띠)
-function ShelfJar({ jar, onPress }: { jar: GlassJar; onPress: () => void }) {
+// 선반 위 닫힌 병 (뚜껑 + 구슬 색)
+function ShelfJar({ jar }: { jar: JarInfo }) {
   return (
-    <Pressable onPress={onPress} style={st.shelfItem} accessibilityRole="button" accessibilityLabel={`${jar.no}번째 병, 구슬 ${jar.wins.length}개, 눌러서 보기`}>
+    <Pressable
+      onPress={() => { track('jar_viewed', { no: jar.no }); router.push(`/jar/${jar.no}`); }}
+      style={st.shelfItem} accessibilityRole="button" accessibilityLabel={`${jar.no}번째 병, 구슬 ${jar.count}개, 눌러서 열기`}
+    >
       <View style={st.lid} />
       <View style={st.miniJar}>
-        {jar.wins.map((w) => <View key={w.id} style={[st.miniMarble, { backgroundColor: CATS[w.category].color }]} />)}
+        {jarMarbles(jar).map((c, i) => <View key={i} style={[st.miniMarble, { backgroundColor: CATS[c].color }]} />)}
       </View>
       <Text style={st.shelfLabel}>{jar.no}번째 병</Text>
     </Pressable>
-  );
-}
-
-function JarSheet({ jar, onClose }: { jar: GlassJar | null; onClose: () => void }) {
-  if (!jar) return <Sheet visible={false} onClose={onClose}>{null}</Sheet>;
-  const byCat = CATEGORY_ORDER.map((c) => [c, jar.wins.filter((w) => w.category === c).length] as const).filter(([, n]) => n > 0);
-  return (
-    <Sheet visible onClose={onClose}>
-      <Text style={sheetSt.title}>{jar.no}번째 병</Text>
-      <Text style={st.weekBody}>{formatDay(jar.from)} ~ {formatDay(jar.to)} · 구슬 {jar.wins.length}개</Text>
-      <View style={[st.marbles, { marginTop: 12 }]}>
-        {jar.wins.map((w) => <View key={w.id} style={[st.marble, { backgroundColor: CATS[w.category].color }]} />)}
-      </View>
-      <View style={st.catRow}>
-        {byCat.map(([c, n]) => <Text key={c} style={st.catPill}>{CATS[c].prop} {CATS[c].name} {n}</Text>)}
-      </View>
-      <Btn title="닫기" kind="ghost" onPress={onClose} />
-    </Sheet>
   );
 }
 
@@ -102,73 +74,64 @@ function WeekCard({ start, wins, title }: { start: string; wins: Win[]; title: s
 }
 
 export default function Jar() {
-  const { wins, setWins } = useApp();
-  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const { wins, jars } = useApp();
   const [showPast, setShowPast] = useState(false);
-  const [edit, setEdit] = useState<Win | null>(null);
-  const [editText, setEditText] = useState('');
-  const [editCat, setEditCat] = useState<Category>('cheer');
-  const [confirmDel, setConfirmDel] = useState(false);
-  const [err, setErr] = useState('');
-  const [openJar, setOpenJar] = useState<GlassJar | null>(null);
+  const [openYears, setOpenYears] = useState<Record<string, boolean>>({});
 
   const today = kstToday();
-  const { shelf, current } = splitJars(wins); // React Compiler가 메모이즈
   const thisWeek = weekStart(today);
-  const days = useMemo(() => {
-    const m = new Map<string, Win[]>();
-    wins.forEach((w) => m.set(w.win_date, [...(m.get(w.win_date) ?? []), w]));
-    return [...m.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  }, [wins]);
-  const pastWeeks = useMemo(() => {
-    const set = new Set(wins.map((w) => weekStart(w.win_date)).filter((s) => s < thisWeek));
-    return [...set].sort().reverse().slice(0, 12);
-  }, [wins, thisWeek]);
-
-  function startEdit(w: Win) {
-    setEdit(w); setEditText(w.text); setEditCat(w.category); setErr('');
-  }
-  async function saveEdit() {
-    if (!edit) return;
-    try {
-      const w = await api.editWin(edit.id, editText.trim(), editCat);
-      setWins((ws) => ws.map((x) => (x.id === w.id ? w : x)));
-      track('win_edited');
-      setEdit(null);
-    } catch (e) { setErr(friendlyError(e)); }
-  }
-  async function del() {
-    if (!edit) return;
-    try {
-      await api.deleteWin(edit.id);
-      setWins((ws) => ws.filter((x) => x.id !== edit.id));
-      track('win_deleted');
-      setConfirmDel(false); setEdit(null);
-    } catch (e) { setErr(friendlyError(e)); setConfirmDel(false); }
-  }
+  const current = wins.filter((w) => w.jar_no === jars.current_jar);
+  const shelf = shelfByYear(jars);
+  const recentFrom = addDays(today, -(RECENT_LIST_DAYS - 1));
+  const recent = wins.filter((w) => w.win_date >= recentFrom);
+  const hasOlder = jars.total > recent.length;
+  const pastWeeks = [...new Set(wins.map((w: Win) => weekStart(w.win_date)).filter((s) => s < thisWeek))].sort().reverse().slice(0, 12);
 
   return (
     <SafeAreaView style={st.wrap} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <H>나의 작은 승리 유리병</H>
-        <Sub>지금까지 구슬 {wins.length}개. 구슬은 줄어들지 않아.</Sub>
-
-        <View style={st.jar} accessibilityLabel={`${current.no}번째 병, 구슬 ${current.wins.length}개`}>
-          {current.wins.map((w) => <View key={w.id} style={[st.jarMarble, { backgroundColor: CATS[w.category].color }]} />)}
+        <View style={st.headRow}>
+          <H>나의 작은 승리 유리병</H>
+          {jars.total > 0 && (
+            <Pressable onPress={() => router.push('/jar/search')} style={st.searchBtn} accessibilityRole="button" accessibilityLabel="기록 찾기">
+              <Text style={st.searchTxt}>🔍 찾기</Text>
+            </Pressable>
+          )}
         </View>
-        {shelf.length > 0 && (
+        <Sub>지금까지 구슬 {jars.total}개. 구슬은 줄어들지 않아.</Sub>
+
+        <View style={st.jar} accessibilityLabel={`${jars.current_jar}번째 병, 구슬 ${current.length}개`}>
+          {[...current].reverse().map((w) => <View key={w.id} style={[st.jarMarble, { backgroundColor: CATS[w.category].color }]} />)}
+        </View>
+        {jars.current_jar > 1 && (
           <Text style={st.jarCaption}>
-            {current.wins.length === 0 ? `새 병이야. 다음 구슬은 여기에 들어가.` : `${current.no}번째 병`}
+            {current.length === 0 ? '새 병이야. 다음 구슬은 여기에 들어가.' : `${jars.current_jar}번째 병`}
           </Text>
         )}
 
         {shelf.length > 0 && (
           <View style={{ marginBottom: 18 }}>
-            <Text style={st.weekTitle}>선반 · 꽉 찬 병 {shelf.length}개</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.shelf}>
-              {[...shelf].reverse().map((j) => <ShelfJar key={j.no} jar={j} onPress={() => { setOpenJar(j); track('jar_viewed', { no: j.no }); }} />)}
-            </ScrollView>
-            <View style={st.shelfBoard} />
+            <Text style={st.weekTitle}>선반 · 꽉 찬 병 {shelf.reduce((n, y) => n + y.jars.length, 0)}개</Text>
+            {shelf.map((y, idx) => {
+              const opened = idx === 0 || openYears[y.year];
+              return (
+                <View key={y.year} style={{ marginBottom: 10 }}>
+                  {shelf.length > 1 && (
+                    <Pressable onPress={() => setOpenYears((o) => ({ ...o, [y.year]: !opened }))} disabled={idx === 0}>
+                      <Text style={st.yearH}>{y.year}년 · 병 {y.jars.length}개{idx === 0 ? '' : opened ? '  ▾' : '  ▸'}</Text>
+                    </Pressable>
+                  )}
+                  {opened && (
+                    <>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.shelf}>
+                        {y.jars.map((j) => <ShelfJar key={j.no} jar={j} />)}
+                      </ScrollView>
+                      <View style={st.shelfBoard} />
+                    </>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -182,60 +145,25 @@ export default function Jar() {
           <WeekCard key={s} start={s} wins={wins} title={`${formatDay(s)} 주`} />
         ))}
 
-        {days.length === 0 && <Text style={st.empty}>아직 구슬이 없어. 방에서 오늘 해낸 걸 하나 적어볼래?</Text>}
-        {days.map(([d, ws]) => {
-          const rows = groupDay(ws);
-          const collapsed = ws.length > COLLAPSE_OVER && !open[d];
-          return (
-            <View key={d} style={{ marginBottom: 16 }}>
-              <Text style={st.dayH}>{formatDay(d)}</Text>
-              {collapsed ? (
-                <Pressable onPress={() => setOpen((o) => ({ ...o, [d]: true }))} style={st.win}>
-                  <Text style={[st.winText, { fontWeight: '700' }]}>{formatDay(d)} {ws.length}가지 · 펼치기</Text>
-                </Pressable>
-              ) : rows.map((r) => (
-                <Pressable key={r.key} onPress={() => startEdit(r.latest)} style={st.win} accessibilityRole="button" accessibilityHint="눌러서 고치기">
-                  <View style={[st.dot, { backgroundColor: CATS[r.category].color }]} />
-                  <Text style={st.winText}>{r.text}{r.count > 1 ? `  ×${r.count}` : ''}</Text>
-                  <Text style={st.tag}>{CATS[r.category].name}</Text>
-                </Pressable>
-              ))}
-            </View>
-          );
-        })}
+        {jars.total === 0 && <Text style={st.empty}>아직 구슬이 없어. 방에서 오늘 해낸 걸 하나 적어볼래?</Text>}
+        {recent.length > 0 && <Text style={st.weekTitle}>최근 2주</Text>}
+        <WinList wins={recent} />
+        {hasOlder && <Text style={st.older}>더 지난 기록은 선반의 병을 열거나 🔍 찾기로 볼 수 있어. 하나도 없어지지 않아.</Text>}
       </ScrollView>
-
-      <Sheet visible={!!edit && !confirmDel} onClose={() => setEdit(null)}>
-        <Text style={sheetSt.title}>기록 고치기</Text>
-        <TextInput style={st.input} value={editText} onChangeText={setEditText} maxLength={100} accessibilityLabel="기록 내용" />
-        <View style={st.catRow}>
-          {CATEGORY_ORDER.map((c) => (
-            <Pressable key={c} onPress={() => setEditCat(c)} style={[st.chip, editCat === c && { borderColor: C.accent, backgroundColor: '#fff' }]}>
-              <Text style={{ fontSize: 13, color: C.ink }}>{CATS[c].prop} {CATS[c].name}</Text>
-            </Pressable>
-          ))}
-        </View>
-        {err ? <Text style={{ color: '#c0392b', fontSize: 13, marginBottom: 8 }}>{err}</Text> : null}
-        <View style={sheetSt.row}>
-          <Btn title="지우기" kind="ghost" onPress={() => setConfirmDel(true)} style={{ flex: 1 }} />
-          <Btn title="저장" onPress={saveEdit} disabled={!editText.trim()} style={{ flex: 1 }} />
-        </View>
-      </Sheet>
-      <JarSheet jar={openJar} onClose={() => setOpenJar(null)} />
-      <Confirm
-        visible={confirmDel} title="이 기록을 지울까?" body="이미 받은 씨앗은 그대로 있어." confirm="지우기" danger
-        onConfirm={del} onCancel={() => setConfirmDel(false)}
-      />
     </SafeAreaView>
   );
 }
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, maxWidth: 520, width: '100%', alignSelf: 'center' },
+  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  searchBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: R.pill, backgroundColor: C.room },
+  searchTxt: { fontSize: 13, color: C.ink, fontWeight: '600' },
   jar: { alignSelf: 'center', width: 150, height: 170, borderWidth: 4, borderTopWidth: 10, borderColor: '#d9c9b1', borderTopLeftRadius: 26, borderTopRightRadius: 26, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: '#fffaf2', flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 9, gap: 3, overflow: 'hidden', marginBottom: 8 },
   // 50개가 다 들어가는 크기 (한 줄 7개 × 8줄)
   jarMarble: { width: 14, height: 14, borderRadius: 7 },
   jarCaption: { textAlign: 'center', fontSize: 13, color: C.muted, marginBottom: 18 },
+  yearH: { fontSize: 13, color: C.ink, fontWeight: '700', marginBottom: 6 },
   shelf: { gap: 12, paddingHorizontal: 6, alignItems: 'flex-end' },
   shelfBoard: { height: 8, borderRadius: 4, backgroundColor: '#d9c9b1', marginTop: -2 },
   shelfItem: { alignItems: 'center', width: 64 },
@@ -256,11 +184,5 @@ const st = StyleSheet.create({
   memoryT: { fontSize: 14, color: C.ink, fontWeight: '600' },
   link: { fontSize: 14, color: C.accent, fontWeight: '700' },
   empty: { textAlign: 'center', color: C.muted, paddingVertical: 30, fontSize: 14 },
-  dayH: { fontSize: 13, color: C.muted, fontWeight: '600', marginBottom: 8 },
-  win: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 6, borderWidth: 1, borderColor: C.line },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  winText: { flex: 1, fontSize: 15, color: C.ink },
-  tag: { fontSize: 11, color: C.muted, backgroundColor: C.room, paddingVertical: 3, paddingHorizontal: 8, borderRadius: R.pill, overflow: 'hidden' },
-  input: { fontSize: 16, padding: 12, borderRadius: R.input, borderWidth: 1.5, borderColor: C.line, backgroundColor: '#fff', color: C.ink, marginBottom: 12 },
-  chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: R.pill, borderWidth: 1, borderColor: C.line, backgroundColor: C.room },
+  older: { textAlign: 'center', color: C.muted, fontSize: 13, lineHeight: 19, paddingVertical: 12 },
 });

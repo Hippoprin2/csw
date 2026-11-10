@@ -9,7 +9,9 @@ export function formatDay(d: string) {
   if (d === kstToday()) return '오늘';
   if (d === kstYesterday()) return '어제';
   const dt = new Date(d + 'T00:00:00Z');
-  return `${dt.getUTCMonth() + 1}월 ${dt.getUTCDate()}일 (${DOW[dt.getUTCDay()]})`;
+  // 올해가 아니면 연도도 (지난 병·검색 결과는 해를 넘김)
+  const year = d.slice(0, 4) === kstToday().slice(0, 4) ? '' : `${d.slice(0, 4)}년 `;
+  return `${year}${dt.getUTCMonth() + 1}월 ${dt.getUTCDate()}일 (${DOW[dt.getUTCDay()]})`;
 }
 
 export function todayLabel() {

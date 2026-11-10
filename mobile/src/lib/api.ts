@@ -8,7 +8,10 @@ export type Win = {
   category_source: 'auto' | 'llm' | 'user';
   win_date: string;
   created_at: string;
+  jar_no: number; // 들어간 유리병 번호 (넣는 순간 고정)
 };
+export type JarInfo = { no: number; count: number; from: string; to: string; cats: Partial<Record<Category, number>> };
+export type JarSummary = { current_jar: number; total: number; jars: JarInfo[] };
 export type Profile = {
   id: string;
   pet_name: string;
@@ -58,7 +61,7 @@ async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T
 
 export const api = {
   recordWin: (text: string, category: Category, source: 'auto' | 'llm' | 'user', winDate: string) =>
-    rpc<{ win: Win; earned: number; balance: number; first: boolean }>('record_win', {
+    rpc<{ win: Win; earned: number; balance: number; first: boolean; sealed: boolean }>('record_win', {
       p_text: text, p_category: category, p_source: source, p_win_date: winDate,
     }),
   editWin: (id: string, text: string, category: Category) => rpc<Win>('edit_win', { p_id: id, p_text: text, p_category: category }),
@@ -67,6 +70,30 @@ export const api = {
     if (error) throw error;
   },
   balance: () => rpc<number>('seed_balance'),
+  jarSummary: () => rpc<JarSummary>('jar_summary'),
+  jarWins: async (no: number) => {
+    const { data, error } = await supabase.from('wins').select('*').eq('jar_no', no).order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as Win[];
+  },
+  // 글자로 찾기 (최근 것부터 100개)
+  searchWins: async (q: string) => {
+    const pat = `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
+    const { data, error } = await supabase.from('wins').select('*').ilike('text', pat)
+      .order('win_date', { ascending: false }).order('created_at', { ascending: false }).limit(100);
+    if (error) throw error;
+    return data as Win[];
+  },
+  // 내보내기용 전체 기록 (1,000개씩 나눠 받기)
+  allWins: async () => {
+    const out: Win[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from('wins').select('*').order('created_at').range(from, from + 999);
+      if (error) throw error;
+      out.push(...(data as Win[]));
+      if (data.length < 1000) return out;
+    }
+  },
   gift: () => rpc<number>('grant_onboarding_gift'),
   buy: (itemId: string) => rpc<number>('buy_item', { p_item_id: itemId }),
   deleteAllWins: () => rpc<void>('delete_all_wins'),

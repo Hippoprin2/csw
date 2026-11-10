@@ -4,7 +4,8 @@
 - 단계: 앱 개발 2단계(텃밭·좌우 공간) 완료 + 공간 export v1·캐릭터 텃밭 클립 연결, 보안 보강(SECURITY.md), 기종별 화면 대응, '버틴 하루' 분류. 상세·남은 일: docs/DEV.md
 - 대표 확인 대기: (1) 키보드가 입력창을 가리는 문제 수정 → 폰에서 확인 (2) "힘들다" → 버틴 하루로 보이는지 (3) 단짝 동작이 늦게·짧게·안 나오던 버그 수정(Pet.tsx, 2026-11-10) → Expo Go에서 기록 5~6개 연속으로 확인
 - 유리병 꽉 차면: 50개에 뚜껑 닫아 선반 진열 + 새 병 — 앱 구현 완료(2026-11-10). '닫은 병이 방 소품'은 마당 업데이트 때
-- 대표 결정 대기 J1: 기록이 쌓일 때 유리병 화면 — 추천 (A) 병 = 앨범(지금 병 + 최근 2주만, 지난 기록은 닫힌 병 열기 + 검색, 원문 그대로). FEATURES C6
+- 유리병 앨범 J1 = A (대표 결정 2026-11-10) — 앱 구현 완료: 병 번호 서버 고정, 최근 2주 목록 + 선반 병 열기 + 찾기, 2,000개 한계 제거. FEATURES C6
+- **공간 스레드 할 일**: 방 좌우 확장 + 유리장 그림 (2026-11-10 대표 결정, WORLD 1장 '방' 절). 그림 오면 앱 스레드가 끌어서 둘러보기·유리장 연결
 - 출시 막힘: 이름·도메인, Apple 계정, 사업자·구독, 처리방침용 운영자 이름·문의 이메일, continue/kill 기준. 대표 몫: 2FA 7개 계정
 - 프로토타입: design/prototype.html → https://csw-prototype.vercel.app (배포: `python3 scripts/deploy_prototype.py`)
 - 마당 움직임 테스트(웹, 실제 앱 아님): design/yard_test/index.html → https://csw-yard-test.vercel.app (배포: `python3 scripts/deploy_yard_test.py`, 커밋된 world export를 그대로 씀). ⚙︎에서 낮/밤·구역·카메라 수치 조절 — 대표가 정한 수치를 manifest `spaces.yard.camera`와 앱에 반영

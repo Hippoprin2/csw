@@ -27,7 +27,7 @@ function Row({ label, onPress, right, danger }: { label: string; onPress?: () =>
 }
 
 export default function Settings() {
-  const { profile, updateProfile, wins, setWins, signOut, session } = useApp();
+  const { profile, updateProfile, setWins, reloadJars, signOut, session } = useApp();
   const [nameEdit, setNameEdit] = useState(false);
   const [name, setName] = useState(profile?.pet_name ?? '');
   const [timeEdit, setTimeEdit] = useState(false);
@@ -46,11 +46,12 @@ export default function Settings() {
   }
 
   async function exportAll() {
-    const lines = [...wins].reverse().map((w) => `${w.win_date} · ${w.text} · ${CATS[w.category].name}`);
-    const message = `나의 작은 승리 기록 (${wins.length}개)\n\n${lines.join('\n')}`;
     try {
+      const all = await api.allWins();
+      const lines = all.map((w) => `${w.win_date} · ${w.text} · ${CATS[w.category].name}`);
+      const message = `나의 작은 승리 기록 (${all.length}개)\n\n${lines.join('\n')}`;
       await Share.share({ message });
-      track('export_done', { count: wins.length });
+      track('export_done', { count: all.length });
     } catch (e) { setMsg(friendlyError(e)); }
   }
 
@@ -58,6 +59,7 @@ export default function Settings() {
     try {
       await api.deleteAllWins();
       setWins([]);
+      reloadJars().catch(() => {});
       setStep(null);
       setMsg('기록을 모두 지웠어. 단짝과 방, 씨앗은 그대로야.');
     } catch (e) { setMsg(friendlyError(e)); setStep(null); }
