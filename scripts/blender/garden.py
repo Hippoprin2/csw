@@ -24,7 +24,7 @@ PLOT_Y = -0.15
 PLOT_X = (-0.9, 0.0, 0.9)
 PLOT_W, PLOT_D, PLOT_H = 0.72, 0.5, 0.08
 SOIL_Z = FLOOR + PLOT_H
-HIPPO = (0.0, 0.72)          # stands behind the middle plot, so all three plots stay visible
+HIPPO = (-0.3, 0.72)         # stands right behind the middle plot (same screen x), so all three plots stay visible
 
 
 # ------------------------------------------------------------------ helpers
@@ -338,7 +338,7 @@ def seed_packet(cid):
     return group(f"packet_{cid}", parts + kids)
 
 
-TARGET = Vector((0.0, 0.55, 0.0))
+TARGET = Vector((-0.19, 0.55, 0.0))   # screen-centred on the middle plot
 ORTHO = 2.7
 
 

@@ -177,10 +177,16 @@
 - 2026-11-09 대표 피드백(사진 참고) → 튤립·딸기 v2: 튤립 = 꽃잎 6장(바깥 3 + 안쪽 3)이 겹친 닫힌 달걀형 빨간 컵 + 매끈한 줄기 + 넓은 잎, 봉오리는 초록 꽃잎에 끝만 빨강. 딸기 = 어깨가 넓고 끝이 둥글게 뾰족한 하트/원뿔형(회전체 + 서브디비전) + 별 모양 꽃받침 7장 + 꼭지, 씨는 작고 연한 살구색(대표: 노란 씨 강조 안 되게). 공용 함수 room.py tulip_bloom / strawberry_berry → 텃밭 작물·창턱 장식·아이콘 모두 같은 모양. 비교 design/world/garden/tulip_strawberry_v2.png
 - 렌더 함정: 위치·회전을 바꾼 직후 matrix_world는 갱신 전 → 메시에 변환을 굽기 전에 view_layer.update() (안 하면 부품이 원점에 떠 있음)
 
-## 5. 개발 스레드 전달 사항 (확정 후 반영)
-- items 테이블: id, name, price + `space`(room|yard), `slot`, `layer`(back|mid|front) 추가. 같은 slot 여러 개 가지면 `owned_items.placed` 하나만 true
-- crops(4종: id, name, kind flower|edible, price 3, first_free), plots(3칸), harvest_bag(user, crop, count), harvest_unlocks(user, crop — 첫 수확 장식)
-- 공간 렌더 JSON: 소품마다 {x, y, w, h, layer}, 공간마다 단짝 기준점·크기, 마당은 걷기 영역 다각형 + 상호작용 점
+## 5. 앱용 export (2026-11-09, 4단계 완료)
+- 결과: **design/world/export/v1/** — manifest.json + README.md + WebP 75개(약 0.9MB). 앱 스레드는 README대로 그리면 됨(mobile/src/data/itemSlots.ts 대체)
+  - room/: background(무료 방 + 달력) + 소품 18 + 창턱 수확 장식 4 — 소품마다 자기 그림자 포함, 위치(x,y,w,h)·자리·그리는 순서(z)·단짝 위치/크기
+  - garden/: background + crops/ 25장(모두 600×600, 같은 기준점) + 밭 3칸 기준점·터치 영역 + 단짝 위치
+  - thumbs/ 상점 썸네일 18, icons/ 수확물 4 + 씨앗 봉투 4
+  - _app_preview.jpg = export 파일만으로 합성한 화면(앱 결과와 같아야 함)
+- 다시 만들기: `blender -b design/character/3d/rig/hippo_rig_idle.blend --python scripts/blender/export_world.py -- $PWD/design/world/export/v1 all` (약 12분, Cycles GPU) → `python3 scripts/world_export_webp.py design/world/export/v1` → 확인 `blender -b --python scripts/blender/compose_world_preview.py -- design/world/export/v1 design/character/export/v1 $PWD/out.png`
+- 그림자 방식: Eevee엔 그림자만 따로 받는 기능이 없음 → 소품 색은 Eevee(소품만 투명 렌더), 그림자는 Cycles 그림자 캐처(배경 = 캐처, 소품 = 홀드아웃, key 조명만, 월드 빛 0, 128샘플+디노이즈)로 따로 구해 합침. 처음 시도(배경 유무 차이로 그림자 추정)는 Eevee 그림자 지도가 장면마다 달라 벽 전체에 얼룩·사각 자국이 생겨 버림. 샘플 32에선 디노이저 얼룩이 남음
+- 텃밭 구도 조정: 카메라를 가운데 밭 기준으로 가운데 정렬(왼쪽 밭 잘림 해결), 단짝은 가운데 밭 바로 뒤(x -0.3, y 0.72)
+- 단짝 위치 계산: 캐릭터 클립은 600×800, 직교 1.45, 화면 가운데 = 월드 (0,0,0.07). 공간 캔버스는 1단위 = 400px → 클립 배율 0.725(435×580px)
 
 ## 6. 결정 필요 (선택지 · 추천)
 - (W1~W5는 2026-11-09 대표 결정, 위 '결정 사항' 참고. 아래는 당시 선택지 기록)

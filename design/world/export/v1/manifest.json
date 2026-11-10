@@ -1,0 +1,388 @@
+{
+ "version": 1,
+ "units": "px on the canvas; scale everything by (card width / canvas width)",
+ "made_by": "scripts/blender/export_world.py",
+ "spaces": {
+  "room": {
+   "canvas": [
+    1080,
+    1080
+   ],
+   "background": "room/background.webp",
+   "px_per_unit": 400.0,
+   "pet": {
+    "clips": "room (default, 6.5°): idle + all actions",
+    "center": [
+     525.8,
+     785.9
+    ],
+    "w": 435.0,
+    "h": 580.0,
+    "x": 308.3,
+    "y": 495.9,
+    "note": "draw the character clip (600x800 frame) scaled to w x h with its centre at `center`",
+    "z": 18
+   },
+   "items": [
+    {
+     "id": "curtain",
+     "file": "room/curtain.webp",
+     "slot": "window",
+     "z": 0,
+     "x": 432,
+     "y": 267,
+     "w": 489,
+     "h": 386
+    },
+    {
+     "id": "frame",
+     "file": "room/frame.webp",
+     "slot": "wall_left",
+     "z": 1,
+     "x": 280,
+     "y": 328,
+     "w": 143,
+     "h": 139
+    },
+    {
+     "id": "wall_clock",
+     "file": "room/wall_clock.webp",
+     "slot": "wall_right",
+     "z": 2,
+     "x": 912,
+     "y": 383,
+     "w": 114,
+     "h": 132
+    },
+    {
+     "id": "garland",
+     "file": "room/garland.webp",
+     "slot": "wall_top",
+     "z": 3,
+     "x": 86,
+     "y": 96,
+     "w": 849,
+     "h": 165
+    },
+    {
+     "id": "string_lights",
+     "file": "room/string_lights.webp",
+     "slot": "wall_top",
+     "z": 4,
+     "x": 87,
+     "y": 97,
+     "w": 847,
+     "h": 147
+    },
+    {
+     "id": "mobile",
+     "file": "room/mobile.webp",
+     "slot": "ceiling",
+     "z": 5,
+     "x": 267,
+     "y": 0,
+     "w": 246,
+     "h": 538
+    },
+    {
+     "id": "bookshelf",
+     "file": "room/bookshelf.webp",
+     "slot": "back_right",
+     "z": 6,
+     "x": 693,
+     "y": 565,
+     "w": 387,
+     "h": 515
+    },
+    {
+     "id": "bed",
+     "file": "room/bed.webp",
+     "slot": "back_left",
+     "z": 7,
+     "x": 0,
+     "y": 717,
+     "w": 650,
+     "h": 309
+    },
+    {
+     "id": "radio_stand",
+     "file": "room/radio_stand.webp",
+     "slot": "bedside",
+     "z": 8,
+     "x": 0,
+     "y": 715,
+     "w": 162,
+     "h": 257
+    },
+    {
+     "id": "aquarium",
+     "file": "room/aquarium.webp",
+     "slot": "bedside",
+     "z": 9,
+     "x": 0,
+     "y": 742,
+     "w": 162,
+     "h": 230
+    },
+    {
+     "id": "easel",
+     "file": "room/easel.webp",
+     "slot": "lean",
+     "z": 10,
+     "x": 665,
+     "y": 694,
+     "w": 186,
+     "h": 309
+    },
+    {
+     "id": "guitar",
+     "file": "room/guitar.webp",
+     "slot": "lean",
+     "z": 11,
+     "x": 723,
+     "y": 558,
+     "w": 103,
+     "h": 325
+    },
+    {
+     "id": "harvest_tulip",
+     "file": "room/harvest_tulip.webp",
+     "slot": "sill_vase",
+     "z": 12,
+     "x": 624,
+     "y": 461,
+     "w": 73,
+     "h": 199
+    },
+    {
+     "id": "harvest_sunflower",
+     "file": "room/harvest_sunflower.webp",
+     "slot": "sill_vase",
+     "z": 13,
+     "x": 624,
+     "y": 465,
+     "w": 75,
+     "h": 195
+    },
+    {
+     "id": "harvest_strawberry",
+     "file": "room/harvest_strawberry.webp",
+     "slot": "sill_plate",
+     "z": 14,
+     "x": 684,
+     "y": 583,
+     "w": 78,
+     "h": 96
+    },
+    {
+     "id": "harvest_sweet_potato",
+     "file": "room/harvest_sweet_potato.webp",
+     "slot": "sill_basket",
+     "z": 15,
+     "x": 730,
+     "y": 558,
+     "w": 119,
+     "h": 124
+    },
+    {
+     "id": "rug",
+     "file": "room/rug.webp",
+     "slot": "floor_center",
+     "z": 16,
+     "x": 202,
+     "y": 971,
+     "w": 660,
+     "h": 72
+    },
+    {
+     "id": "low_table",
+     "file": "room/low_table.webp",
+     "slot": "floor_right",
+     "z": 17,
+     "x": 669,
+     "y": 878,
+     "w": 252,
+     "h": 176
+    },
+    {
+     "id": "lamp",
+     "file": "room/lamp.webp",
+     "slot": "front_left",
+     "z": 19,
+     "x": 0,
+     "y": 619,
+     "w": 234,
+     "h": 410
+    },
+    {
+     "id": "squirrel",
+     "file": "room/squirrel.webp",
+     "slot": "front_center",
+     "z": 20,
+     "x": 215,
+     "y": 832,
+     "w": 177,
+     "h": 219
+    },
+    {
+     "id": "cushion",
+     "file": "room/cushion.webp",
+     "slot": "front_center",
+     "z": 21,
+     "x": 206,
+     "y": 968,
+     "w": 183,
+     "h": 78
+    },
+    {
+     "id": "big_plant",
+     "file": "room/big_plant.webp",
+     "slot": "front_right",
+     "z": 22,
+     "x": 787,
+     "y": 802,
+     "w": 226,
+     "h": 278
+    }
+   ],
+   "rules": "draw background, then items you own+placed and the pet in ascending z. One item per slot (sill_vase: tulip or sunflower). harvest_* appear after the first harvest of that crop."
+  },
+  "garden": {
+   "canvas": [
+    1080,
+    1080
+   ],
+   "background": "garden/background.webp",
+   "px_per_unit": 400.0,
+   "crop_image_size": [
+    600,
+    600
+   ],
+   "crops": {
+    "mound": "garden/crops/mound.webp",
+    "sweet_potato_1": "garden/crops/sweet_potato_1.webp",
+    "sweet_potato_1_doze": "garden/crops/sweet_potato_1_doze.webp",
+    "sweet_potato_2": "garden/crops/sweet_potato_2.webp",
+    "sweet_potato_2_doze": "garden/crops/sweet_potato_2_doze.webp",
+    "sweet_potato_3": "garden/crops/sweet_potato_3.webp",
+    "sweet_potato_3_doze": "garden/crops/sweet_potato_3_doze.webp",
+    "tulip_1": "garden/crops/tulip_1.webp",
+    "tulip_1_doze": "garden/crops/tulip_1_doze.webp",
+    "tulip_2": "garden/crops/tulip_2.webp",
+    "tulip_2_doze": "garden/crops/tulip_2_doze.webp",
+    "tulip_3": "garden/crops/tulip_3.webp",
+    "tulip_3_doze": "garden/crops/tulip_3_doze.webp",
+    "sunflower_1": "garden/crops/sunflower_1.webp",
+    "sunflower_1_doze": "garden/crops/sunflower_1_doze.webp",
+    "sunflower_2": "garden/crops/sunflower_2.webp",
+    "sunflower_2_doze": "garden/crops/sunflower_2_doze.webp",
+    "sunflower_3": "garden/crops/sunflower_3.webp",
+    "sunflower_3_doze": "garden/crops/sunflower_3_doze.webp",
+    "strawberry_1": "garden/crops/strawberry_1.webp",
+    "strawberry_1_doze": "garden/crops/strawberry_1_doze.webp",
+    "strawberry_2": "garden/crops/strawberry_2.webp",
+    "strawberry_2_doze": "garden/crops/strawberry_2_doze.webp",
+    "strawberry_3": "garden/crops/strawberry_3.webp",
+    "strawberry_3_doze": "garden/crops/strawberry_3_doze.webp"
+   },
+   "crop_files": "mound = planted (stage 0, all crops); <crop>_<1|2|3>[_doze]; draw at plots[i].crop_x/crop_y, size crop_image_size",
+   "plots": [
+    {
+     "slot": 0,
+     "crop_center": [
+      179.4,
+      612.8
+     ],
+     "crop_x": -120.6,
+     "crop_y": 312.8,
+     "tap_rect": [
+      10,
+      487,
+      338,
+      367
+     ]
+    },
+    {
+     "slot": 1,
+     "crop_center": [
+      519.2,
+      663.5
+     ],
+     "crop_x": 219.2,
+     "crop_y": 363.5,
+     "tap_rect": [
+      350,
+      538,
+      338,
+      367
+     ]
+    },
+    {
+     "slot": 2,
+     "crop_center": [
+      859.0,
+      714.3
+     ],
+     "crop_x": 559.0,
+     "crop_y": 414.3,
+     "tap_rect": [
+      690,
+      589,
+      338,
+      367
+     ]
+    }
+   ],
+   "pet": {
+    "clips": "garden_idle / garden_cheer (25°)",
+    "center": [
+     520.9,
+     481.1
+    ],
+    "w": 435.0,
+    "h": 580.0,
+    "x": 303.4,
+    "y": 191.1,
+    "note": "draw the character clip (600x800 frame) scaled to w x h with its centre at `center`",
+    "z_note": "pet stands behind the middle plot: draw pet, then the crop images (crops overlap its feet)"
+   },
+   "draw_order": [
+    "background",
+    "pet",
+    "crops (plot 0, 1, 2)",
+    "UI: progress dots, Zzz, sparkle"
+   ]
+  }
+ },
+ "shop_thumbnails": {
+  "aquarium": "thumbs/aquarium.webp",
+  "bed": "thumbs/bed.webp",
+  "big_plant": "thumbs/big_plant.webp",
+  "bookshelf": "thumbs/bookshelf.webp",
+  "curtain": "thumbs/curtain.webp",
+  "cushion": "thumbs/cushion.webp",
+  "easel": "thumbs/easel.webp",
+  "frame": "thumbs/frame.webp",
+  "garland": "thumbs/garland.webp",
+  "guitar": "thumbs/guitar.webp",
+  "lamp": "thumbs/lamp.webp",
+  "low_table": "thumbs/low_table.webp",
+  "mobile": "thumbs/mobile.webp",
+  "radio_stand": "thumbs/radio_stand.webp",
+  "rug": "thumbs/rug.webp",
+  "squirrel": "thumbs/squirrel.webp",
+  "string_lights": "thumbs/string_lights.webp",
+  "wall_clock": "thumbs/wall_clock.webp"
+ },
+ "icons": {
+  "packet_strawberry": "icons/packet_strawberry.webp",
+  "packet_sunflower": "icons/packet_sunflower.webp",
+  "packet_sweet_potato": "icons/packet_sweet_potato.webp",
+  "packet_tulip": "icons/packet_tulip.webp",
+  "produce_strawberry": "icons/produce_strawberry.webp",
+  "produce_sunflower": "icons/produce_sunflower.webp",
+  "produce_sweet_potato": "icons/produce_sweet_potato.webp",
+  "produce_tulip": "icons/produce_tulip.webp"
+ },
+ "format": "WebP (lossy q88 + alpha). PNG masters are regenerated by the scripts, not stored here."
+}
