@@ -346,7 +346,7 @@ def garden_walk():
 # ------------------------------------------------------------------ yard
 YARD_NIGHT_OVERLAY = [26, 34, 80, 0.38]
 YARD_TILE = 1080
-YARD_PEEK = 260                      # camera may look this far into a neighbouring locked zone (see the fence + scenery)
+YARD_PEEK = 600                      # camera may look this far into a neighbouring locked zone (see the fence + scenery)
 YARD_GROUND = ("picnic_mat",)        # flat: drawn under everything that sorts by y (pet sits on it)
 
 
@@ -579,6 +579,13 @@ def export_yard():
         else:
             e["area"] = None
         zones[str(z)] = e
+    # pet/guest vs item order: compare the feet with the FRONT edge of the item footprint (sort_line), not one sort_y —
+    # wide diagonal items (bench, hammock, tent) otherwise draw over a pet standing in front of their near corner
+    def lower_chain(poly):
+        L = min(poly, key=lambda q: q[0]); Rr = max(poly, key=lambda q: q[0]); B = max(poly, key=lambda q: q[1])
+        return [[round(q[0], 1), round(q[1], 1)] for q in ([L, B, Rr] if B not in (L, Rr) else [L, Rr])]
+    for e in items:
+        if e["id"] in item_blocked: e["sort_line"] = lower_chain(item_blocked[e["id"]])
     # background trees are baked into the tiles (not sorted), so every walk area stays where nothing baked is in front of the pet
     walk = {"zones": zones, "blocked": blocked, "item_blocked": item_blocked,
             "interact": interact, "home": hippo_home, "pet": feet_rule(ppu),
@@ -593,8 +600,11 @@ def export_yard():
     camera = {
         "viewport": "card width = 1080 canvas px; height = card height * 1080 / card width (≈1860 on iPhone 15, card from below "
                     "the space tabs to just above the tab bar)",
-        "follow": "centre the viewport on the pet (feet + feet_to_center) with a soft follow (lerp ~0.12/frame, dead-zone 120 px)",
-        "drag": "finger drag pans freely; after release wait 3 s, then glide back to the pet (~0.6 s ease-out). "
+        "follow": "centre the viewport on the pet (feet + feet_to_center): each frame (60 fps) move `follow_lerp` of the remaining distance beyond the `dead_zone` px box around the centre",
+        "follow_lerp": 0.3, "dead_zone": 120, "return_wait_s": 3.0, "return_s": 1.2, "zoom_min": 0.6,
+        "drag": "finger drag pans freely; after release wait `return_wait_s`, then glide back to the pet over `return_s` (ease-in-out, "
+                "target = pet, re-evaluated every frame). Pinch = zoom between `zoom_min` and 1 (1 = 1080 px wide); the view keeps the "
+                "zoom; bounds still apply (zoom stops where the view would exceed the bounds). "
                 "Tap = pet walks there (tap and drag never conflict)",
         "bounds": "clamp the viewport to the bounding box of the OWNED zone rects, extended by peek px into each locked neighbour "
                   "zone that shares an edge (so the fence + scenery beyond show). If the viewport is taller than the bounds, align to the top",
@@ -608,14 +618,16 @@ def export_yard():
             "extras": extras, "walk": walk,
             "night": {"hours": "19:00-06:00 local time = night, otherwise day",
                       "overlay": YARD_NIGHT_OVERLAY,
-                      "draw": "background_night instead of background; draw everything as by day using <item>.night_file when it has one "
-                              "(lit lamp / tent glow); then fill the canvas with `overlay` rgba EXCEPT the *_night lit layers, "
-                              "which go on top of the overlay"},
+                      "draw": "same order as by day (night_file tiles). Every sprite (tiles, locks, items, pet, guests, fruits) is drawn "
+                              "TINTED: the sprite, then `overlay` rgba composited source-atop (only on its own pixels). Items with a "
+                              "night_file draw that file instead, NOT tinted (it is already darkened + lit). Never redraw lit layers "
+                              "on top of everything: that puts the tent over a pet / bird feeder standing in front of it"},
             "draw_order": ["background tiles that intersect the viewport (night_file at night)", "locks[z] for every locked zone",
                            "layer=ground items (picnic_mat)",
-                           "layer=pond (duck_float)", "tree[stage] + layer=sorted items + bed_flowers + pet + sparrow_ground, ascending sort_y "
-                           "(pet sort key = feet y)", "sparrow_perch right after bird_feeder", "fruits right after tree[stage] (same sort slot as the tree, so a pet in front of the tree covers them)",
-                           "pond_water over the pet only while splashing", "butterfly", "night overlay"],
+                           "layer=pond (duck_float)", "tree[stage] + layer=sorted items + bed_flowers + pet + sparrow_ground. Items among themselves: ascending sort_y. "
+                           "Pet / ground sparrow vs an item with sort_line: the pet is IN FRONT iff feet y > sort_line y at feet x "
+                           "(linear between points, clamped to the end points); items without sort_line use sort_y", "sparrow_perch right after bird_feeder", "fruits right after tree[stage] (same sort slot as the tree, so a pet in front of the tree covers them)",
+                           "pond_water over the pet only while splashing", "butterfly"],
             "rules": "one of each item; all positions are fixed (no slots to swap in v1 of the yard). Zone 1 items only for now; "
                      "zone 2/3 items arrive with later updates and use the same entry format. "
                      "bed_flowers: spot i shows the flower the user planted there (tulip/sunflower), 3 spots."}

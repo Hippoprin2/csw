@@ -60,10 +60,12 @@ const S = {
   night: new Date().getHours() >= 19 || new Date().getHours() < 6,
   own: { 1: true, 2: false, 3: false },
   items: true, stage: 4, guests: true, auto: true, showWalk: false,
-  follow: 0.12,        // camera lerp per frame (60fps)
+  follow: 0.3,         // camera lerp per frame (60fps)
   dead: 120,           // px dead-zone around the pet before the camera moves
   back: 3.0,           // s after a drag before the camera returns to the pet
-  peek: 260,           // px into a locked neighbour zone
+  ret: 1.2,            // s the glide back to the pet takes
+  peek: 600,           // px into a locked neighbour zone
+  zoom: 1, zoomMin: 0.6,
   speed: 0.6,          // walk speed, world units/s (1 unit = 400 px)
 };
 const ACT_KO = { sniff: "🌷 냄새 맡기", sit_bench: "🪑 벤치 앉기", sit_eat: "🧺 매트에서 먹기", lie: "😴 해먹 눕기", splash: "💦 물장구", show_fruit: "🍑 열매 보여주기" };
@@ -159,7 +161,15 @@ let dragging = false, lastDrag = -1e9, ptr = null, guests = [], toastT = 0;
 function resize() {
   const r = card.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
-  view.s = r.width / 1080; view.w = 1080; view.h = r.height / view.s; view.dpr = dpr;
+  view.cw = r.width; view.ch = r.height; view.dpr = dpr; applyZoom();
+}
+function zoomFloor() { const [x0, y0, x1, y1] = bounds(); return Math.min(1, Math.max(S.zoomMin, 1080 / (x1 - x0), (view.ch * 1080 / view.cw) / (y1 - y0))); }
+function applyZoom(ax, ay) {        // ax, ay = canvas point that stays under the fingers
+  if (!view.cw || !Y) return;
+  const oldW = view.w || 1080, oldH = view.h || 0;
+  S.zoom = Math.min(1, Math.max(zoomFloor(), S.zoom));
+  view.s = view.cw / 1080 * S.zoom; view.w = view.cw / view.s; view.h = view.ch / view.s;
+  if (ax !== undefined && oldH) { cam.x = ax - (ax - cam.x) * view.w / oldW; cam.y = ay - (ay - cam.y) * view.h / oldH; }
 }
 function bounds() {
   const own = Object.entries(Y.walk.zones).filter(([z]) => S.own[z]).map(([, Z]) => Z.rect);
@@ -221,16 +231,39 @@ function spawnGuests() {
 }
 
 // ---------------------------------------------------------------- input
-card.addEventListener("pointerdown", e => { if (e.target !== cv) return; ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false }; cv.setPointerCapture(e.pointerId); });
+const touches = new Map(); let pinch = null;
+function toCanvas(cx, cy) { const r = card.getBoundingClientRect(); return [cam.x + (cx - r.left) / view.s, cam.y + (cy - r.top) / view.s]; }
+card.addEventListener("pointerdown", e => {
+  if (e.target !== cv) return; touches.set(e.pointerId, [e.clientX, e.clientY]); cv.setPointerCapture(e.pointerId);
+  if (touches.size === 2) {          // pinch starts: cancel the one-finger gesture
+    const [a, b] = [...touches.values()];
+    pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: S.zoom }; ptr = null; dragging = true; return;
+  }
+  ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false };
+});
 card.addEventListener("pointermove", e => {
+  if (touches.has(e.pointerId)) touches.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pinch && touches.size === 2) {
+    const [a, b] = [...touches.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const [ax, ay] = toCanvas((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    S.zoom = pinch.z * d / pinch.d; applyZoom(ax, ay); clampCam(); syncZoomUI(); return;
+  }
   if (!ptr || e.pointerId !== ptr.id) return;
   const dx = e.clientX - ptr.x, dy = e.clientY - ptr.y;
   if (!ptr.moved && Math.hypot(dx, dy) > 8) { ptr.moved = true; dragging = true; }
   if (ptr.moved) { cam.x = ptr.cx - dx / view.s; cam.y = ptr.cy - dy / view.s; clampCam(); }
 });
+function endTouch(e) {
+  touches.delete(e.pointerId);
+  if (pinch) { if (touches.size < 2) { pinch = null; dragging = false; lastDrag = performance.now(); ptr = null; } return true; }
+  return false;
+}
+card.addEventListener("pointercancel", e => { endTouch(e); ptr = null; dragging = false; });
+card.addEventListener("wheel", e => { e.preventDefault(); const [ax, ay] = toCanvas(e.clientX, e.clientY); S.zoom *= Math.exp(-e.deltaY * 0.002); applyZoom(ax, ay); clampCam(); syncZoomUI(); lastDrag = performance.now(); }, { passive: false });
 card.addEventListener("pointerup", e => {
+  if (endTouch(e)) return;
   if (!ptr || e.pointerId !== ptr.id) return;
-  if (ptr.moved) { dragging = false; lastDrag = performance.now(); }
+  if (ptr.moved) { dragging = false; lastDrag = performance.now(); glide = null; }
   else tap(cam.x + (e.clientX - card.getBoundingClientRect().left) / view.s, cam.y + (e.clientY - card.getBoundingClientRect().top) / view.s);
   ptr = null;
 });
@@ -254,28 +287,58 @@ function toast(msg, btn, cb) {
 }
 $("#gear").onclick = () => $("#panel").classList.toggle("open");
 window.addEventListener("resize", () => { resize(); clampCam(); });
+function syncZoomUI() { const el = document.querySelector('[data-r="zoom"]'); if (el) { el.value = S.zoom.toFixed(2); $("#v_zoom").textContent = S.zoom.toFixed(2); } }
 
 // ---------------------------------------------------------------- camera
+let glide = null, glided = true;
 function tickCam(dt, now) {
   if (dragging) return;
   const [pcx, pcy] = petCenter();
-  const returning = now - lastDrag > S.back * 1000;
-  if (!returning) return;
-  const sinceBack = now - lastDrag - S.back * 1000;
-  const k = sinceBack < 600 && lastDrag > 0 ? 0.18 : S.follow;   // glide back a bit faster
-  const f = 1 - Math.pow(1 - k, dt * 60);
+  if (now - lastDrag < S.back * 1000) { glided = false; return; }
+  if (!glided) {                      // after a look-around: one slow ease-in-out glide back to the pet
+    if (!glide) glide = { t0: now, x: cam.x, y: cam.y };
+    const t = Math.min(1, (now - glide.t0) / (S.ret * 1000)), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const save = [cam.x, cam.y]; cam.x = pcx - view.w / 2; cam.y = pcy - view.h / 2; clampCam(); const tx = cam.x, ty = cam.y;
+    cam.x = glide.x + (tx - glide.x) * e; cam.y = glide.y + (ty - glide.y) * e;
+    if (t >= 1) { glide = null; glided = true; }
+    return;
+  }
+  const f = 1 - Math.pow(1 - S.follow, dt * 60);
   const cx = cam.x + view.w / 2, cy = cam.y + view.h / 2;
   let ex = pcx - cx, ey = pcy - cy;
-  const dz = sinceBack < 600 && lastDrag > 0 ? 0 : S.dead;
+  const dz = S.dead;
   ex = Math.abs(ex) > dz ? ex - Math.sign(ex) * dz : 0; ey = Math.abs(ey) > dz ? ey - Math.sign(ey) * dz : 0;
   cam.x += ex * f; cam.y += ey * f; clampCam();
 }
 
 // ---------------------------------------------------------------- draw
-function img(f, x, y, w, h) { const i = IMG[f]; if (i) ctx.drawImage(i, x, y, w ?? i.width, h ?? i.height); }
+// night: every sprite is tinted on its own pixels (source-atop); lit night_file sprites are drawn as they are
+const TINT = {};
+function tintOf(src, key) {
+  if (key && TINT[key]) return TINT[key];
+  const c = document.createElement("canvas"); c.width = src.naturalWidth || src.width; c.height = src.naturalHeight || src.height;
+  const g = c.getContext("2d"); g.drawImage(src, 0, 0); g.globalCompositeOperation = "source-atop";
+  const [r, gg, b, a] = Y.night.overlay; g.fillStyle = `rgba(${r},${gg},${b},${a})`; g.fillRect(0, 0, c.width, c.height);
+  if (key) TINT[key] = c; return c;
+}
+function img(f, x, y, w, h, lit) {
+  const i = IMG[f]; if (!i) return;
+  ctx.drawImage(S.night && !lit ? tintOf(i, f) : i, x, y, w ?? i.width, h ?? i.height);
+}
+function lineY(L, x) {
+  if (x <= L[0][0]) return L[0][1];
+  for (let k = 1; k < L.length; k++) if (x <= L[k][0]) { const [x0, y0] = L[k - 1], [x1, y1] = L[k]; return y0 + (y1 - y0) * (x - x0) / (x1 - x0); }
+  return L[L.length - 1][1];
+}
+// order the pet (or a ground sparrow) among the items: in front of an item iff feet y > its sort_line at feet x
+function moverKey(list, fx, fy) {
+  let after = -Infinity;                  // must come after every item it is in front of
+  for (const o of list) if (o.line ? fy > lineY(o.line, fx) : fy > o.y) after = Math.max(after, o.y);
+  return after + 0.001;
+}
 function draw(now) {
   const s = view.s * view.dpr;
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#cde8f5"; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = S.night ? "#2a3466" : "#cde8f5"; ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
   for (const t of Y.tiles) if (t.x < cam.x + view.w && t.x + t.w > cam.x && t.y < cam.y + view.h && t.y + t.h > cam.y) img(S.night ? t.night_file : t.file, t.x, t.y, t.w, t.h);
   for (const [z, l] of Object.entries(Y.locks)) if (!S.own[z]) img(l.file, l.x, l.y, l.w, l.h);
@@ -284,24 +347,20 @@ function draw(now) {
   items.filter(e => e.layer === "pond").forEach(e => img(e.file, e.x, e.y, e.w, e.h));
   const tree = Y.tree.find(t => t.stage === S.stage);
   const list = [{ y: tree.sort_y, f: () => { img(tree.file, tree.x, tree.y, tree.w, tree.h); for (const [fx, fy] of tree.fruits) img(Y.fruit.file, fx - 40, fy - 40, 80, 80); } }];
-  const lit = [];
-  for (const e of items.filter(e => e.layer === "sorted")) list.push({ y: e.sort_y, f: () => {
-    img(e.file, e.x, e.y, e.w, e.h); if (S.night && e.night_file) lit.push(e);
+  for (const e of items.filter(e => e.layer === "sorted")) list.push({ y: e.sort_y, line: e.sort_line, f: () => {
+    if (S.night && e.night_file) img(e.night_file, e.x, e.y, e.w, e.h, true); else img(e.file, e.x, e.y, e.w, e.h);
     if (e.id === "bird_feeder" && guests.some(g => g.k === "perch")) { const sp = Y.extras.sparrow_perch; img(sp.file, sp.x, sp.y, sp.w, sp.h); }
   } });
   if (S.items) for (const b of Y.bed_flowers) if (b.flower === (b.spot === 1 ? "sunflower" : "tulip")) list.push({ y: b.sort_y, f: () => img(b.file, b.x, b.y, b.w, b.h) });
-  for (const g of guests) if (g.k === "ground") { const e = Y.extras.sparrow_ground; list.push({ y: g.y, f: () => img(e.file, g.x - e.anchor[0], g.y - e.anchor[1], e.w, e.h) }); }
-  list.push({ y: pet.y, f: () => drawPet(now) });
+  const statics = list.slice();
+  for (const g of guests) if (g.k === "ground") { const e = Y.extras.sparrow_ground; list.push({ y: moverKey(statics, g.x, g.y), f: () => img(e.file, g.x - e.anchor[0], g.y - e.anchor[1], e.w, e.h) }); }
+  list.push({ y: moverKey(statics, pet.x, pet.y), f: () => drawPet(now) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   if (pet.state === "act" && pet.act && pet.act.action === "splash") { const w = Y.extras.pond_water; img(w.file, w.x, w.y, w.w, w.h); }
   for (const g of guests) if (g.k === "fly") {
     g.t += 1 / 60; const e = Y.extras[Math.floor(now / 160) % 2 ? "butterfly_open" : "butterfly_closed"];
     const x = g.cx + Math.sin(g.t * 0.7) * 120, y = g.cy + Math.sin(g.t * 1.3) * 40;
     img(e.file, x - e.anchor[0], y - e.anchor[1], e.w, e.h);
-  }
-  if (S.night) {
-    const [r, gg, b, a] = Y.night.overlay; ctx.fillStyle = `rgba(${r},${gg},${b},${a})`; ctx.fillRect(cam.x, cam.y, view.w, view.h);
-    for (const e of lit) img(e.night_file, e.x, e.y, e.w, e.h);
   }
   if (S.showWalk) drawWalk();
   if (pet.state === "act" && pet.act) bubble(ACT_KO[pet.act.action] || pet.act.action);
@@ -310,7 +369,7 @@ function drawPet(now) {
   const P = Y.walk.pet, [cx, cy] = petCenter();
   const bob = pet.state === "walk" ? -Math.abs(Math.sin(pet.bob)) * 22 : 0;
   ctx.save(); ctx.translate(cx, cy + bob); if (pet.dir < 0) ctx.scale(-1, 1);
-  ctx.drawImage(PET_IMG, -P.w / 2, -P.h / 2, P.w, P.h); ctx.restore();
+  ctx.drawImage(S.night ? tintOf(PET_IMG) : PET_IMG, -P.w / 2, -P.h / 2, P.w, P.h); ctx.restore();
 }
 function bubble(text) {
   const [cx, cy] = petCenter(), y = cy - Y.walk.pet.h * 0.42;
@@ -353,6 +412,8 @@ function buildPanel() {
     ${rng("follow", "따라가는 속도", 0.02, 0.4, 0.01, "")}
     ${rng("dead", "여유 범위", 0, 400, 10, "px")}
     ${rng("back", "복귀 대기", 0.5, 8, 0.5, "초")}
+    ${rng("ret", "복귀 시간", 0.3, 4, 0.1, "초")}
+    ${rng("zoom", "줌 (두 손가락)", 0.5, 1, 0.01, "")}
     ${rng("peek", "잠긴 구역 엿보기", 0, 600, 20, "px")}
     ${rng("speed", "걷는 속도", 0.2, 1.5, 0.05, "")}
     <button id="reset">단짝을 집으로</button>`;
@@ -360,7 +421,7 @@ function buildPanel() {
   p.querySelectorAll("[data-z]").forEach(el => el.onchange = () => { S.own[el.dataset.z] = el.checked; buildGrid(); clampCam(); if (!walkable(pet.x, pet.y)) { pet.x = Y.walk.home[0]; pet.y = Y.walk.home[1]; pet.path = []; } });
   p.querySelectorAll("[data-n]").forEach(el => el.onclick = () => { S.night = el.dataset.n === "1"; buildPanel(); });
   p.querySelectorAll("[data-st]").forEach(el => el.onclick = () => { S.stage = +el.dataset.st; buildPanel(); });
-  p.querySelectorAll("[data-r]").forEach(el => el.oninput = () => { const k = el.dataset.r; S[k] = +el.value; $("#v_" + k).textContent = el.value + (el.nextElementSibling.textContent.replace(/[0-9.]/g, "")); clampCam(); });
+  p.querySelectorAll("[data-r]").forEach(el => el.oninput = () => { const k = el.dataset.r; S[k] = +el.value; if (k === "zoom") { const c = [cam.x + view.w / 2, cam.y + view.h / 2]; applyZoom(c[0], c[1]); } $("#v_" + k).textContent = el.value + (el.nextElementSibling.textContent.replace(/[0-9.]/g, "")); clampCam(); });
   $("#gst").onclick = () => { S.forceGuest = true; spawnGuests(); S.forceGuest = false; };
   $("#reset").onclick = () => { pet.x = Y.walk.home[0]; pet.y = Y.walk.home[1]; pet.path = []; pet.state = "idle"; };
 }

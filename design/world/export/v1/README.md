@@ -19,12 +19,12 @@
 - **좌표 = 큰 캔버스**(`canvas` 2160×3100 px, 1단위 = 400px). 화면은 그 위의 창: 가로 1080 = 카드 너비, 세로 = 카드 높이 × 1080 / 카드 너비(아이폰 15 ≈ 1860). 카드는 공간 탭 아래부터 하단 탭 바 바로 위까지
 - 배경은 1080 타일(`tiles[]`, 낮 `file` / 밤 `night_file`) — 화면에 걸친 타일만 그림
 - **구역** `walk.zones["1".."4"]`: `rect`·`price`(1 = 0 무료, 2 = 60, 3 = 120, 4 = 풍경만)·`area`·`blocked`·`gate`. 산 구역의 `area`를 합친 곳만 걸음. 안 산 구역은 `locks[z]` 울타리 그림을 그리고, 그 구역이나 문을 탭하면 구역 구매 시트
-- **화면 이동** `camera`: 단짝 따라감(부드럽게) + 손가락으로 끌어 둘러보기 → 손 떼고 3초 뒤 단짝에게 복귀. 탭 = 단짝이 그곳으로 걸어감. 화면은 산 구역 범위 + 이웃 잠긴 구역으로 `peek`(260px)까지만
-- 그리는 순서는 `draw_order`: 배경 타일 → 잠긴 구역 울타리 → `layer=ground`(피크닉 매트) → `layer=pond`(오리 튜브) → 나무 `tree[단계]` + `layer=sorted` 소품 + `bed_flowers` + 단짝 + 땅 참새를 **sort_y 오름차순**(단짝 키 = 발 y). 열매는 나무를 그린 직후 같은 순서에 그려(나무 앞에 선 단짝이 열매도 가리게) → (물장구 중) `extras.pond_water` → 나비 → 밤 덮개
+- **화면 이동** `camera`: 단짝 따라감(`follow_lerp` 0.3, `dead_zone` 120px) + 손가락으로 끌어 둘러보기 → 손 떼고 `return_wait_s` 3초 뒤 `return_s` 1.2초 동안 천천히 단짝에게 복귀. 두 손가락 = 줌아웃(`zoom_min` 0.6 ~ 1, 범위를 넘지 않는 데까지). 탭 = 단짝이 그곳으로 걸어감. 화면은 산 구역 범위 + 이웃 잠긴 구역으로 `peek`(600px)까지만
+- 그리는 순서는 `draw_order`: 배경 타일 → 잠긴 구역 울타리 → `layer=ground`(피크닉 매트) → `layer=pond`(오리 튜브) → 나무 `tree[단계]` + `layer=sorted` 소품 + `bed_flowers` + 단짝 + 땅 참새를 **sort_y 오름차순**. 단짝·땅 참새는 `sort_line`이 있는 소품과 비교할 때 발 y가 그 선(발 x 위치)보다 아래면 소품 앞에 그려(벤치·해먹·텐트처럼 비스듬히 넓은 소품 때문). 열매는 나무를 그린 직후 같은 순서에 그려(나무 앞에 선 단짝이 열매도 가리게) → (물장구 중) `extras.pond_water` → 나비 → 밤 덮개
 - 소품은 자기 자리 1개씩(바꿔 끼우기 없음). 가진 것만 그림. 화단 3칸 = `bed_flowers`(spot 0~2 × tulip/sunflower). 지금 소품은 전부 1구역, 2·3구역 소품은 업데이트 때 같은 형식으로 추가
 - 추억 나무: `tree[stage-1]` + 그 단계의 `fruits` 좌표마다 `fruit.webp`(80×80)를 가운데 맞춰. 단계 기준은 WORLD.md 7장(기록한 날 10/30/60)
 - 손님: `sparrow_perch`(새 모이통 있을 때, 모이통 바로 뒤에) / `sparrow_ground`·`butterfly_open|closed`는 `anchor`를 원하는 점에 두는 움직이는 그림
-- 밤(19~06시): 타일은 `night_file`, `night_file` 있는 소품(정원등·텐트)은 그 그림으로, 전부 그린 뒤 `night.overlay` rgba 덮개, 소품 `night_file` 그림만 덮개 위에 다시
+- 밤(19~06시): 낮과 같은 순서로 그리되, 그림마다(타일·울타리·소품·단짝·손님·열매) 자기 픽셀에만 `night.overlay` rgba를 덮어(source-atop) 그려. `night_file` 있는 소품(정원등·텐트)은 그 그림을 덮개 없이 그 순서에 그려. 켜진 그림을 맨 위에 다시 그리면 텐트가 앞에 선 단짝·새 모이통을 덮는 오류가 남
 - 걷기(텃밭은 `spaces.garden.walk`): 산 구역 `area` 안 + `walk.blocked`·구역 `blocked` 밖 + 가진 소품의 `item_blocked` 밖. 잠긴 구역과 맞닿은 변에서는 70px 떨어져. `interact[id]` = 서는 점·방향·동작. 단짝 발 (fx, fy)에 600×800 클립을 `pet.w×pet.h`로, 가운데 = 발 + `pet.feet_to_center`
 - 합성 확인: `scripts/blender/compose_yard_preview.py` (기본 = 낮|밤 화면, `map` = 캔버스 전체, `walk` = 걷기 영역, `own=1,2` = 산 구역) → design/world/yard/yard_v2_*.jpg
 
