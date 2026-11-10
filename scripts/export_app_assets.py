@@ -52,11 +52,13 @@ for key, (clip, loop) in CLIPS.items():
 GROUND = 0.42 * 800 / 1.45 * 0.725
 manifest["walk"] = {
     "clips": {"front": "walk_front", "back": "walk_back", "right": "walk_side", "left": "walk_side (draw mirrored)"},
-    "speed_px_s": round(GROUND), "depth_factor": 0.426,
+    "speed_px_s": 360, "no_slide_px_s": round(GROUND), "depth_factor": 0.426,
+    "speed_note": "speed_px_s = 0.9 unit/s x 400 px (대표 결정 2026-11-11, felt on the web test page). The clip's stride matches 0.42 unit/s "
+                  "(no_slide_px_s), so the feet glide a little at 0.9 - accepted.",
     "note": "speed in yard/garden canvas px at pet w=435. Screen-down/up movement is foreshortened by the 25 deg camera: "
             "ground distance = hypot(dx, dy / depth_factor); move so that ground distance grows by speed_px_s per second "
-            "(pure horizontal = %d px/s, pure vertical = %d px/s). Clip: |dx| >= |dy / depth_factor| -> side (mirror when dx < 0), "
-            "else dy > 0 -> front, dy < 0 -> back. Feet = same floor point as the garden clips (303, 697)." % (round(GROUND), round(GROUND * 0.426)),
+            "(pure horizontal = 360 px/s, pure vertical = 153 px/s). Clip: |dx| >= |dy / depth_factor| -> side (mirror when dx < 0), "
+            "else dy > 0 -> front, dy < 0 -> back. Feet = same floor point as the garden clips (303, 697)." % (),
 }
 json.dump(manifest, open(f"{OUT}/manifest.json", "w"), ensure_ascii=False, indent=2)
 print("TOTAL webp KB", total)
