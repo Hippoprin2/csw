@@ -69,7 +69,10 @@ export function YardPage({ active = true, onLeave }: { active?: boolean; onLeave
   function onTap(t: YardTap) {
     if (t.kind === 'zone') { setErr(''); setZoneAsk(t.zone); return; }
     if (t.kind === 'forest') { setToast('숲은 구경만 할 수 있어'); return; }
-    if (t.kind === 'item' && t.id === 'picnic_mat') { setErr(''); setFeedOpen(true); return; }
+    if (t.kind === 'item' && t.id === 'picnic_mat') {
+      if (edibles.length) { setErr(''); setFeedOpen(true); } else sceneRef.current?.walkTo('picnic_mat'); // 먹을 게 없으면 매트에 앉아 쉼
+      return;
+    }
     if (t.kind === 'fruit') {
       // 단짝이 나무로 가서 열매를 보여주면 카드가 열림
       setPicked((p) => [...p, t.index]);
@@ -104,6 +107,8 @@ export function YardPage({ active = true, onLeave }: { active?: boolean; onLeave
     const c = crops.find((x) => x.id === cropId);
     if (!c) return;
     setFeedOpen(false);
+    // 매트에 앉아서 먹는 클립 (딸기 / 그 밖 = 고구마). 먹기 시작할 때 수확물을 씀
+    const eat = cropId === 'strawberry' ? 'sit_eat_strawberry' : 'sit_eat_sweetpotato';
     sceneRef.current?.walkTo('picnic_mat', async () => {
       try {
         await api.useHarvest(cropId);
@@ -113,7 +118,7 @@ export function YardPage({ active = true, onLeave }: { active?: boolean; onLeave
       } catch (e) {
         setToast(friendlyError(e));
       }
-    });
+    }, { eat });
   }
 
   async function dev(fn: () => Promise<unknown>) {

@@ -3,12 +3,15 @@ import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 import { CANVAS, ICONS, ROOM } from '@/data/world';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { CATEGORY_ORDER, CATS, CHIPS, SAFETY_LINE, classifyByKeyword, pickLine, type Category } from '@/lib/categories';
 import { kstToday, kstYesterday } from '@/lib/dates';
+import { jarMarbles } from '@/lib/jars';
 import { askPermission } from '@/lib/notifications';
 import { safetyKeywordHit } from '@/lib/safety';
 import { useApp } from '@/state/app';
@@ -23,6 +26,9 @@ const DAILY_REWARD_CAP = 10;
 const NOTIF_ASKED_KEY = 'csw.notifAsked';
 const SAFETY_DAY_KEY = 'csw.safetyShownDay';
 const VASE_KEY = 'csw.sillVase'; // 창턱 꽃병 자리: 튤립/해바라기 둘 다 있으면 탭해서 바꿈 (기기에만 저장)
+const EDGE_PX = 70; // 방 끝에서 이만큼(화면 px) 더 끌면 옆 공간으로 넘어감
+const DOT = 7; // 유리장 병 속 구슬 한 칸 (캔버스 px)
+let keptCamX: number = ROOM.view.start_x; // 둘러본 위치 유지 (앱을 켜 둔 동안). 처음엔 단짝 가운데(= 예전 방)
 
 const store = {
   get: (k: string) => { try { return globalThis.localStorage?.getItem(k) ?? null; } catch { return null; } },
@@ -30,8 +36,8 @@ const store = {
 };
 
 // 방 = 홈. 기록 입력창·축하 8종·곁에 앉기·먹이기/선물하기는 방에서만 (STATUS 2026-11-09 결정)
-export function RoomPage() {
-  const { profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
+export function RoomPage({ onEdge }: { onEdge?: (side: 'left' | 'right') => void } = {}) {
+  const { jars, profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
   const { roomSize } = useSpaceSize();
   const sc = roomSize / CANVAS;
@@ -194,21 +200,78 @@ export function RoomPage() {
     }
   }
 
+  // 유리장: 닫힌 병 중 최근 12개 (슬롯 0 = 그중 가장 오래된 병). 모든 병은 유리병 탭 선반에 그대로 (R3)
+  const JC = ROOM.jarCabinet;
+  const cab = jars.jars.filter((j) => j.no < jars.current_jar && j.count > 0).sort((a, b) => a.no - b.no).slice(-JC.slots.length);
+  // 넓은 방(2160) 끌어서 둘러보기 (manifest spaces.room.view): 카드는 1080 창, 끝에서 더 끌면 옆 공간으로. 자동 복귀 없음
+  const V = ROOM.view;
+  const camX = useSharedValue(keptCamX);
+  const drag = useRef({ start: keptCamX, handed: false });
+  const pan = usePanGesture({
+    activeOffsetX: [-10, 10], failOffsetY: [-12, 12], maxPointers: 1, runOnJS: true,
+    onActivate: () => { drag.current = { start: camX.value, handed: false }; },
+    onUpdate: (e) => {
+      const want = drag.current.start - e.translationX / sc;
+      const x = Math.min(V.max_x, Math.max(V.min_x, want));
+      camX.value = x; keptCamX = x;
+      const over = (want - x) * sc;
+      if (onEdge && !drag.current.handed && Math.abs(over) > EDGE_PX) {
+        drag.current.handed = true;
+        onEdge(over < 0 ? 'left' : 'right');
+      }
+    },
+  });
+  // 탭: 유리장 병 → 그 병 보기, 꽃병 → 튤립/해바라기 바꾸기
+  const tap = useTapGesture({
+    maxDistance: 8, runOnJS: true,
+    onDeactivate: (e) => {
+      if (e.canceled) return;
+      const x = camX.value + e.x / sc, y = e.y / sc;
+      const hit = (r: number[]) => x >= r[0] && x <= r[0] + r[2] && y >= r[1] && y <= r[1] + r[3];
+      const si = cab.findIndex((_, i) => hit(JC.slots[i].tap));
+      if (si >= 0) { track('jar_viewed', { no: cab[si].no, from: 'cabinet' }); router.push(`/jar/${cab[si].no}`); return; }
+      if (vaseItem && hit([vaseItem.x, vaseItem.y, vaseItem.w, vaseItem.h])) swapVase();
+    },
+  });
+  const roomGesture = useCompetingGestures(pan, tap);
+  const worldStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -camX.value * sc }] }));
+
+  const jarDots = (j: (typeof cab)[number], slot: (typeof JC.slots)[number]) => {
+    const [mx, my, mw, mh] = slot.marbles;
+    const cols = Math.floor(mw / DOT), rows = Math.floor(mh / DOT), all = jarMarbles(j);
+    const n = Math.max(1, Math.round((Math.min(j.count, 50) / 50) * cols * rows));
+    return Array.from({ length: n }, (_, i) => {
+      const c = all[Math.floor((i * all.length) / n)] ?? 'cheer';
+      const col = i % cols, row = Math.floor(i / cols); // 아래 줄부터 채움
+      return <View key={i} style={{ position: 'absolute', left: (mx + col * DOT) * sc, top: (my + mh - (row + 1) * DOT) * sc, width: DOT * sc, height: DOT * sc, borderRadius: DOT * sc, backgroundColor: CATS[c].color }} />;
+    });
+  };
+
   return (
     <View style={st.wrap}>
       <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
         contentContainerStyle={{ paddingBottom: 32 + kbPad }}>
-        <View style={[st.room, { width: roomSize, height: roomSize }]}>
-          <Image source={ROOM.background} style={StyleSheet.absoluteFill} contentFit="cover" loading="eager" />
-          {back.map(draw)}
-          <View style={{ position: 'absolute', left: ROOM.pet.x * sc, top: ROOM.pet.y * sc }}>
-            <Pet action={petAction} size={ROOM.pet.w * sc} />
-          </View>
-          {front.map(draw)}
-          {vaseItem && (
-            <Pressable onPress={swapVase} accessibilityRole="button" accessibilityLabel="꽃병 바꾸기"
-              style={{ position: 'absolute', left: vaseItem.x * sc, top: vaseItem.y * sc, width: vaseItem.w * sc, height: vaseItem.h * sc }} />
-          )}
+        <GestureDetector gesture={roomGesture}>
+        <View style={[st.room, { width: roomSize, height: roomSize }]} accessibilityHint="좌우로 끌면 방을 둘러볼 수 있어요">
+          <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: ROOM.width * sc, height: ROOM.height * sc }, worldStyle]}>
+            <Image source={ROOM.background} style={StyleSheet.absoluteFill} contentFit="cover" loading="eager" />
+            {cab.map((j, i) => {
+              const sl = JC.slots[i];
+              return (
+                <View key={j.no} style={StyleSheet.absoluteFill} pointerEvents="none" accessible accessibilityLabel={`${j.no}번째 유리병`}>
+                  <Image source={JC.jarBack.source} style={{ position: 'absolute', left: sl.back[0] * sc, top: sl.back[1] * sc, width: JC.jarBack.w * sc, height: JC.jarBack.h * sc }} />
+                  {jarDots(j, sl)}
+                  <Image source={JC.jarFront.source} style={{ position: 'absolute', left: sl.front[0] * sc, top: sl.front[1] * sc, width: JC.jarFront.w * sc, height: JC.jarFront.h * sc }} />
+                </View>
+              );
+            })}
+            <Image source={JC.glass.source} style={{ position: 'absolute', left: JC.glass.x * sc, top: JC.glass.y * sc, width: JC.glass.w * sc, height: JC.glass.h * sc }} />
+            {back.map(draw)}
+            <View style={{ position: 'absolute', left: ROOM.pet.x * sc, top: ROOM.pet.y * sc }}>
+              <Pet action={petAction} size={ROOM.pet.w * sc} />
+            </View>
+            {front.map(draw)}
+          </Animated.View>
           {shownBubble ? (
             <View style={st.bubble}>
               <Text style={st.bubbleText}>{shownBubble}</Text>
@@ -218,6 +281,7 @@ export function RoomPage() {
             <Text key={float.key} style={st.float}>+{float.n} 씨앗</Text>
           )}
         </View>
+        </GestureDetector>
 
         {bagCount > 0 && (
           <Pressable style={st.basketBtn} onPress={() => setBasket(true)} accessibilityRole="button">

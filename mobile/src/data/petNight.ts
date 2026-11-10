@@ -1,0 +1,23 @@
+// 자동 생성: scripts/gen_yard_night_pet.py → 수정하지 말고 다시 생성
+export const PET_NIGHT: Record<string, number> = {
+  garden_idle: require('@/assets/pet/hippo_garden_idle_night.webp'),
+  walk_front: require('@/assets/pet/hippo_walk_front_night.webp'),
+  walk_side: require('@/assets/pet/hippo_walk_side_night.webp'),
+  walk_back: require('@/assets/pet/hippo_walk_back_night.webp'),
+  sit_bench_in: require('@/assets/pet/hippo_sit_bench_in_night.webp'),
+  sit_bench_loop: require('@/assets/pet/hippo_sit_bench_loop_night.webp'),
+  sit_bench_out: require('@/assets/pet/hippo_sit_bench_out_night.webp'),
+  sit_eat_in: require('@/assets/pet/hippo_sit_eat_in_night.webp'),
+  sit_eat_loop: require('@/assets/pet/hippo_sit_eat_loop_night.webp'),
+  sit_eat_out: require('@/assets/pet/hippo_sit_eat_out_night.webp'),
+  sit_eat_strawberry: require('@/assets/pet/hippo_sit_eat_strawberry_night.webp'),
+  sit_eat_sweetpotato: require('@/assets/pet/hippo_sit_eat_sweetpotato_night.webp'),
+  lie_in: require('@/assets/pet/hippo_lie_in_night.webp'),
+  lie_loop: require('@/assets/pet/hippo_lie_loop_night.webp'),
+  lie_out: require('@/assets/pet/hippo_lie_out_night.webp'),
+  splash_in: require('@/assets/pet/hippo_splash_in_night.webp'),
+  splash_loop: require('@/assets/pet/hippo_splash_loop_night.webp'),
+  splash_out: require('@/assets/pet/hippo_splash_out_night.webp'),
+  sniff: require('@/assets/pet/hippo_sniff_night.webp'),
+  show_fruit: require('@/assets/pet/hippo_show_fruit_night.webp'),
+};

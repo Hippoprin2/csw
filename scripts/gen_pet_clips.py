@@ -15,6 +15,14 @@ lines = ["// 자동 생성: design/character/export/v1/manifest.json → 수정�
          "export const PET_CLIPS: Record<ClipKey, { source: number; durationMs: number; loop: boolean }> = {"]
 for k, v in m['clips'].items():
     lines.append(f"  {k}: {{ source: require('@/assets/pet/{v['file']}'), durationMs: {v['duration_ms']}, loop: {str(v['loop']).lower()} }},")
+lines += ["};", f"export const PET_FPS = {m['fps']};",
+          "// 마당 자리 동작 (manifest yard_actions): parts = in/loop/out 또는 한 번, stand = 발 위치(마당 캔버스 px)",
+          "export type YardAction = { parts: ClipKey[]; stand: [number, number]; enter?: [number, number]; eat?: ClipKey[] };",
+          "export const PET_YARD_ACTIONS: Record<string, YardAction> = {"]
+for k, v in m.get('yard_actions', {}).items():
+    if not isinstance(v, dict): continue
+    o = {kk: v[kk] for kk in ('parts', 'stand', 'enter', 'eat') if kk in v}
+    lines.append(f"  {k}: {json.dumps(o)},")
 lines += ["};", f"export const PET_POSTER = require('@/assets/pet/{m['clips']['idle']['poster']}');", ""]
 (ROOT / 'mobile/src/data/petClips.ts').write_text("\n".join(lines))
 print('ok', len(m['clips']), 'clips')

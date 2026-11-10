@@ -1,19 +1,24 @@
 import { Image } from 'expo-image';
+import { Image as RNImage, Platform } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { GestureDetector, usePanGesture, usePinchGesture, useSimultaneousGestures, useCompetingGestures, useTapGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
-import { PET_CLIPS } from '@/data/petClips';
+import { PET_CLIPS, PET_FPS, PET_YARD_ACTIONS, type ClipKey } from '@/data/petClips';
+import { PET_NIGHT } from '@/data/petNight';
+import { HIT_CELL, YARD_HIT } from '@/data/yardHit';
 import { YARD, YARD_IMG } from '@/data/yard';
 import type { Poly, Pt } from '@/data/yardTypes';
-import { buildWalk, camBounds, cellPt, findPath, lineY, nearestCell, walkable, zoneAt, type WalkMap } from '@/lib/yardGeo';
+import { buildWalk, camBounds, cellPt, findPath, inPoly, lineY, nearestCell, walkable, zoneAt, type WalkMap } from '@/lib/yardGeo';
 
 // 마당 화면 (export README '마당' 절, 참고 구현 design/yard_test/index.html)
 // - 큰 캔버스(2160×3100)를 카드 너비 = 1080px 기준으로 줄여 창처럼 보여줌. 끌기 = 둘러보기, 두 손가락 = 줌(0.6~1, 유지), 탭 = 걸어가기
 // - 그리는 순서: 타일 → 잠긴 구역 울타리 → ground → pond → (나무·sorted 소품·화단 꽃·단짝·땅 참새를 sort_y 순, 단짝은 sort_line 비교) → 물장구 물 → 나비
 // - 밤: 그림마다 같은 그림을 night.overlay 색으로 칠해 그 투명도로 겹침(자기 픽셀에만 = source-atop). night_file 소품은 덮개 없이
-// - 단짝 동작 클립이 오기 전: 마당 대기 클립 + 통통 튀기(걷기·대기 모두)
+// - 단짝: 대기 = garden_idle, 걷기 = 25° 걷기 3방향, 자리 동작 = character manifest yard_actions (in → loop 5~10초 → out / 한 번)
+//   동작 클립엔 아이템 가림(홀드아웃)이 들어 있어서 동작 중엔 그 아이템 바로 위에 그림. 연못 물은 덮지 않음(클립이 물높이에서 잘림)
+//   클립 전환: 새 클립 첫 프레임이 뜰 때까지 이전 클립을 아래에 남겨 둠(빈 화면 방지), 단계 타이머도 첫 프레임부터 잼
 
 const P = YARD.walk.pet;
 const [OR, OG, OB, OA] = YARD.night.overlay;
@@ -23,17 +28,42 @@ const SPEED = 0.9; // 걷는 속도 (땅 위 단위/초, 1단위 = 400px) — �
 const DEPTH = 0.426; // 25° 카메라: 화면 세로 1px = 땅 위 1/0.426px (character manifest walk.depth_factor)
 type Face = 'idle' | 'front' | 'side' | 'back';
 const FACE_CLIP = { idle: 'garden_idle', front: 'walk_front', side: 'walk_side', back: 'walk_back' } as const;
-// 밤 단짝 = 밤 색을 미리 입힌 클립 한 장 (scripts/gen_yard_night_pet.py). 움직이는 그림 두 장을 겹치면 각자 재생돼 어긋남
-const NIGHT_CLIP = {
-  idle: require('@/assets/pet/hippo_garden_idle_night.webp'),
-  front: require('@/assets/pet/hippo_walk_front_night.webp'),
-  side: require('@/assets/pet/hippo_walk_side_night.webp'),
-  back: require('@/assets/pet/hippo_walk_back_night.webp'),
-} as const;
-const ACT_MS = 6000;
-export const ACT_KO: Record<string, string> = {
-  sniff: '🌷 킁킁', sit_bench: '🪑 쉬는 중', sit_eat: '🧺 냠냠', lie: '😴 쿨쿨', splash: '💦 첨벙', show_fruit: '🍑 이거 봐!',
+const END_GRACE_MS = 100;
+const LOAD_GIVE_UP_MS = 5000; // 첫 프레임이 이 안에 안 뜨면 뜬 셈 치고 진행 (단짝이 멈춰 있지 않게)
+const ACT_ITEM: Record<string, string> = { duck_float: 'pond' }; // 오리 튜브 탭 = 연못 물장구
+// 동작 중엔 클립 홀드아웃이 아이템을 가려 주므로 이 아이템들 바로 위에 그림 (화단 뒤에서 냄새 맡기 등)
+const ACT_OVER: Record<string, (key: string) => boolean> = {
+  sit_bench: (k) => k === 'bench', lie: (k) => k === 'hammock', sniff: (k) => k === 'flower_bed' || k.startsWith('bf'),
 };
+type Phase = { clip: ClipKey; ms: number; move?: { from: Pt; to: Pt; f0: number; f1: number } };
+type Act = { id: string; action: string; stand: Pt; enter?: Pt; seq: Phase[]; i: number; reqAt: number; shownAt: number | null; fire: { i: number; frac: number }; then: null | (() => void) };
+const clipMs = (c: ClipKey) => PET_CLIPS[c].durationMs;
+
+// 자리 동작 순서. 앉기·눕기·물장구 = in → loop(반복 횟수로 5~10초, 루프 끝 = out 시작 자세) → out
+function buildSeq(action: string, eat?: ClipKey): { seq: Phase[]; fire: { i: number; frac: number } } {
+  const A = PET_YARD_ACTIONS[action];
+  if (A.parts.length === 1) return { seq: [{ clip: A.parts[0], ms: clipMs(A.parts[0]) }], fire: { i: 0, frac: action === 'show_fruit' ? 0.55 : 0 } };
+  const [cin, cloop, cout] = A.parts, L = clipMs(cloop);
+  const hold = L * Math.max(1, Math.ceil((5000 + Math.random() * 5000) / L));
+  const seq: Phase[] = [{ clip: cin, ms: clipMs(cin) }];
+  let fire = { i: 0, frac: 0 };
+  if (eat) { seq.push({ clip: cloop, ms: L }, { clip: eat, ms: clipMs(eat) }); fire = { i: 2, frac: 0 }; }
+  seq.push({ clip: cloop, ms: hold }, { clip: cout, ms: clipMs(cout) });
+  if (action === 'splash' && A.enter) { // 첫 뜀: 4~15프레임에 연못 가장자리 → 물속, 나올 때 8~19프레임
+    seq[0].move = { from: A.enter, to: A.stand, f0: 4, f1: 15 };
+    seq[seq.length - 1].move = { from: A.stand, to: A.enter, f0: 8, f1: 19 };
+  }
+  return { seq, fire };
+}
+
+// 소품·나무 탭 판정: 그림의 투명한 여백은 빼고 (scripts/gen_yard_hit.py)
+function hitSprite(key: string, e: { x: number; y: number; w: number; h: number }, x: number, y: number) {
+  if (x < e.x || y < e.y || x >= e.x + e.w || y >= e.y + e.h) return false;
+  const H = YARD_HIT[key];
+  if (!H) return true;
+  const c = Math.min(H.cols - 1, Math.floor(((x - e.x) / e.w) * H.cols)), r = Math.min(H.rows - 1, Math.floor(((y - e.y) / e.h) * H.rows));
+  return H.bits[r * H.cols + c] === '1' || HIT_CELL <= 0;
+}
 
 let keptZoom = 1; // 줌 유지 (앱을 켜 둔 동안)
 
@@ -44,7 +74,7 @@ export type YardTap =
   | { kind: 'fruit'; index: number }
   | { kind: 'item'; id: string };
 
-export type YardSceneHandle = { walkTo: (interactId: string, then?: () => void) => void };
+export type YardSceneHandle = { walkTo: (interactId: string, then?: () => void, opts?: { eat?: ClipKey }) => void };
 
 type Props = {
   zones: number[];          // 산 구역 (1은 항상)
@@ -102,20 +132,24 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   };
 
   const [guestList, setGuestList] = useState<Guest[] | null>(null);
-  const [face, setFace] = useState<Face>('idle');
+  // 단짝 클립 두 겹: cur(지금 원하는 것) 위, base(마지막으로 화면에 뜬 것) 아래 — cur 첫 프레임이 뜨면 base = cur
+  type Layer = { clip: ClipKey; n: number };
+  const [cur, setCur] = useState<Layer>({ clip: 'garden_idle', n: 0 });
+  const [base, setBase] = useState<Layer>({ clip: 'garden_idle', n: 0 });
+  const nRef = useRef(0);
+  const curRef = useRef<Layer>(cur);
   const [petZ, setPetZ] = useState(() => moverZFrom(statics0(stage, items), YARD.walk.home[0], YARD.walk.home[1]));
-  const [act, setAct] = useState<string | null>(null);
   const guestRef = useRef<Guest[]>([]);
   useEffect(() => { guestRef.current = guestList ?? []; }, [guestList]);
 
   // 움직이는 값 (화면 = UI 스레드 shared value, 계산은 JS 루프)
   const camX = useSharedValue(0), camY = useSharedValue(0), scale = useSharedValue(1);
-  const petX = useSharedValue(YARD.walk.home[0]), petY = useSharedValue(YARD.walk.home[1]), petDir = useSharedValue(1), petBob = useSharedValue(0);
+  const petX = useSharedValue(YARD.walk.home[0]), petY = useSharedValue(YARD.walk.home[1]), petDir = useSharedValue(1);
   const flyX = useSharedValue(0), flyY = useSharedValue(0), flyOpen = useSharedValue(0);
 
   const G = useRef({
     cam: { x: 0, y: 0 }, zoom: keptZoom, s: 1, vw: 1080, vh: 1860, started: false,
-    pet: { x: YARD.walk.home[0], y: YARD.walk.home[1], dir: 1, face: 'side' as Face, t: 0, state: 'idle' as 'idle' | 'walk' | 'act', path: [] as Pt[], act: null as null | { id: string; action: string; stand: Pt }, until: 0, walks: 0, then: null as null | (() => void) },
+    pet: { x: YARD.walk.home[0], y: YARD.walk.home[1], dir: 1, face: 'side' as Face, t: 0, state: 'idle' as 'idle' | 'walk' | 'act', path: [] as Pt[], act: null as null | Act, until: 0, walks: 0, pending: null as null | (() => void) },
     dragging: false, lastDrag: -1e9, glide: null as null | { t0: number; x: number; y: number }, glided: true,
     panStart: { x: 0, y: 0 }, pinchStart: 1, left: false,
   });
@@ -169,20 +203,75 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   }
   const petCenter = (): Pt => [G.current.pet.x + P.feet_to_center[0], G.current.pet.y + P.feet_to_center[1]];
 
-  function goTo(pt: Pt, a?: { id: string; action: string; stand: Pt } | null, then?: () => void) {
-    const g = G.current, m = getWalk();
-    let path = findPath(m, [g.pet.x, g.pet.y], pt);
-    if (a) path = path.concat([a.stand]);
-    g.pet.path = path; g.pet.act = a ?? null; g.pet.then = then ?? null;
-    g.pet.state = path.length ? 'walk' : a ? 'act' : 'idle';
-    g.pet.until = performance.now() + (a && !path.length ? ACT_MS : 4000);
-    if (!path.length && a) { setAct(a.action); then?.(); g.pet.then = null; }
-    else setAct(null);
+  function showClip(c: ClipKey) {
+    if (curRef.current.clip === c && G.current.pet.state !== 'act') return; // 걷기·대기는 같은 클립이면 그대로 (동작 단계는 매번 처음부터)
+    const l = { clip: c, n: ++nRef.current };
+    curRef.current = l; setCur(l);
   }
-  function walkToInteract(id: string, then?: () => void) {
+  function onShown(l: Layer) {
+    setBase(l);
+    const a = G.current.pet.act;
+    if (a && G.current.pet.state === 'act' && curRef.current.n === l.n && a.shownAt === null) a.shownAt = performance.now();
+  }
+  function startAct(a: Act) {
+    const pet = G.current.pet;
+    pet.state = 'act'; pet.act = a; a.i = 0; a.reqAt = performance.now(); a.shownAt = null;
+    [pet.x, pet.y] = a.seq[0].move ? a.seq[0].move.from : a.stand;
+    showClip(a.seq[0].clip);
+  }
+  function makeAct(id: string, eat?: ClipKey): Act | null {
     const v = YARD.walk.interact[id];
-    if (!v) return;
-    goTo(v.enter ?? v.stand, { id, action: v.action, stand: v.stand }, then);
+    if (!v) return null;
+    const A = PET_YARD_ACTIONS[v.action];
+    if (!A) return null;
+    const { seq, fire } = buildSeq(v.action, eat);
+    return { id, action: v.action, stand: A.stand, enter: A.enter, seq, i: 0, reqAt: 0, shownAt: null, fire, then: null };
+  }
+  // 걷기 시작. 자리 동작 중이면 지금 동작을 자연스럽게 마치고(루프는 한 바퀴 끝에서 out) 출발
+  function goTo(pt: Pt, a?: Act | null, then?: () => void) {
+    const g = G.current, pet = g.pet;
+    if (pet.state === 'act' && pet.act) {
+      const A = pet.act, now = performance.now();
+      pet.pending = () => goTo(pt, a, then);
+      const ph = A.seq[A.i], last = A.seq.length - 1;
+      if (A.i < last && A.i > 0 && ph.clip === A.seq[last - 1].clip) { // 루프 중: 이번 바퀴 끝에서 out으로
+        const L = clipMs(ph.clip), el = A.shownAt === null ? 0 : now - A.shownAt;
+        ph.ms = Math.max(L, Math.ceil((el + 1) / L) * L);
+        A.seq = [...A.seq.slice(0, A.i + 1), A.seq[last]];
+        if (A.fire.i > A.i) A.fire = { i: -1, frac: 0 };
+      } else if (A.i === 0 && last >= 2) { // 앉는 중: 한 바퀴만 앉았다가 일어남
+        const loop = A.seq[last - 1];
+        A.seq = [A.seq[0], { ...loop, ms: clipMs(loop.clip) }, A.seq[last]];
+        A.fire = { i: -1, frac: 0 };
+      }
+      return;
+    }
+    const m = getWalk();
+    const target = a ? (a.enter ?? a.stand) : pt;
+    let path = findPath(m, [pet.x, pet.y], target);
+    if (a && !a.enter) path = path.concat([a.stand]); // 자리가 소품 발치 안쪽일 수 있음: 마지막 한 걸음은 직접
+    pet.path = path; pet.act = a ?? null;
+    if (a) a.then = then ?? null;
+    if (!path.length && a) { startAct(a); return; }
+    pet.state = path.length ? 'walk' : 'idle';
+    pet.until = performance.now() + 4000;
+  }
+  function walkToInteract(id: string, then?: () => void, opts?: { eat?: ClipKey }) {
+    const pet = G.current.pet;
+    // 이미 매트에 앉아 있으면 그 자리에서 먹기만 끼워 넣음 (루프 한 바퀴 끝에서)
+    if (opts?.eat && pet.state === 'act' && pet.act?.id === id && pet.act.action === 'sit_eat') {
+      const A = pet.act, ph = A.seq[A.i], last = A.seq.length - 1;
+      if (A.i > 0 && A.i < last && ph.clip === A.seq[last - 1].clip) {
+        const L = clipMs(ph.clip), el = A.shownAt === null ? 0 : performance.now() - A.shownAt;
+        ph.ms = Math.max(L, Math.ceil((el + 1) / L) * L);
+        const hold = L * Math.ceil(6000 / L);
+        A.seq = [...A.seq.slice(0, A.i + 1), { clip: opts.eat, ms: clipMs(opts.eat) }, { clip: ph.clip, ms: hold }, A.seq[last]];
+        A.fire = { i: A.i + 1, frac: 0 }; A.then = then ?? null;
+        return;
+      }
+    }
+    const a = makeAct(id, opts?.eat);
+    if (a) goTo(a.stand, a, then);
   }
   useEffect(() => {
     if (sceneRef) sceneRef.current = { walkTo: walkToInteract };
@@ -216,6 +305,15 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 크기·구역이 바뀔 때만 다시 맞춤
   }, [size.cw, size.ch, zonesKey]);
 
+  // 밤 클립 미리 받기 (낮 클립은 Pet.tsx가 앱 시작 때 받아 둠)
+  useEffect(() => {
+    if (!night || Platform.OS === 'web') return;
+    try {
+      const uris = Object.values(PET_NIGHT).map((r) => RNImage.resolveAssetSource(r)?.uri).filter((u): u is string => !!u);
+      Image.prefetch(uris, 'disk').catch(() => {});
+    } catch {}
+  }, [night]);
+
   // 손님: 처음 한 번 정함 (30%)
   useEffect(() => {
     if (guestList !== null || !size.cw) return;
@@ -233,7 +331,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   // 프레임 루프: 단짝 걷기·자동 놀기, 카메라 따라가기, 나비
   useEffect(() => {
     if (!active || !size.cw) return;
-    let raf = 0, last = performance.now(), lastZ = -1, lastFace: Face = 'idle';
+    let raf = 0, last = performance.now(), lastZ = -1;
     const loop = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       const g = G.current, pet = g.pet;
@@ -242,9 +340,8 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
       if (pet.state === 'walk') {
         const t = pet.path[0];
         if (!t) {
-          pet.state = pet.act ? 'act' : 'idle';
-          pet.until = now + (pet.act ? ACT_MS : 4000 + Math.random() * 4000);
-          if (pet.act) { setAct(pet.act.action); pet.then?.(); pet.then = null; }
+          if (pet.act) startAct(pet.act);
+          else { pet.state = 'idle'; pet.until = now + 4000 + Math.random() * 4000; }
         } else {
           // 속도는 땅 위 거리로 (화면 세로 이동은 25° 카메라라 짧아 보임)
           const dx = t[0] - pet.x, dy = t[1] - pet.y, d = Math.hypot(dx, dy / DEPTH), step = SPEED * YARD.px_per_unit * dt;
@@ -252,20 +349,44 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
           pet.face = Math.abs(dx) >= Math.abs(dy / DEPTH) ? 'side' : dy > 0 ? 'front' : 'back';
           if (d <= step) { pet.x = t[0]; pet.y = t[1]; pet.path.shift(); } else { pet.x += (dx / d) * step; pet.y += (dy / d) * step; }
         }
-      } else if (pet.state === 'act' && now > pet.until) {
-        pet.state = 'idle'; pet.act = null; pet.until = now + 2000; setAct(null);
+      } else if (pet.state === 'act' && pet.act) {
+        const A = pet.act, ph = A.seq[A.i];
+        if (A.shownAt === null && now - A.reqAt > LOAD_GIVE_UP_MS) A.shownAt = now;
+        if (A.shownAt !== null) {
+          const el = now - A.shownAt;
+          if (ph.move) { // 물장구 뜀: 정해진 프레임 동안 발 위치를 옮김
+            const f = (el / 1000) * PET_FPS, k = Math.min(1, Math.max(0, (f - ph.move.f0) / (ph.move.f1 - ph.move.f0)));
+            pet.x = ph.move.from[0] + (ph.move.to[0] - ph.move.from[0]) * k; pet.y = ph.move.from[1] + (ph.move.to[1] - ph.move.from[1]) * k;
+          }
+          if (A.then && A.fire.i === A.i && el >= A.fire.frac * ph.ms) { const f = A.then; A.then = null; f(); }
+          if (el >= ph.ms + END_GRACE_MS) {
+            if (ph.move) [pet.x, pet.y] = ph.move.to;
+            A.i++;
+            if (A.i < A.seq.length) { A.reqAt = now; A.shownAt = null; showClip(A.seq[A.i].clip); }
+            else {
+              if (A.then) { const f = A.then; A.then = null; f(); } // 놓친 콜백(먹기 등)은 끝에서라도
+              pet.act = null; pet.state = 'idle'; pet.until = now + 2000 + Math.random() * 3000;
+              const go = pet.pending; pet.pending = null;
+              go?.();
+            }
+          }
+        }
       } else if (pet.state === 'idle' && now > pet.until) {
         pet.walks++;
         const acts = Object.keys(YARD.walk.interact).filter((id) => id === 'pond' || id === 'tree' || ownItems.has(id));
         if (pet.walks % 3 === 0 && acts.length) walkToInteract(acts[Math.floor(Math.random() * acts.length)]);
         else goTo(randomWalkable());
       }
-      // 걷기 = 25° 걷기 클립(왼쪽 = 옆 클립 뒤집기). 서 있기·동작 = 대기 클립 + 통통 (자리 동작 클립 오기 전 임시)
-      const face: Face = pet.state === 'walk' && pet.path.length ? pet.face : 'idle';
-      if (face !== lastFace) { lastFace = face; setFace(face); }
-      const bob = face === 'idle' ? -Math.abs(Math.sin(pet.t * 3.2)) * 10 : 0;
-      petX.value = pet.x; petY.value = pet.y; petDir.value = face === 'idle' || face === 'side' ? pet.dir : 1; petBob.value = bob;
-      const z = moverZFrom(staticsRef.current, pet.x, pet.y);
+      // 클립: 걷기 = 25° 걷기(왼쪽 = 옆 클립 뒤집기), 서 있기 = 마당 대기, 동작 = 단계 클립(showClip이 바꿈)
+      if (pet.state !== 'act') {
+        const face: Face = pet.state === 'walk' && pet.path.length ? pet.face : 'idle';
+        showClip(FACE_CLIP[face]);
+        petDir.value = face === 'idle' || face === 'side' ? pet.dir : 1;
+      } else petDir.value = 1;
+      petX.value = pet.x; petY.value = pet.y;
+      let z = moverZFrom(staticsRef.current, pet.x, pet.y);
+      const over = pet.state === 'act' && pet.act ? ACT_OVER[pet.act.action] : undefined;
+      if (over) staticsRef.current.forEach((o, i) => { if (over(o.key)) z = Math.max(z, 101 + i * 2); });
       if (z !== lastZ) { lastZ = z; setPetZ(z); }
       // 카메라
       if (!g.dragging) {
@@ -346,9 +467,27 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     for (const [zs, Z] of Object.entries(YARD.walk.zones)) {
       if (Z.gate && !own.has(Number(zs)) && Math.hypot(Z.gate[0] - x, Z.gate[1] - y) < 110) { onTap({ kind: 'zone', zone: Number(zs) }); return; }
     }
-    // 피크닉 매트 (먹이기)
-    const mat = YARD.items.find((e) => e.id === 'picnic_mat')!;
-    if (ownItems.has('picnic_mat') && x > mat.x && x < mat.x + mat.w && y > mat.y && y < mat.y + mat.h) { onTap({ kind: 'item', id: 'picnic_mat' }); return; }
+    // 소품·나무 (그림 위, 앞에 있는 것부터). 동작 있는 소품 = 가서 그 동작, 없는 소품 = 옆에 가서 섬
+    const cands = [
+      ...YARD.items.filter((e) => ownItems.has(e.id)).map((e) => ({ id: e.id, key: e.id, e, sy: e.layer === 'sorted' ? e.sort_y : -1 })),
+      { id: 'tree', key: `tree${tree.stage}`, e: tree, sy: tree.sort_y },
+    ].sort((a, b) => b.sy - a.sy);
+    const it = cands.find((c) => hitSprite(c.key, c.e, x, y));
+    if (it) {
+      const id = ACT_ITEM[it.id] ?? it.id;
+      if (id === 'picnic_mat') { onTap({ kind: 'item', id }); return; } // 먹이기 시트 (먹을 게 없으면 앉기)
+      if (YARD.walk.interact[id]) { walkToInteract(id); return; }
+      const fb = YARD.walk.item_blocked[it.id];
+      if (fb) { // 소품 앞에 서면 가려서 옆으로 (단짝과 가까운 쪽)
+        const pet = G.current.pet, m = getWalk();
+        const L = fb.reduce((a, q) => (q[0] < a[0] ? q : a)), Rr = fb.reduce((a, q) => (q[0] > a[0] ? q : a));
+        const opts = ([[L[0] - 90, L[1] + 10], [Rr[0] + 90, Rr[1] + 10]] as Pt[]).filter((q) => walkable(m, q[0], q[1]))
+          .sort((a, b) => Math.hypot(a[0] - pet.x, a[1] - pet.y) - Math.hypot(b[0] - pet.x, b[1] - pet.y));
+        const b = fb.reduce((a, q) => (q[1] > a[1] ? q : a));
+        goTo(opts[0] ?? [b[0], b[1] + 40]); return;
+      }
+    }
+    if (inPoly(x, y, YARD.walk.blocked.pond)) { walkToInteract('pond'); return; }
     goTo([x, y]);
   }
 
@@ -368,12 +507,12 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   const petStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: petX.value + P.feet_to_center[0] - P.w / 2 },
-      { translateY: petY.value + P.feet_to_center[1] + petBob.value - P.h / 2 },
+      { translateY: petY.value + P.feet_to_center[1] - P.h / 2 },
       { scaleX: petDir.value },
     ],
   }));
   const bubbleStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: petX.value - 300 }, { translateY: petY.value + P.feet_to_center[1] - P.h * 0.42 - 90 + petBob.value }],
+    transform: [{ translateX: petX.value - 300 }, { translateY: petY.value + P.feet_to_center[1] - P.h * 0.42 - 90 }],
   }));
   const FA = YARD.extras.butterfly_open.anchor ?? [0, 0];
   const flyA = useAnimatedStyle(() => ({
@@ -384,8 +523,9 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     opacity: flyOpen.value === 0 ? 1 : 0,
     transform: [{ translateX: flyX.value - FA[0] }, { translateY: flyY.value - FA[1] }],
   }));
-  const splashOn = act === 'splash';
-  const speech = bubble ?? (act ? ACT_KO[act] ?? null : null);
+  const speech = bubble ?? null;
+  const petSrc = (c: ClipKey) => (night ? PET_NIGHT[c] ?? PET_CLIPS[c].source : PET_CLIPS[c].source);
+  const layers = base.n === cur.n ? [cur] : [base, cur];
   const perch = guestList?.some((q) => q.k === 'perch') && ownItems.has('bird_feeder');
   const ground = guestList?.find((q) => q.k === 'ground');
   const hasFly = guestList?.some((q) => q.k === 'fly');
@@ -421,9 +561,11 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
                 <Sprite file={sp.file} x={ground.x - (sp.anchor?.[0] ?? 0)} y={ground.y - (sp.anchor?.[1] ?? 0)} w={sp.w} h={sp.h} night={night} z={moverZ(ground.x, ground.y)} />
               )}
               <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: P.w, height: P.h, zIndex: petZ }, petStyle]}>
-                <Image source={night ? NIGHT_CLIP[face] : PET_CLIPS[FACE_CLIP[face]].source} style={StyleSheet.absoluteFill} contentFit="contain" loading="eager" />
+                {layers.map((l) => (
+                  <Image key={`${l.clip}-${l.n}-${night ? 'n' : 'd'}`} source={petSrc(l.clip)} style={StyleSheet.absoluteFill} contentFit="contain"
+                    loading="eager" autoplay cachePolicy="disk" onDisplay={() => onShown(l)} onLoad={() => onShown(l)} />
+                ))}
               </Animated.View>
-              {splashOn && <Sprite {...YARD.extras.pond_water} night={night} z={900} />}
               {hasFly && (
                 <>
                   <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: fly.w, height: fly.h, zIndex: 950 }, flyA]}>

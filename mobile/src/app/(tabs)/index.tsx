@@ -91,12 +91,12 @@ export default function Spaces() {
         {w > 0 && (
           <ScrollView
             ref={ref} horizontal pagingEnabled showsHorizontalScrollIndicator={false}
-            // 열린 마당에서는 끌기 = 마당 둘러보기. 방으로는 위 탭이나 마당 왼쪽 끝에서 더 끌어서
-            scrollEnabled={!(page === 2 && yard.open)}
+            // 방·열린 마당에서는 끌기 = 그 공간 둘러보기. 옆 공간으로는 위 탭이나 끝에서 더 끌어서 (방은 넓은 그림, 2026-11-11)
+            scrollEnabled={page === 0 || (page === 2 && !yard.open)}
             onMomentumScrollEnd={onScrollEnd} onScrollEndDrag={onScrollEnd} scrollEventThrottle={16}
             contentOffset={{ x: w * HOME, y: 0 }} keyboardShouldPersistTaps="handled">
             <View style={{ width: w }}><GardenPage /></View>
-            <View style={{ width: w }}><RoomPage /></View>
+            <View style={{ width: w }}><RoomPage onEdge={(side) => go(side === 'left' ? 0 : 2)} /></View>
             <View style={{ width: w, height: pageH || undefined }}><YardPage active={page === 2} onLeave={() => go(1)} /></View>
           </ScrollView>
         )}

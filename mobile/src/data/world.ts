@@ -1,37 +1,60 @@
 // 자동 생성: design/world/export/v1/manifest.json → 수정하지 말고 다시 생성 (scripts/gen_world.py)
 // 단위: 캔버스 px (정사각형). 앱은 (카드 너비 / CANVAS) 배율로 곱한다.
+// CANVAS = 카드 한 장(정사각형 창)의 폭. 방은 더 넓은 캔버스(ROOM.width)를 이 창으로 좌우로 끌어 본다
 export const CANVAS = 1080;
 export type Rect = { x: number; y: number; w: number; h: number };
 export type PetPlace = Rect & { z: number };
 
 export const ROOM = {
   background: require('@/assets/world/room/background.webp'),
-  pet: { x: 308.3, y: 495.9, w: 435.0, h: 580.0, z: 18 } as PetPlace,
+  width: 2160, height: 1080,
+  view: {"w": 1080, "h": 1080, "start_x": 540, "min_x": 0, "max_x": 1080},
+  pet: { x: 848.3, y: 495.9, w: 435.0, h: 580.0, z: 18 } as PetPlace,
   // z 오름차순으로 그린다. 같은 slot은 하나만 (방 소품은 owned.placed, sill_vase는 튤립/해바라기 중 하나)
   items: [
-    { id: 'curtain', slot: 'window', z: 0, x: 432, y: 267, w: 489, h: 386, source: require('@/assets/world/room/curtain.webp') },
-    { id: 'frame', slot: 'wall_left', z: 1, x: 280, y: 328, w: 143, h: 139, source: require('@/assets/world/room/frame.webp') },
-    { id: 'wall_clock', slot: 'wall_right', z: 2, x: 912, y: 383, w: 114, h: 132, source: require('@/assets/world/room/wall_clock.webp') },
-    { id: 'garland', slot: 'wall_top', z: 3, x: 86, y: 96, w: 849, h: 165, source: require('@/assets/world/room/garland.webp') },
-    { id: 'string_lights', slot: 'wall_top', z: 4, x: 87, y: 97, w: 847, h: 147, source: require('@/assets/world/room/string_lights.webp') },
-    { id: 'mobile', slot: 'ceiling', z: 5, x: 267, y: 0, w: 246, h: 538, source: require('@/assets/world/room/mobile.webp') },
-    { id: 'bookshelf', slot: 'back_right', z: 6, x: 693, y: 565, w: 387, h: 515, source: require('@/assets/world/room/bookshelf.webp') },
-    { id: 'bed', slot: 'back_left', z: 7, x: 0, y: 717, w: 650, h: 309, source: require('@/assets/world/room/bed.webp') },
-    { id: 'radio_stand', slot: 'bedside', z: 8, x: 0, y: 715, w: 162, h: 257, source: require('@/assets/world/room/radio_stand.webp') },
-    { id: 'aquarium', slot: 'bedside', z: 9, x: 0, y: 742, w: 162, h: 230, source: require('@/assets/world/room/aquarium.webp') },
-    { id: 'easel', slot: 'lean', z: 10, x: 665, y: 694, w: 186, h: 309, source: require('@/assets/world/room/easel.webp') },
-    { id: 'guitar', slot: 'lean', z: 11, x: 723, y: 558, w: 103, h: 325, source: require('@/assets/world/room/guitar.webp') },
-    { id: 'harvest_tulip', slot: 'sill_vase', z: 12, x: 624, y: 461, w: 73, h: 199, source: require('@/assets/world/room/harvest_tulip.webp') },
-    { id: 'harvest_sunflower', slot: 'sill_vase', z: 13, x: 624, y: 465, w: 75, h: 195, source: require('@/assets/world/room/harvest_sunflower.webp') },
-    { id: 'harvest_strawberry', slot: 'sill_plate', z: 14, x: 684, y: 583, w: 78, h: 96, source: require('@/assets/world/room/harvest_strawberry.webp') },
-    { id: 'harvest_sweet_potato', slot: 'sill_basket', z: 15, x: 730, y: 558, w: 119, h: 124, source: require('@/assets/world/room/harvest_sweet_potato.webp') },
-    { id: 'rug', slot: 'floor_center', z: 16, x: 202, y: 971, w: 660, h: 72, source: require('@/assets/world/room/rug.webp') },
-    { id: 'low_table', slot: 'floor_right', z: 17, x: 669, y: 878, w: 252, h: 176, source: require('@/assets/world/room/low_table.webp') },
-    { id: 'lamp', slot: 'front_left', z: 19, x: 0, y: 619, w: 234, h: 410, source: require('@/assets/world/room/lamp.webp') },
-    { id: 'squirrel', slot: 'front_center', z: 20, x: 215, y: 832, w: 177, h: 219, source: require('@/assets/world/room/squirrel.webp') },
-    { id: 'cushion', slot: 'front_center', z: 21, x: 206, y: 968, w: 183, h: 78, source: require('@/assets/world/room/cushion.webp') },
-    { id: 'big_plant', slot: 'front_right', z: 22, x: 787, y: 802, w: 226, h: 278, source: require('@/assets/world/room/big_plant.webp') },
+    { id: 'curtain', slot: 'window', z: 0, x: 972, y: 267, w: 489, h: 386, source: require('@/assets/world/room/curtain.webp') },
+    { id: 'frame', slot: 'wall_left', z: 1, x: 671, y: 302, w: 292, h: 165, source: require('@/assets/world/room/frame.webp') },
+    { id: 'wall_clock', slot: 'wall_right', z: 2, x: 1452, y: 383, w: 114, h: 132, source: require('@/assets/world/room/wall_clock.webp') },
+    { id: 'garland', slot: 'wall_top', z: 3, x: 626, y: 96, w: 849, h: 165, source: require('@/assets/world/room/garland.webp') },
+    { id: 'string_lights', slot: 'wall_top', z: 4, x: 627, y: 97, w: 847, h: 147, source: require('@/assets/world/room/string_lights.webp') },
+    { id: 'mobile', slot: 'ceiling', z: 5, x: 808, y: 0, w: 245, h: 537, source: require('@/assets/world/room/mobile.webp') },
+    { id: 'bookshelf', slot: 'back_right', z: 6, x: 1233, y: 565, w: 525, h: 489, source: require('@/assets/world/room/bookshelf.webp') },
+    { id: 'bed', slot: 'back_left', z: 7, x: 543, y: 717, w: 649, h: 302, source: require('@/assets/world/room/bed.webp') },
+    { id: 'radio_stand', slot: 'bedside', z: 8, x: 456, y: 715, w: 246, h: 256, source: require('@/assets/world/room/radio_stand.webp') },
+    { id: 'aquarium', slot: 'bedside', z: 9, x: 443, y: 742, w: 259, h: 238, source: require('@/assets/world/room/aquarium.webp') },
+    { id: 'easel', slot: 'lean', z: 10, x: 1202, y: 694, w: 189, h: 302, source: require('@/assets/world/room/easel.webp') },
+    { id: 'guitar', slot: 'lean', z: 11, x: 1264, y: 558, w: 102, h: 325, source: require('@/assets/world/room/guitar.webp') },
+    { id: 'harvest_tulip', slot: 'sill_vase', z: 12, x: 1162, y: 462, w: 75, h: 198, source: require('@/assets/world/room/harvest_tulip.webp') },
+    { id: 'harvest_sunflower', slot: 'sill_vase', z: 13, x: 1163, y: 465, w: 71, h: 195, source: require('@/assets/world/room/harvest_sunflower.webp') },
+    { id: 'harvest_strawberry', slot: 'sill_plate', z: 14, x: 1224, y: 583, w: 78, h: 96, source: require('@/assets/world/room/harvest_strawberry.webp') },
+    { id: 'harvest_sweet_potato', slot: 'sill_basket', z: 15, x: 1277, y: 558, w: 114, h: 124, source: require('@/assets/world/room/harvest_sweet_potato.webp') },
+    { id: 'rug', slot: 'floor_center', z: 16, x: 742, y: 971, w: 660, h: 72, source: require('@/assets/world/room/rug.webp') },
+    { id: 'low_table', slot: 'floor_right', z: 17, x: 1210, y: 878, w: 263, h: 176, source: require('@/assets/world/room/low_table.webp') },
+    { id: 'lamp', slot: 'front_left', z: 19, x: 531, y: 619, w: 243, h: 410, source: require('@/assets/world/room/lamp.webp') },
+    { id: 'squirrel', slot: 'front_center', z: 20, x: 757, y: 832, w: 175, h: 220, source: require('@/assets/world/room/squirrel.webp') },
+    { id: 'cushion', slot: 'front_center', z: 21, x: 746, y: 968, w: 183, h: 78, source: require('@/assets/world/room/cushion.webp') },
+    { id: 'big_plant', slot: 'front_right', z: 22, x: 1326, y: 802, w: 227, h: 278, source: require('@/assets/world/room/big_plant.webp') },
   ],
+  // 유리장: 닫힌 병 최근 12개 (슬롯 0 = 그중 가장 오래된 병). 병 뒤 → 구슬 → 병 앞 → 유리 순서
+  jarCabinet: {
+    jarBack: { source: require('@/assets/world/room/jar_back.webp'), w: 57, h: 59 },
+    jarFront: { source: require('@/assets/world/room/jar_front.webp'), w: 51, h: 65 },
+    glass: { source: require('@/assets/world/room/cabinet_glass.webp'), x: 1753, y: 405, w: 273, h: 444 },
+    slots: [
+      { back: [1797, 483], front: [1799, 462], marbles: [1800, 500, 35, 36], tap: [1780, 448, 57, 100] },
+      { back: [1854, 485], front: [1856, 464], marbles: [1856, 502, 35, 36], tap: [1836, 451, 57, 100] },
+      { back: [1910, 487], front: [1912, 466], marbles: [1913, 504, 35, 36], tap: [1893, 453, 57, 100] },
+      { back: [1967, 490], front: [1969, 469], marbles: [1969, 506, 35, 36], tap: [1950, 455, 57, 100] },
+      { back: [1797, 622], front: [1799, 601], marbles: [1800, 639, 35, 36], tap: [1780, 588, 57, 100] },
+      { back: [1854, 624], front: [1856, 603], marbles: [1856, 641, 35, 36], tap: [1836, 590, 57, 100] },
+      { back: [1910, 626], front: [1912, 606], marbles: [1913, 643, 35, 36], tap: [1893, 592, 57, 100] },
+      { back: [1967, 629], front: [1969, 608], marbles: [1969, 645, 35, 36], tap: [1950, 594, 57, 100] },
+      { back: [1797, 761], front: [1799, 740], marbles: [1800, 778, 35, 36], tap: [1780, 727, 57, 100] },
+      { back: [1854, 763], front: [1856, 742], marbles: [1856, 780, 35, 36], tap: [1836, 729, 57, 100] },
+      { back: [1910, 766], front: [1912, 745], marbles: [1913, 782, 35, 36], tap: [1893, 731, 57, 100] },
+      { back: [1967, 768], front: [1969, 747], marbles: [1969, 784, 35, 36], tap: [1950, 733, 57, 100] },
+    ] as { back: number[]; front: number[]; marbles: number[]; tap: number[] }[],
+  },
 };
 
 export const GARDEN = {
