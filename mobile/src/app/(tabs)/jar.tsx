@@ -32,11 +32,13 @@ function WeekCard({ start, wins, title }: { start: string; wins: Win[]; title: s
   const ws = wins.filter((w) => w.win_date >= start && w.win_date <= end);
   const byCat = CATEGORY_ORDER.map((c) => [c, ws.filter((w) => w.category === c).length] as const).filter(([, n]) => n > 0);
   // 반복 적은 기록 우선으로 "이 순간 기억나?" 하나 고르기 (주 단위로 고정)
+  // '버틴 하루'(힘든 마음 기록)는 다시 꺼내 보여주지 않는다 (2026-11-10 대표 결정)
   let memory: Win | null = null;
-  if (ws.length) {
+  const pool = ws.filter((w) => w.category !== 'endure');
+  if (pool.length) {
     const freq = new Map<string, number>();
-    ws.forEach((w) => freq.set(w.text, (freq.get(w.text) ?? 0) + 1));
-    const rare = ws.filter((w) => freq.get(w.text) === Math.min(...freq.values()));
+    pool.forEach((w) => freq.set(w.text, (freq.get(w.text) ?? 0) + 1));
+    const rare = pool.filter((w) => freq.get(w.text) === Math.min(...freq.values()));
     memory = rare[start.split('-').reduce((a, b) => a + Number(b), 0) % rare.length];
   }
 
