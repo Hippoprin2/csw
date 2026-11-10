@@ -652,7 +652,10 @@ def export_yard():
                      "(the fence stands there). "
                      "Loop: idle 4-8 s -> walk to a random walkable point (usually in the zone the camera shows) -> every 3rd time go to "
                      "a random owned interact[id] (pond/tree are free) and play its action 5-10 s. Tap -> stop and walk to the tapped point "
-                     "(nearest walkable point if outside). Tap on a locked zone / its gate -> zone purchase sheet. "
+                     "(nearest walkable point if outside). Tap ON an owned item (pixel hit on its sprite, front-most first) or the "
+                     "tree / pond -> walk to its interact `enter`/`stand` and play the action 5-10 s (duck_float = pond splash; "
+                     "picnic_mat may open feeding instead); items without interact -> walk up to the front of their footprint. "
+                     "Tap on a locked zone / its gate -> zone purchase sheet. "
                      "interact stand points may lie inside item_blocked (the pet takes the last step in). "
                      "Walk speed ~ 0.6 unit/s = ppu*0.6 px/s. 4 directions = 3 clips (left = right mirrored)."}
     camera = {
