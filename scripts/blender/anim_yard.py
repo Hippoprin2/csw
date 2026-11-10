@@ -75,8 +75,9 @@ def eyes(keys):
 
 # ------------------------------------------------------------------ walk cycle (in place; the app moves the sprite)
 # speed in the app = 0.6 unit/s. cycle C frames = 2 steps -> stride per step = 0.6 * C/2/24
-C = 16          # 0.67 s per cycle, 3 steps/s: short-legged waddle
-CYCLES = 3      # loop length 48 f (2 s); one blink per loop
+C = int(os.environ.get("WALK_C", "16"))          # 16 = 0.67 s per cycle, 3 steps/s: short-legged waddle
+CYCLES = int(os.environ.get("WALK_CYCLES", "3"))  # loop length C*CYCLES (48 f = 2 s); one blink per loop
+LEG = float(os.environ.get("WALK_LEG", "30"))     # leg swing (deg) -> stride
 
 
 def walk(yaw, blink=True):
@@ -86,7 +87,7 @@ def walk(yaw, blink=True):
         for ph, side in ((0, 1), (C // 2, -1)):          # contact: side=1 -> left leg forward
             f = b + ph
             if f > F + 1: continue
-            R(f, "leg.L", x=-30 * side); R(f, "leg.R", x=30 * side)
+            R(f, "leg.L", x=-LEG * side); R(f, "leg.R", x=LEG * side)
             # opposite arm swings forward (arms first lowered toward the body, then swing on X)
             R(f, "arm.L", 24 * side, -18, 0, "YXZ"); R(f, "arm.R", -24 * side, 18, 0, "YXZ")
             L(f, "root", 0.0); S(f, "body", (1.035, 0.965, 1.035))
@@ -96,7 +97,7 @@ def walk(yaw, blink=True):
             if fp <= F + 1:
                 R(fp, "leg.L"); R(fp, "leg.R")
                 R(fp, "arm.L", 0, -18, 0, "YXZ"); R(fp, "arm.R", 0, 18, 0, "YXZ")
-                L(fp, "root", 0.032); S(fp, "body", (0.975, 1.03, 0.975))
+                L(fp, "root", 0.032 * LEG / 30); S(fp, "body", (0.975, 1.03, 0.975))
                 R(fp, "body", 2, 0, 0); R(fp, "head", 3, 0, 0)
             fe = f + 2                                      # ears lag behind the bob
             if fe <= F + 1:
