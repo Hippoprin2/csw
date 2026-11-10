@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useRef, useState } from 'react';
+import { Image } from 'expo-image';
 import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { SLOT_POS } from '@/data/itemSlots';
+import { CANVAS, ICONS, ROOM } from '@/data/world';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { CATEGORY_ORDER, CATS, CHIPS, SAFETY_LINE, classifyByKeyword, pickLine, type Category } from '@/lib/categories';
@@ -15,12 +15,14 @@ import { useApp } from '@/state/app';
 import { Btn, HelpLines } from '@/ui/kit';
 import { Pet, type PetAction } from '@/ui/Pet';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
+import { SpaceImage } from '@/ui/SpaceImage';
 import { useSpaceSize } from '@/ui/layout';
 import { C, R } from '@/ui/theme';
 
 const DAILY_REWARD_CAP = 10;
 const NOTIF_ASKED_KEY = 'csw.notifAsked';
 const SAFETY_DAY_KEY = 'csw.safetyShownDay';
+const VASE_KEY = 'csw.sillVase'; // 창턱 꽃병 자리: 튤립/해바라기 둘 다 있으면 탭해서 바꿈 (기기에만 저장)
 
 const store = {
   get: (k: string) => { try { return globalThis.localStorage?.getItem(k) ?? null; } catch { return null; } },
@@ -31,7 +33,9 @@ const store = {
 export function RoomPage() {
   const { profile, wins, setWins, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
-  const { spaceH, petW } = useSpaceSize();
+  const { roomSize } = useSpaceSize();
+  const sc = roomSize / CANVAS;
+  const [vase, setVase] = useState(() => store.get(VASE_KEY));
   const [text, setText] = useState('');
   const [chosen, setChosen] = useState<Category | null>(null);
   const [picking, setPicking] = useState(false);
@@ -125,19 +129,29 @@ export function RoomPage() {
     if (granted) await updateProfile({ notify_enabled: true, notify_time: `${notifTime}:00` });
   }
 
-  // 같은 자리 소품 중 놓인 것만 그린다. 층: 뒤·가운데 → 단짝 → 앞
+  // 공간 스레드 export(design/world/export/v1) 그대로: 배경 → (놓인 소품 + 창턱 수확 장식 + 단짝)을 z 순서로
   const placedIds = new Set(owned.filter((o) => o.placed).map((o) => o.item_id));
-  const placed = items.filter((i) => i.space === 'room' && placedIds.has(i.id));
-  const drawItem = (it: (typeof items)[number]) => {
-    const { size, ...pos } = SLOT_POS[it.slot] ?? { left: '50%', top: '10%', size: 30 };
-    return (
-      <Animated.Text key={it.id} entering={newItemId === it.id ? FadeIn.duration(600) : undefined}
-        style={[st.item, pos, { fontSize: size }]} accessibilityLabel={it.name}>
-        {it.emoji}
-      </Animated.Text>
-    );
+  const unlocked = (c: string) => unlocks.includes(c);
+  const vaseCrop = unlocked('tulip') && unlocked('sunflower') ? (vase === 'sunflower' ? 'sunflower' : 'tulip')
+    : unlocked('tulip') ? 'tulip' : unlocked('sunflower') ? 'sunflower' : null;
+  const shown = ROOM.items.filter((it) => {
+    if (it.id.startsWith('harvest_')) {
+      const crop = it.id.slice('harvest_'.length);
+      return it.slot === 'sill_vase' ? crop === vaseCrop : unlocked(crop);
+    }
+    return placedIds.has(it.id);
+  });
+  const nameOf = (id: string) => items.find((i) => i.id === id)?.name ?? crops.find((c) => `harvest_${c.id}` === id)?.deco_name;
+  const back = shown.filter((it) => it.z < ROOM.pet.z);
+  const front = shown.filter((it) => it.z > ROOM.pet.z);
+  const draw = (it: (typeof ROOM.items)[number]) => (
+    <SpaceImage key={it.id} source={it.source} rect={it} s={sc} fadeIn={newItemId === it.id} label={nameOf(it.id)} />
+  );
+  const vaseItem = vaseCrop && unlocked('tulip') && unlocked('sunflower') ? ROOM.items.find((i) => i.id === `harvest_${vaseCrop}`) : null;
+  const swapVase = () => {
+    const next = vaseCrop === 'tulip' ? 'sunflower' : 'tulip';
+    setVase(next); store.set(VASE_KEY, next);
   };
-  const shelf = crops.filter((c) => unlocks.includes(c.id)).slice(0, 3); // 창턱 수확 선반 3칸
   const bagItems = crops.filter((c) => (bag[c.id] ?? 0) > 0);
   const bagCount = bagItems.reduce((n, c) => n + bag[c.id], 0);
 
@@ -149,7 +163,7 @@ export function RoomPage() {
       setBasket(false);
       await reloadGarden();
       // 채소·열매 = 먹이기(냠냠), 꽃 = 선물하기(냄새 맡고 반짝 → 기지개+회전 재사용)
-      if (c.kind === 'edible') celebrate({ kind: 'eat', line: `${c.name} 냠냠, 고마워!` });
+      if (c.kind === 'edible') celebrate({ kind: c.id === 'strawberry' ? 'eat_strawberry' : 'eat', line: `${c.name} 냠냠, 고마워!` });
       else celebrate({ kind: 'care', line: `${c.name} 향기 좋다! 고마워` });
       track('harvest_used', { crop: cropId, kind: c.kind });
     } catch (e) {
@@ -160,21 +174,22 @@ export function RoomPage() {
   return (
     <View style={st.wrap}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
-        <View style={[st.room, { height: spaceH }]}>
-          <View style={st.floor} />
-          <View style={st.window}><View style={st.windowBar} /></View>
-          <View style={st.shelf} accessibilityLabel="창턱 수확 선반">
-            {shelf.map((c) => <Text key={c.id} style={st.shelfItem} accessibilityLabel={c.deco_name}>{c.deco_emoji}</Text>)}
+        <View style={[st.room, { width: roomSize, height: roomSize }]}>
+          <Image source={ROOM.background} style={StyleSheet.absoluteFill} contentFit="cover" loading="eager" />
+          {back.map(draw)}
+          <View style={{ position: 'absolute', left: ROOM.pet.x * sc, top: ROOM.pet.y * sc }}>
+            <Pet action={petAction} size={ROOM.pet.w * sc} />
           </View>
-          {placed.filter((i) => i.layer !== 'front').map(drawItem)}
+          {front.map(draw)}
+          {vaseItem && (
+            <Pressable onPress={swapVase} accessibilityRole="button" accessibilityLabel="꽃병 바꾸기"
+              style={{ position: 'absolute', left: vaseItem.x * sc, top: vaseItem.y * sc, width: vaseItem.w * sc, height: vaseItem.h * sc }} />
+          )}
           {shownBubble ? (
             <View style={st.bubble}>
               <Text style={st.bubbleText}>{shownBubble}</Text>
             </View>
           ) : null}
-          <View style={[st.stage, { marginLeft: -petW / 2 }]}><Pet action={petAction} size={petW} /></View>
-          {placed.filter((i) => i.layer === 'front').map(drawItem)}
-
           {float && (
             <Text key={float.key} style={st.float}>+{float.n} 씨앗</Text>
           )}
@@ -268,7 +283,7 @@ export function RoomPage() {
         <Text style={sheetSt.body}>먹이거나 선물해도 창턱 장식은 그대로 남아.</Text>
         {bagItems.map((c) => (
           <View key={c.id} style={st.bagRow}>
-            <Text style={{ fontSize: 28 }}>{c.emoji}</Text>
+            <Image source={ICONS[`produce_${c.id}`]} style={{ width: 40, height: 40 }} contentFit="contain" />
             <Text style={st.bagName}>{c.name} {bag[c.id]}개</Text>
             <Btn title={c.kind === 'edible' ? '먹이기' : '선물하기'} onPress={() => feedOrGift(c.id)} />
           </View>
@@ -280,18 +295,11 @@ export function RoomPage() {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg },
-  room: { marginHorizontal: 16, borderRadius: 28, overflow: 'hidden', backgroundColor: C.wall },
-  floor: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '38%', backgroundColor: C.floor },
-  window: { position: 'absolute', left: 24, top: 28, width: 84, height: 70, borderRadius: 14, backgroundColor: '#cfe6f2', borderWidth: 6, borderColor: '#fff' },
-  windowBar: { position: 'absolute', left: '50%', marginLeft: -2.5, top: 0, bottom: 0, width: 5, backgroundColor: '#fff' },
-  shelf: { position: 'absolute', left: 18, top: 98, width: 96, height: 24, borderBottomWidth: 5, borderBottomColor: '#e8d5b9', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end' },
-  shelfItem: { fontSize: 17 },
+  room: { alignSelf: 'center', borderRadius: 28, overflow: 'hidden', backgroundColor: C.wall },
   basketBtn: { marginHorizontal: 16, marginTop: 10, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: C.line },
   basketText: { fontSize: 14, fontWeight: '700', color: C.ink },
   bagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   bagName: { flex: 1, fontSize: 15, color: C.ink, fontWeight: '600' },
-  item: { position: 'absolute', fontSize: 34 },
-  stage: { position: 'absolute', left: '50%', bottom: -6 }, // 프레임 아래 12%가 빈 공간 → 발이 바닥 위에 오게
   bubble: { position: 'absolute', alignSelf: 'center', top: 12, maxWidth: '80%', backgroundColor: '#fff', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14, zIndex: 5 },
   bubbleText: { fontSize: 14, fontWeight: '600', color: C.ink, textAlign: 'center', lineHeight: 20 },
   float: { position: 'absolute', right: 28, top: 80, fontSize: 16, fontWeight: '800', color: C.seed },

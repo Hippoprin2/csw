@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Image } from 'expo-image';
+
+import { THUMBS } from '@/data/world';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { useApp } from '@/state/app';
@@ -74,7 +77,7 @@ export default function Shop() {
               <Pressable key={it.id} disabled={!can || !!busy} onPress={() => (swappable ? place(it.id) : buy(it.id))}
                 style={({ pressed }) => [st.item, placed && { opacity: 0.55 }, pressed && { transform: [{ scale: 0.97 }] }]}
                 accessibilityRole="button" accessibilityLabel={`${it.name} ${label}`} accessibilityState={{ disabled: !can }}>
-                <Text style={st.emoji}>{it.emoji}</Text>
+                <Image source={THUMBS[it.id]} style={st.thumb} contentFit="contain" accessibilityIgnoresInvertColors />
                 <Text style={st.name}>{it.name}</Text>
                 <Text style={[st.price, !own && !can && { color: C.muted }, swappable && { color: C.accent }]}>{label}</Text>
               </Pressable>
@@ -90,7 +93,7 @@ const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, maxWidth: 520, width: '100%', alignSelf: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   item: { width: '31%', flexGrow: 1, backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 18, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center' },
-  emoji: { fontSize: 34, marginBottom: 6 },
+  thumb: { width: 72, height: 72, marginBottom: 4 },
   name: { fontSize: 13, fontWeight: '600', color: C.ink },
   price: { fontSize: 12, color: C.seed, fontWeight: '700', marginTop: 3 },
   err: { color: '#c0392b', fontSize: 13, marginBottom: 10 },

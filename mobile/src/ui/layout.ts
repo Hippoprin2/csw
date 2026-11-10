@@ -1,11 +1,13 @@
 import { useWindowDimensions } from 'react-native';
 
-// 공간 그림(방·텃밭·마당) 크기를 화면에 맞춘다.
-// - 높이: 화면 높이의 42%, 280~380 사이 (작은 폰에서도 입력창이 첫 화면에 보이게)
-// - 단짝 크기: 공간 높이에 비례 (방 기준 360 → 210)
-// - 태블릿은 지원하지 않음(app.json supportsTablet=false), 넓은 화면은 화면 쪽에서 최대 너비 520으로 묶음
+// 공간 그림(방·텃밭·마당)은 정사각형 캔버스(design/world/export) → 카드도 정사각형.
+// - 너비: 화면 너비 - 32 (최대 520 화면 기준)
+// - 방: 아래 입력창이 첫 화면에 보이도록 화면 높이의 45%(최소 300)를 넘지 않게 → 작은 폰(SE)은 카드가 조금 작아지고 가운데 정렬
+// - 텃밭·마당: 입력창이 없어서 너비 그대로
+// - 태블릿 미지원(app.json supportsTablet=false)
 export function useSpaceSize() {
-  const { height } = useWindowDimensions();
-  const spaceH = Math.round(Math.min(380, Math.max(280, height * 0.42)));
-  return { spaceH, petW: Math.round(spaceH * 0.58), gardenPetW: Math.round(spaceH * 0.3) };
+  const { width, height } = useWindowDimensions();
+  const full = Math.round(Math.min(width, 520) - 32);
+  const roomSize = Math.min(full, Math.max(300, Math.round(height * 0.45)));
+  return { roomSize, gardenSize: full };
 }

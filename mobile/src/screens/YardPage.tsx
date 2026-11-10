@@ -10,10 +10,10 @@ export const YARD_UNLOCK = 10;
 export function YardPage() {
   const { wins } = useApp();
   const open = wins.length >= YARD_UNLOCK;
-  const { spaceH } = useSpaceSize();
+  const { gardenSize } = useSpaceSize();
   return (
     <View style={st.wrap}>
-      <View style={[st.yard, { height: spaceH }]}>
+      <View style={[st.yard, { width: gardenSize, height: gardenSize }]}>
         <View style={st.hedge} />
         <Text style={st.tree}>🌳</Text>
         <Text style={st.pond}>💧</Text>
@@ -29,7 +29,7 @@ export function YardPage() {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg },
-  yard: { marginHorizontal: 16, borderRadius: 28, overflow: 'hidden', backgroundColor: '#d7ecd0' },
+  yard: { alignSelf: 'center', borderRadius: 28, overflow: 'hidden', backgroundColor: '#d7ecd0' },
   hedge: { position: 'absolute', left: 0, right: 0, top: 0, height: '26%', backgroundColor: '#a9d29b' },
   tree: { position: 'absolute', right: 24, top: '12%', fontSize: 64, opacity: 0.6 },
   pond: { position: 'absolute', left: 40, bottom: 40, fontSize: 48, opacity: 0.5 },

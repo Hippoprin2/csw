@@ -10,12 +10,14 @@ import type { Category } from '@/lib/categories';
 // - 동작은 위에 겹쳐 한 번 재생 → duration_ms 타이머로 끝을 판단하고 걷어낸다 (디코더 반복 횟수는 믿지 않음)
 // - 동작 클립은 대기 자세로 시작·끝나서 바꿔 끼워도 튀지 않는다
 // - 'sit'(곁에 앉기, 자해 표현 대응): sit_in → sit_loop(SIT_HOLD_MS) → sit_out
-export type PetKind = Category | 'sit';
+// - space='garden': 텃밭 25° 클립. 대기 = garden_idle, 어떤 동작이든 garden_cheer(수확 만세). 방(6.5°) 클립과 섞지 않음
+export type PetKind = Category | 'sit' | 'eat_strawberry';
 export type PetAction = { kind: PetKind; key: number } | null;
 
 const SIT_HOLD_MS = 9000;
 
-function sequence(kind: PetKind): { clip: ClipKey; ms: number }[] {
+function sequence(kind: PetKind, space: 'room' | 'garden'): { clip: ClipKey; ms: number }[] {
+  if (space === 'garden') return [{ clip: 'garden_cheer', ms: PET_CLIPS.garden_cheer.durationMs }];
   if (kind === 'sit') {
     return [
       { clip: 'sit_in', ms: PET_CLIPS.sit_in.durationMs },
@@ -26,13 +28,14 @@ function sequence(kind: PetKind): { clip: ClipKey; ms: number }[] {
   return [{ clip: kind, ms: PET_CLIPS[kind].durationMs }];
 }
 
-export function Pet({ action, size = 200 }: { action: PetAction; size?: number }) {
+export function Pet({ action, size = 200, space = 'room' }: { action: PetAction; size?: number; space?: 'room' | 'garden' }) {
+  const idle: ClipKey = space === 'garden' ? 'garden_idle' : 'idle';
   const width = size;
   const height = Math.round(size * PET_ASPECT);
   const [prog, setProg] = useState({ key: -1, step: 0 });
   const [shownKey, setShownKey] = useState('');
 
-  const seq = action ? sequence(action.kind) : [];
+  const seq = action ? sequence(action.kind, space) : [];
   const step = action && prog.key === action.key ? prog.step : 0;
   const cur = action && step < seq.length ? seq[step] : null;
   const overlayKey = cur && action ? `${action.key}-${step}` : '';
@@ -53,8 +56,8 @@ export function Pet({ action, size = 200 }: { action: PetAction; size?: number }
     <View style={{ width, height }} accessible accessibilityLabel="단짝">
       {/* 대기: 동작 첫 프레임이 화면에 뜬 뒤에만 숨긴다 (빈 화면 깜빡임 방지) */}
       <Image
-        source={PET_CLIPS.idle.source}
-        placeholder={PET_POSTER}
+        source={PET_CLIPS[idle].source}
+        placeholder={space === 'room' ? PET_POSTER : undefined}
         style={[fill, { opacity: overlayVisible ? 0 : 1 }]}
         contentFit="contain"
         loading="eager" /* 웹: 가로 넘기기 안 화면 밖에서 시작하면 lazy 로딩이 늦게 풀림 (네이티브 영향 없음) */
