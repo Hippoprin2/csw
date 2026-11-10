@@ -158,8 +158,8 @@
       "right": "walk_side",
       "left": "walk_side (draw mirrored)"
     },
-    "speed_px_s": 126,
+    "speed_px_s": 168,
     "depth_factor": 0.426,
-    "note": "speed in yard/garden canvas px at pet w=435. Screen-down/up movement is foreshortened by the 25 deg camera: ground distance = hypot(dx, dy / depth_factor); move so that ground distance grows by speed_px_s per second (pure horizontal = 126 px/s, pure vertical = 54 px/s). Clip: |dx| >= |dy / depth_factor| -> side (mirror when dx < 0), else dy > 0 -> front, dy < 0 -> back. Feet = same floor point as the garden clips (303, 697)."
+    "note": "speed in yard/garden canvas px at pet w=435. Screen-down/up movement is foreshortened by the 25 deg camera: ground distance = hypot(dx, dy / depth_factor); move so that ground distance grows by speed_px_s per second (pure horizontal = 168 px/s, pure vertical = 72 px/s). Clip: |dx| >= |dy / depth_factor| -> side (mirror when dx < 0), else dy > 0 -> front, dy < 0 -> back. Feet = same floor point as the garden clips (303, 697)."
   }
 }

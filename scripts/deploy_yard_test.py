@@ -14,6 +14,8 @@ json.dump(m["spaces"]["yard"], open(DIST / "yard.json", "w"), ensure_ascii=False
 for f in (ROOT / "design/world/export/v1/yard").glob("*.webp"):
     shutil.copy(f, DIST / "yard" / f.name)
 shutil.copy(ROOT / "design/character/export/v1/hippo_garden_idle.webp", DIST / "hippo_garden_idle.webp")
+for d in ("front", "side", "back"):   # walk loop sprite sheets (scripts/make_walk_sheets.py)
+    shutil.copy(ROOT / f"design/yard_test/walk_{d}.webp", DIST / f"walk_{d}.webp")
 files = [p for p in DIST.rglob("*") if p.is_file()]
 print("built", len(files), "files,", sum(p.stat().st_size for p in files) // 1024, "KB ->", DIST)
 if "--local" in sys.argv:

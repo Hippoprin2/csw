@@ -54,7 +54,9 @@
 "use strict";
 const $ = (s) => document.querySelector(s);
 const cv = $("#cv"), ctx = cv.getContext("2d"), card = $("#card");
-let Y, IMG = {}, PET_IMG;
+let Y, IMG = {}, PET_IMG, WALK = {};
+const DEPTH = 0.426;   // 25° camera: 1 px of screen-vertical movement = 1/0.426 px on the ground
+const WF = { w: 435, h: 580, cols: 8, n: 48, fps: 24 };
 // ---------------------------------------------------------------- settings (shown in ⚙︎, numbers to report back)
 const S = {
   night: new Date().getHours() >= 19 || new Date().getHours() < 6,
@@ -66,7 +68,7 @@ const S = {
   ret: 1.2,            // s the glide back to the pet takes
   peek: 600,           // px into a locked neighbour zone
   zoom: 1, zoomMin: 0.6,
-  speed: 0.6,          // walk speed, world units/s (1 unit = 400 px)
+  speed: 0.42,         // walk speed on the ground, world units/s (1 unit = 400 px). 0.42 = walk clips' no-slide speed (character manifest `walk`)
 };
 const ACT_KO = { sniff: "🌷 냄새 맡기", sit_bench: "🪑 벤치 앉기", sit_eat: "🧺 매트에서 먹기", lie: "😴 해먹 눕기", splash: "💦 물장구", show_fruit: "🍑 열매 보여주기" };
 
@@ -82,6 +84,7 @@ async function init() {
   files.add(Y.fruit.file); Object.values(Y.extras).forEach(e => files.add(e.file));
   await Promise.all([...files].map(async f => IMG[f] = await load(f)));
   PET_IMG = await load("hippo_garden_idle.webp");
+  for (const d of ["front", "side", "back"]) WALK[d] = await load(`walk_${d}.webp`);
   $("#loading").style.display = "none";
   buildGrid(); spawnGuests(); buildPanel(); resize();
   pet.x = Y.walk.home[0]; pet.y = Y.walk.home[1];
@@ -155,7 +158,7 @@ function findPath(from, to) {
 
 // ---------------------------------------------------------------- state
 const view = { w: 1080, h: 1860, s: 1 }, cam = { x: 0, y: 0 };
-const pet = { x: 600, y: 1300, path: [], dir: 1, state: "idle", until: 0, act: null, walks: 0, bob: 0 };
+const pet = { x: 600, y: 1300, path: [], dir: 1, state: "idle", until: 0, act: null, walks: 0, face: "front", wt: 0 };
 let dragging = false, lastDrag = -1e9, ptr = null, guests = [], toastT = 0;
 
 function resize() {
@@ -205,10 +208,12 @@ function tickPet(dt, now) {
   if (pet.state === "walk") {
     const t = pet.path[0];
     if (!t) { pet.state = pet.act ? "act" : "idle"; pet.until = now + (pet.act ? 6000 : 4000 + Math.random() * 4000); return; }
-    const dx = t[0] - pet.x, dy = t[1] - pet.y, d = Math.hypot(dx, dy), step = S.speed * Y.px_per_unit * dt;
+    // speed is measured on the ground: vertical screen moves are foreshortened (feet must not slide)
+    const dx = t[0] - pet.x, dy = t[1] - pet.y, g = Math.hypot(dx, dy / DEPTH), step = S.speed * Y.px_per_unit * dt;
     if (Math.abs(dx) > 2) pet.dir = dx > 0 ? 1 : -1;
-    pet.bob += dt * 9;
-    if (d <= step) { pet.x = t[0]; pet.y = t[1]; pet.path.shift(); } else { pet.x += dx / d * step; pet.y += dy / d * step; }
+    pet.face = Math.abs(dx) >= Math.abs(dy / DEPTH) ? "side" : (dy > 0 ? "front" : "back");
+    pet.wt += dt;
+    if (g <= step) { pet.x = t[0]; pet.y = t[1]; pet.path.shift(); } else { pet.x += dx / g * step; pet.y += dy / g * step; }
   } else if (now > pet.until && S.auto) {
     pet.act = null; pet.walks++;
     const acts = interactTargets();
@@ -367,9 +372,16 @@ function draw(now) {
 }
 function drawPet(now) {
   const P = Y.walk.pet, [cx, cy] = petCenter();
-  const bob = pet.state === "walk" ? -Math.abs(Math.sin(pet.bob)) * 22 : 0;
-  ctx.save(); ctx.translate(cx, cy + bob); if (pet.dir < 0) ctx.scale(-1, 1);
-  ctx.drawImage(S.night ? tintOf(PET_IMG) : PET_IMG, -P.w / 2, -P.h / 2, P.w, P.h); ctx.restore();
+  ctx.save(); ctx.translate(cx, cy);
+  if (pet.state === "walk") {          // 25° walk loops (sprite sheet); left = right clip mirrored
+    const sh = WALK[pet.face], k = Math.floor(pet.wt * WF.fps) % WF.n;
+    if (pet.face === "side" && pet.dir < 0) ctx.scale(-1, 1);
+    ctx.drawImage(S.night ? tintOf(sh, "walk_" + pet.face) : sh, (k % WF.cols) * WF.w, Math.floor(k / WF.cols) * WF.h, WF.w, WF.h, -P.w / 2, -P.h / 2, P.w, P.h);
+  } else {
+    if (pet.dir < 0) ctx.scale(-1, 1);
+    ctx.drawImage(S.night ? tintOf(PET_IMG) : PET_IMG, -P.w / 2, -P.h / 2, P.w, P.h);
+  }
+  ctx.restore();
 }
 function bubble(text) {
   const [cx, cy] = petCenter(), y = cy - Y.walk.pet.h * 0.42;
@@ -415,7 +427,7 @@ function buildPanel() {
     ${rng("ret", "복귀 시간", 0.3, 4, 0.1, "초")}
     ${rng("zoom", "줌 (두 손가락)", 0.5, 1, 0.01, "")}
     ${rng("peek", "잠긴 구역 엿보기", 0, 600, 20, "px")}
-    ${rng("speed", "걷는 속도", 0.2, 1.5, 0.05, "")}
+    ${rng("speed", "걷는 속도 (0.42 = 발 안 미끄러짐)", 0.2, 1.0, 0.02, "")}
     <button id="reset">단짝을 집으로</button>`;
   p.querySelectorAll("[data-k]").forEach(el => el.onchange = () => { S[el.dataset.k] = el.checked; if (el.dataset.k === "items") buildGrid(); });
   p.querySelectorAll("[data-z]").forEach(el => el.onchange = () => { S.own[el.dataset.z] = el.checked; buildGrid(); clampCam(); if (!walkable(pet.x, pet.y)) { pet.x = Y.walk.home[0]; pet.y = Y.walk.home[1]; pet.path = []; } });

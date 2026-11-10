@@ -48,8 +48,8 @@ for key, (clip, loop) in CLIPS.items():
                               "source_clip": clip}
     print(f"{key:9s} {clip:13s} frames={len(ims):3d} loop={loop!s:5s} {kb} KB")
 # walk loops: the sprite speed at which the feet do not slide (scripts/blender/measure_stride.py: 0.42 unit/s,
-# 1 unit = 600/1.45 clip px; yard/garden draw the 600-px clip at w=435 -> x0.725)
-GROUND = 0.42 * 600 / 1.45 * 0.725
+# ortho 1.45 spans the 800-px HEIGHT -> 1 unit = 800/1.45 clip px; yard/garden draw the clip at w=435 -> x0.725 = 400 px = yard px_per_unit)
+GROUND = 0.42 * 800 / 1.45 * 0.725
 manifest["walk"] = {
     "clips": {"front": "walk_front", "back": "walk_back", "right": "walk_side", "left": "walk_side (draw mirrored)"},
     "speed_px_s": round(GROUND), "depth_factor": 0.426,
