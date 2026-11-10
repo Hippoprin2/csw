@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>마당 움직임 테스트</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #F3EFE6; font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; color: #3a3530; overflow: hidden; overscroll-behavior: none; }
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); }
+  header { padding: 14px 22px 0; display: flex; justify-content: space-between; align-items: flex-start; }
+  header h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+  header .sub { font-size: 13px; color: #8b847b; margin-top: 2px; }
+  .pill { background: #fff; border: 1px solid #e6dfd3; border-radius: 20px; padding: 6px 14px; font-weight: 700; font-size: 16px; }
+  .tabs { display: flex; justify-content: center; gap: 26px; margin: 10px 0 8px; font-size: 16px; color: #9a9389; }
+  .tabs .on { background: #fff; color: #3a3530; padding: 4px 16px; border-radius: 16px; font-weight: 700; }
+  #card { position: relative; margin: 0 12px; flex: 1; border-radius: 26px; overflow: hidden; background: #cde8f5; touch-action: none; }
+  canvas { display: block; width: 100%; height: 100%; }
+  nav { height: calc(64px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); display: flex; justify-content: space-around; align-items: center; font-size: 12px; color: #9a9389; border-top: 1px solid #e9e3d8; background: #fcfaf5; margin-top: 8px; }
+  nav div { text-align: center; } nav b { display: block; font-size: 22px; } nav .on { color: #3a3530; font-weight: 700; }
+  #gear { position: absolute; right: 10px; top: 10px; width: 40px; height: 40px; border-radius: 20px; border: 0; background: rgba(255,255,255,.85); font-size: 20px; z-index: 5; }
+  #panel { position: absolute; left: 8px; right: 8px; top: 56px; max-height: 70%; overflow: auto; background: rgba(255,255,255,.96); border-radius: 16px; padding: 12px 14px; font-size: 14px; z-index: 6; display: none; box-shadow: 0 6px 24px rgba(0,0,0,.15); }
+  #panel.open { display: block; }
+  #panel h3 { margin: 10px 0 6px; font-size: 13px; color: #8b847b; font-weight: 700; }
+  #panel h3:first-child { margin-top: 0; }
+  #panel label { display: inline-flex; align-items: center; gap: 4px; margin: 3px 10px 3px 0; }
+  #panel .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  #panel .row span:first-child { width: 120px; flex: none; }
+  #panel input[type=range] { flex: 1; }
+  #panel .val { width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+  #panel button { border: 1px solid #ddd5c8; background: #faf7f1; border-radius: 10px; padding: 6px 10px; margin: 3px 4px 3px 0; font-size: 13px; }
+  #panel .seg button.on { background: #3a3530; color: #fff; border-color: #3a3530; }
+  #toast { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: rgba(58,53,48,.92); color: #fff; padding: 10px 16px; border-radius: 14px; font-size: 14px; z-index: 7; display: none; max-width: 88%; text-align: center; }
+  #toast button { margin-left: 10px; border: 0; border-radius: 10px; padding: 5px 10px; background: #fff; color: #3a3530; font-weight: 700; }
+  #hint { position: absolute; left: 12px; top: 14px; font-size: 12px; background: rgba(255,255,255,.8); border-radius: 10px; padding: 5px 9px; z-index: 4; }
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #6b655d; z-index: 8; background: #dcebd3; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header><div><h1>꼬마하마의 마당</h1><div class="sub">움직임 테스트 · 실제 앱 아님</div></div><div class="pill" id="seeds">🌱 999</div></header>
+  <div class="tabs"><span>‹ 텃밭</span><span>방</span><span class="on">마당 ›</span></div>
+  <div id="card">
+    <canvas id="cv"></canvas>
+    <div id="hint">탭 = 걸어가기 · 끌기 = 둘러보기</div>
+    <button id="gear">⚙︎</button>
+    <div id="panel"></div>
+    <div id="toast"></div>
+    <div id="loading">마당 불러오는 중…</div>
+  </div>
+  <nav><div class="on"><b>🏠</b>방</div><div><b>🫙</b>유리병</div><div><b>🪴</b>꾸미기</div><div><b>⚙️</b>설정</div></nav>
+</div>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const cv = $("#cv"), ctx = cv.getContext("2d"), card = $("#card");
+let Y, IMG = {}, PET_IMG;
+// ---------------------------------------------------------------- settings (shown in ⚙︎, numbers to report back)
+const S = {
+  night: new Date().getHours() >= 19 || new Date().getHours() < 6,
+  own: { 1: true, 2: false, 3: false },
+  items: true, stage: 4, guests: true, auto: true, showWalk: false,
+  follow: 0.12,        // camera lerp per frame (60fps)
+  dead: 120,           // px dead-zone around the pet before the camera moves
+  back: 3.0,           // s after a drag before the camera returns to the pet
+  peek: 260,           // px into a locked neighbour zone
+  speed: 0.6,          // walk speed, world units/s (1 unit = 400 px)
+};
+const ACT_KO = { sniff: "🌷 냄새 맡기", sit_bench: "🪑 벤치 앉기", sit_eat: "🧺 매트에서 먹기", lie: "😴 해먹 눕기", splash: "💦 물장구", show_fruit: "🍑 열매 보여주기" };
+
+function load(src) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(src); i.src = src; }); }
+
+async function init() {
+  Y = await (await fetch("yard.json")).json();
+  const files = new Set();
+  Y.tiles.forEach(t => { files.add(t.file); files.add(t.night_file); });
+  Object.values(Y.locks).forEach(l => files.add(l.file));
+  Y.items.forEach(e => { files.add(e.file); if (e.night_file) files.add(e.night_file); });
+  Y.bed_flowers.forEach(e => files.add(e.file)); Y.tree.forEach(e => files.add(e.file));
+  files.add(Y.fruit.file); Object.values(Y.extras).forEach(e => files.add(e.file));
+  await Promise.all([...files].map(async f => IMG[f] = await load(f)));
+  PET_IMG = await load("hippo_garden_idle.webp");
+  $("#loading").style.display = "none";
+  buildGrid(); spawnGuests(); buildPanel(); resize();
+  pet.x = Y.walk.home[0]; pet.y = Y.walk.home[1];
+  cam.x = pet.x - view.w / 2; cam.y = pet.y + Y.walk.pet.feet_to_center[1] - view.h / 2; clampCam();
+  requestAnimationFrame(loop);
+}
+
+// ---------------------------------------------------------------- geometry
+function inPoly(x, y, P) {
+  let c = false;
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+    const [xi, yi] = P[i], [xj, yj] = P[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+function rectDist(x, y, [rx, ry, rw, rh]) { const dx = Math.max(rx - x, 0, x - rx - rw), dy = Math.max(ry - y, 0, y - ry - rh); return Math.hypot(dx, dy); }
+function zoneAt(x, y) { for (const [z, Z] of Object.entries(Y.walk.zones)) { const [rx, ry, rw, rh] = Z.rect; if (x >= rx && x < rx + rw && y >= ry && y < ry + rh) return z; } return null; }
+function ownedItem(id) { return S.items; }
+function walkable(x, y) {
+  const W = Y.walk; let inside = false;
+  for (const [z, Z] of Object.entries(W.zones)) {
+    if (!Z.area || !S.own[z]) continue;
+    if (inPoly(x, y, Z.area)) { inside = true; for (const p of Object.values(Z.blocked)) if (inPoly(x, y, p)) return false; }
+  }
+  if (!inside) return false;
+  for (const [z, Z] of Object.entries(W.zones)) if (!S.own[z] && rectDist(x, y, Z.rect) < 70) return false;
+  for (const p of Object.values(W.blocked)) if (inPoly(x, y, p)) return false;
+  for (const [id, p] of Object.entries(W.item_blocked)) if (ownedItem(id) && inPoly(x, y, p)) return false;
+  return true;
+}
+// grid for A*
+const G = 30; let GW, GH, grid;
+function buildGrid() {
+  GW = Math.ceil(Y.canvas[0] / G); GH = Math.ceil(Y.canvas[1] / G); grid = new Uint8Array(GW * GH);
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) grid[j * GW + i] = walkable(i * G + G / 2, j * G + G / 2) ? 1 : 0;
+}
+function nearestCell(x, y) {
+  let best = -1, bd = 1e18;
+  for (let k = 0; k < grid.length; k++) if (grid[k]) { const cx = (k % GW) * G + G / 2, cy = Math.floor(k / GW) * G + G / 2, d = (cx - x) ** 2 + (cy - y) ** 2; if (d < bd) { bd = d; best = k; } }
+  return best;
+}
+function lineOK(a, b) { const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 12); for (let k = 1; k < n; k++) { const t = k / n; if (!walkable(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)) return false; } return true; }
+function findPath(from, to) {
+  if (walkable(...to) && lineOK(from, to)) return [to];
+  const s = walkable(...from) ? Math.floor(from[1] / G) * GW + Math.floor(from[0] / G) : nearestCell(...from);
+  const tIdx = walkable(...to) ? Math.floor(to[1] / G) * GW + Math.floor(to[0] / G) : nearestCell(...to);
+  if (s < 0 || tIdx < 0) return [];
+  const gS = new Float32Array(grid.length).fill(Infinity), came = new Int32Array(grid.length).fill(-1), open = [s]; gS[s] = 0;
+  const tx = tIdx % GW, ty = Math.floor(tIdx / GW), h = k => Math.hypot(k % GW - tx, Math.floor(k / GW) - ty);
+  const inOpen = new Uint8Array(grid.length); inOpen[s] = 1;
+  while (open.length) {
+    let bi = 0; for (let i = 1; i < open.length; i++) if (gS[open[i]] + h(open[i]) < gS[open[bi]] + h(open[bi])) bi = i;
+    const c = open.splice(bi, 1)[0]; inOpen[c] = 0;
+    if (c === tIdx) break;
+    const cx = c % GW, cy = Math.floor(c / GW);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue; const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
+      const n = ny * GW + nx; if (!grid[n]) continue; if (dx && dy && (!grid[cy * GW + nx] || !grid[ny * GW + cx])) continue;
+      const g = gS[c] + (dx && dy ? 1.414 : 1); if (g < gS[n]) { gS[n] = g; came[n] = c; if (!inOpen[n]) { open.push(n); inOpen[n] = 1; } }
+    }
+  }
+  if (came[tIdx] < 0 && tIdx !== s) return [];
+  let pts = []; for (let k = tIdx; k !== -1 && k !== s; k = came[k]) pts.unshift([(k % GW) * G + G / 2, Math.floor(k / GW) * G + G / 2]);
+  if (walkable(...to)) pts.push(to);
+  // string-pull smoothing
+  const out = []; let cur = from, i = 0;
+  while (i < pts.length) { let j = pts.length - 1; while (j > i && !lineOK(cur, pts[j])) j--; out.push(pts[j]); cur = pts[j]; i = j + 1; }
+  return out;
+}
+
+// ---------------------------------------------------------------- state
+const view = { w: 1080, h: 1860, s: 1 }, cam = { x: 0, y: 0 };
+const pet = { x: 600, y: 1300, path: [], dir: 1, state: "idle", until: 0, act: null, walks: 0, bob: 0 };
+let dragging = false, lastDrag = -1e9, ptr = null, guests = [], toastT = 0;
+
+function resize() {
+  const r = card.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  view.s = r.width / 1080; view.w = 1080; view.h = r.height / view.s; view.dpr = dpr;
+}
+function bounds() {
+  const own = Object.entries(Y.walk.zones).filter(([z]) => S.own[z]).map(([, Z]) => Z.rect);
+  let x0 = Math.min(...own.map(r => r[0])), y0 = Math.min(...own.map(r => r[1]));
+  let x1 = Math.max(...own.map(r => r[0] + r[2])), y1 = Math.max(...own.map(r => r[1] + r[3]));
+  for (const [z, Z] of Object.entries(Y.walk.zones)) {
+    if (S.own[z] || Z.price === null) continue; const [rx, ry, rw, rh] = Z.rect;
+    const ov = (a0, a1, b0, b1) => Math.min(a1, b1) > Math.max(a0, b0);
+    if (rx === x1 && ov(ry, ry + rh, y0, y1)) x1 += S.peek;
+    if (ry === y1 && ov(rx, rx + rw, x0, x1)) y1 += S.peek;
+    if (rx + rw === x0 && ov(ry, ry + rh, y0, y1)) x0 -= S.peek;
+  }
+  return [x0, y0, x1, y1];
+}
+function clampCam() {
+  const [x0, y0, x1, y1] = bounds();
+  cam.x = x1 - x0 <= view.w ? x0 + (x1 - x0 - view.w) / 2 : Math.min(Math.max(cam.x, x0), x1 - view.w);
+  cam.y = y1 - y0 <= view.h ? y0 : Math.min(Math.max(cam.y, y0), y1 - view.h);
+}
+
+// ---------------------------------------------------------------- pet behaviour
+function petCenter() { return [pet.x + Y.walk.pet.feet_to_center[0], pet.y + Y.walk.pet.feet_to_center[1]]; }
+function randomWalkable() { for (let k = 0; k < 400; k++) { const x = cam.x + Math.random() * view.w, y = cam.y + Math.random() * view.h; if (walkable(x, y)) return [x, y]; } const c = nearestCell(pet.x, pet.y); return [(c % GW) * G + G / 2, Math.floor(c / GW) * G + G / 2]; }
+function goTo(pt, act) {
+  let p = findPath([pet.x, pet.y], pt);
+  if (act) p = p.concat([act.stand]);        // interact stands may lie inside a blocked footprint: last step in
+  pet.path = p; pet.act = act || null; pet.state = p.length ? "walk" : "idle"; pet.until = performance.now() + 4000;
+}
+function interactTargets() {
+  return Object.entries(Y.walk.interact).filter(([id]) => id === "pond" || id === "tree" || ownedItem(id)).map(([id, v]) => ({ id, ...v }));
+}
+function tickPet(dt, now) {
+  if (pet.state === "walk") {
+    const t = pet.path[0];
+    if (!t) { pet.state = pet.act ? "act" : "idle"; pet.until = now + (pet.act ? 6000 : 4000 + Math.random() * 4000); return; }
+    const dx = t[0] - pet.x, dy = t[1] - pet.y, d = Math.hypot(dx, dy), step = S.speed * Y.px_per_unit * dt;
+    if (Math.abs(dx) > 2) pet.dir = dx > 0 ? 1 : -1;
+    pet.bob += dt * 9;
+    if (d <= step) { pet.x = t[0]; pet.y = t[1]; pet.path.shift(); } else { pet.x += dx / d * step; pet.y += dy / d * step; }
+  } else if (now > pet.until && S.auto) {
+    pet.act = null; pet.walks++;
+    const acts = interactTargets();
+    if (pet.walks % 3 === 0 && acts.length) { const a = acts[Math.floor(Math.random() * acts.length)]; goTo(a.enter || a.stand, a); }
+    else goTo(randomWalkable());
+  } else if (pet.state === "act" && now > pet.until) { pet.state = "idle"; pet.act = null; pet.until = now + 2000; }
+}
+
+// ---------------------------------------------------------------- guests (30%, no collection)
+function spawnGuests() {
+  guests = [];
+  if (!S.guests || Math.random() > 0.3 && !S.forceGuest) return;
+  const kind = Math.random() < 0.5 ? "sparrow" : "butterfly";
+  if (kind === "sparrow") {
+    if (S.items && Math.random() < 0.5) guests.push({ k: "perch" });
+    else { const p = randomWalkable(); guests.push({ k: "ground", x: p[0], y: p[1] }); }
+  } else {
+    const b = Y.items.find(e => e.id === "flower_bed"); guests.push({ k: "fly", cx: b.x + b.w * 0.6, cy: b.y - 40, t: 0 });
+  }
+}
+
+// ---------------------------------------------------------------- input
+card.addEventListener("pointerdown", e => { if (e.target !== cv) return; ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false }; cv.setPointerCapture(e.pointerId); });
+card.addEventListener("pointermove", e => {
+  if (!ptr || e.pointerId !== ptr.id) return;
+  const dx = e.clientX - ptr.x, dy = e.clientY - ptr.y;
+  if (!ptr.moved && Math.hypot(dx, dy) > 8) { ptr.moved = true; dragging = true; }
+  if (ptr.moved) { cam.x = ptr.cx - dx / view.s; cam.y = ptr.cy - dy / view.s; clampCam(); }
+});
+card.addEventListener("pointerup", e => {
+  if (!ptr || e.pointerId !== ptr.id) return;
+  if (ptr.moved) { dragging = false; lastDrag = performance.now(); }
+  else tap(cam.x + (e.clientX - card.getBoundingClientRect().left) / view.s, cam.y + (e.clientY - card.getBoundingClientRect().top) / view.s);
+  ptr = null;
+});
+function tap(x, y) {
+  // fruit?
+  const tr = Y.tree.find(t => t.stage === S.stage);
+  if (tr && tr.fruits.some(([fx, fy]) => Math.hypot(fx - x, fy - y) < 45)) { const a = { id: "tree", ...Y.walk.interact.tree }; goTo(a.stand, a); toast("🍑 단짝이 나무로 가서 지난 기록 카드를 보여줘 (테스트)"); return; }
+  const z = zoneAt(x, y), Z = z && Y.walk.zones[z];
+  if (Z && !S.own[z]) {
+    if (Z.price === null) { toast("숲 — 풍경이라 들어갈 수 없어"); return; }
+    toast(`${Z.name_ko} 구역 · 🌱 ${Z.price}`, "테스트로 열기", () => { S.own[z] = true; buildGrid(); buildPanel(); });
+    return;
+  }
+  goTo([x, y]);
+}
+let toastCb = null;
+function toast(msg, btn, cb) {
+  const t = $("#toast"); t.innerHTML = msg + (btn ? ` <button>${btn}</button>` : ""); t.style.display = "block";
+  toastCb = cb; if (btn) t.querySelector("button").onclick = () => { cb(); t.style.display = "none"; };
+  toastT = performance.now() + (btn ? 5000 : 2500);
+}
+$("#gear").onclick = () => $("#panel").classList.toggle("open");
+window.addEventListener("resize", () => { resize(); clampCam(); });
+
+// ---------------------------------------------------------------- camera
+function tickCam(dt, now) {
+  if (dragging) return;
+  const [pcx, pcy] = petCenter();
+  const returning = now - lastDrag > S.back * 1000;
+  if (!returning) return;
+  const sinceBack = now - lastDrag - S.back * 1000;
+  const k = sinceBack < 600 && lastDrag > 0 ? 0.18 : S.follow;   // glide back a bit faster
+  const f = 1 - Math.pow(1 - k, dt * 60);
+  const cx = cam.x + view.w / 2, cy = cam.y + view.h / 2;
+  let ex = pcx - cx, ey = pcy - cy;
+  const dz = sinceBack < 600 && lastDrag > 0 ? 0 : S.dead;
+  ex = Math.abs(ex) > dz ? ex - Math.sign(ex) * dz : 0; ey = Math.abs(ey) > dz ? ey - Math.sign(ey) * dz : 0;
+  cam.x += ex * f; cam.y += ey * f; clampCam();
+}
+
+// ---------------------------------------------------------------- draw
+function img(f, x, y, w, h) { const i = IMG[f]; if (i) ctx.drawImage(i, x, y, w ?? i.width, h ?? i.height); }
+function draw(now) {
+  const s = view.s * view.dpr;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#cde8f5"; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
+  for (const t of Y.tiles) if (t.x < cam.x + view.w && t.x + t.w > cam.x && t.y < cam.y + view.h && t.y + t.h > cam.y) img(S.night ? t.night_file : t.file, t.x, t.y, t.w, t.h);
+  for (const [z, l] of Object.entries(Y.locks)) if (!S.own[z]) img(l.file, l.x, l.y, l.w, l.h);
+  const items = S.items ? Y.items : [];
+  items.filter(e => e.layer === "ground").forEach(e => img(e.file, e.x, e.y, e.w, e.h));
+  items.filter(e => e.layer === "pond").forEach(e => img(e.file, e.x, e.y, e.w, e.h));
+  const tree = Y.tree.find(t => t.stage === S.stage);
+  const list = [{ y: tree.sort_y, f: () => img(tree.file, tree.x, tree.y, tree.w, tree.h) }];
+  const lit = [];
+  for (const e of items.filter(e => e.layer === "sorted")) list.push({ y: e.sort_y, f: () => {
+    img(e.file, e.x, e.y, e.w, e.h); if (S.night && e.night_file) lit.push(e);
+    if (e.id === "bird_feeder" && guests.some(g => g.k === "perch")) { const sp = Y.extras.sparrow_perch; img(sp.file, sp.x, sp.y, sp.w, sp.h); }
+  } });
+  if (S.items) for (const b of Y.bed_flowers) if (b.flower === (b.spot === 1 ? "sunflower" : "tulip")) list.push({ y: b.sort_y, f: () => img(b.file, b.x, b.y, b.w, b.h) });
+  for (const g of guests) if (g.k === "ground") { const e = Y.extras.sparrow_ground; list.push({ y: g.y, f: () => img(e.file, g.x - e.anchor[0], g.y - e.anchor[1], e.w, e.h) }); }
+  list.push({ y: pet.y, f: () => drawPet(now) });
+  list.sort((a, b) => a.y - b.y).forEach(o => o.f());
+  for (const [fx, fy] of tree.fruits) img(Y.fruit.file, fx - 40, fy - 40, 80, 80);
+  if (pet.state === "act" && pet.act && pet.act.action === "splash") { const w = Y.extras.pond_water; img(w.file, w.x, w.y, w.w, w.h); }
+  for (const g of guests) if (g.k === "fly") {
+    g.t += 1 / 60; const e = Y.extras[Math.floor(now / 160) % 2 ? "butterfly_open" : "butterfly_closed"];
+    const x = g.cx + Math.sin(g.t * 0.7) * 120, y = g.cy + Math.sin(g.t * 1.3) * 40;
+    img(e.file, x - e.anchor[0], y - e.anchor[1], e.w, e.h);
+  }
+  if (S.night) {
+    const [r, gg, b, a] = Y.night.overlay; ctx.fillStyle = `rgba(${r},${gg},${b},${a})`; ctx.fillRect(cam.x, cam.y, view.w, view.h);
+    for (const e of lit) img(e.night_file, e.x, e.y, e.w, e.h);
+  }
+  if (S.showWalk) drawWalk();
+  if (pet.state === "act" && pet.act) bubble(ACT_KO[pet.act.action] || pet.act.action);
+}
+function drawPet(now) {
+  const P = Y.walk.pet, [cx, cy] = petCenter();
+  const bob = pet.state === "walk" ? -Math.abs(Math.sin(pet.bob)) * 22 : 0;
+  ctx.save(); ctx.translate(cx, cy + bob); if (pet.dir < 0) ctx.scale(-1, 1);
+  ctx.drawImage(PET_IMG, -P.w / 2, -P.h / 2, P.w, P.h); ctx.restore();
+}
+function bubble(text) {
+  const [cx, cy] = petCenter(), y = cy - Y.walk.pet.h * 0.42;
+  ctx.font = "bold 40px -apple-system, sans-serif"; const w = ctx.measureText(text).width + 40;
+  ctx.fillStyle = "rgba(255,255,255,.95)"; ctx.beginPath(); ctx.roundRect(cx - w / 2, y - 64, w, 64, 32); ctx.fill();
+  ctx.fillStyle = "#3a3530"; ctx.textAlign = "center"; ctx.fillText(text, cx, y - 18);
+}
+function drawWalk() {
+  for (let j = Math.floor(cam.y / G); j < Math.min(GH, (cam.y + view.h) / G); j++) for (let i = Math.floor(cam.x / G); i < Math.min(GW, (cam.x + view.w) / G); i++) {
+    if (i < 0 || j < 0) continue; ctx.fillStyle = grid[j * GW + i] ? "rgba(40,120,255,.22)" : "rgba(255,40,40,.12)"; ctx.fillRect(i * G, j * G, G - 1, G - 1);
+  }
+  ctx.fillStyle = "#ffd400"; for (const v of interactTargets()) { ctx.beginPath(); ctx.arc(v.stand[0], v.stand[1], 14, 0, 7); ctx.fill(); }
+  if (pet.path.length) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(pet.x, pet.y); pet.path.forEach(p => ctx.lineTo(...p)); ctx.stroke(); }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  tickPet(dt, now); tickCam(dt, now); draw(now);
+  if (toastT && now > toastT) { $("#toast").style.display = "none"; toastT = 0; }
+  requestAnimationFrame(loop);
+}
+
+// ---------------------------------------------------------------- panel
+function buildPanel() {
+  const p = $("#panel");
+  const tog = (k, label) => `<label><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}>${label}</label>`;
+  const rng = (k, label, min, max, step, unit) => `<div class="row"><span>${label}</span><input type="range" data-r="${k}" min="${min}" max="${max}" step="${step}" value="${S[k]}"><span class="val" id="v_${k}">${S[k]}${unit}</span></div>`;
+  p.innerHTML = `
+    <h3>보기</h3>
+    <div class="seg"><button data-n="0" class="${S.night ? "" : "on"}">☀️ 낮</button><button data-n="1" class="${S.night ? "on" : ""}">🌙 밤</button></div>
+    ${tog("items", "소품 10개 다 있음")} ${tog("auto", "혼자 산책")} ${tog("showWalk", "걷기 영역 표시")}
+    <div class="seg">추억 나무 ${[1, 2, 3, 4].map(n => `<button data-st="${n}" class="${S.stage === n ? "on" : ""}">${n}단계</button>`).join("")}</div>
+    <button id="gst">손님 오게 하기</button>
+    <h3>산 구역</h3>
+    <label><input type="checkbox" checked disabled>1 집 앞마당</label>
+    <label><input type="checkbox" data-z="2" ${S.own[2] ? "checked" : ""}>2 개울가 (60)</label>
+    <label><input type="checkbox" data-z="3" ${S.own[3] ? "checked" : ""}>3 꽃언덕 숲길 (120)</label>
+    <h3>화면 움직임 (이 숫자로 알려주면 반영할게)</h3>
+    ${rng("follow", "따라가는 속도", 0.02, 0.4, 0.01, "")}
+    ${rng("dead", "여유 범위", 0, 400, 10, "px")}
+    ${rng("back", "복귀 대기", 0.5, 8, 0.5, "초")}
+    ${rng("peek", "잠긴 구역 엿보기", 0, 600, 20, "px")}
+    ${rng("speed", "걷는 속도", 0.2, 1.5, 0.05, "")}
+    <button id="reset">단짝을 집으로</button>`;
+  p.querySelectorAll("[data-k]").forEach(el => el.onchange = () => { S[el.dataset.k] = el.checked; if (el.dataset.k === "items") buildGrid(); });
+  p.querySelectorAll("[data-z]").forEach(el => el.onchange = () => { S.own[el.dataset.z] = el.checked; buildGrid(); clampCam(); if (!walkable(pet.x, pet.y)) { pet.x = Y.walk.home[0]; pet.y = Y.walk.home[1]; pet.path = []; } });
+  p.querySelectorAll("[data-n]").forEach(el => el.onclick = () => { S.night = el.dataset.n === "1"; buildPanel(); });
+  p.querySelectorAll("[data-st]").forEach(el => el.onclick = () => { S.stage = +el.dataset.st; buildPanel(); });
+  p.querySelectorAll("[data-r]").forEach(el => el.oninput = () => { const k = el.dataset.r; S[k] = +el.value; $("#v_" + k).textContent = el.value + (el.nextElementSibling.textContent.replace(/[0-9.]/g, "")); clampCam(); });
+  $("#gst").onclick = () => { S.forceGuest = true; spawnGuests(); S.forceGuest = false; };
+  $("#reset").onclick = () => { pet.x = Y.walk.home[0]; pet.y = Y.walk.home[1]; pet.path = []; pet.state = "idle"; };
+}
+init().catch(e => { $("#loading").textContent = "불러오기 실패: " + e; });
+</script>
+</body>
+</html>
