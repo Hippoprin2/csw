@@ -40,9 +40,12 @@ export default function Spaces() {
   // 손가락으로 페이지 끌기 (방 여백·방 끝·마당 끝): 바깥 스크롤을 UI 스레드에서 손가락에 붙여 움직이고, 놓으면 부드럽게 맞춤.
   // (예전: JS에서 scrollTo → 끊기고, 손 떼기 전에 툭 넘어감. 2026-11-11 대표 피드백)
   const drv = useSharedValue(-1); // 끌거나 맞추는 중인 스크롤 위치, -1 = 안 함
+  // 한 번 끌기 = 한 페이지만: 끌기 시작한 페이지를 기억하고, 손 뗀 뒤 늦게 오는 끌기·두 번째 '놓기'는 무시
+  // (마당 → 방으로 넘기면 방에 잠깐 섰다가 텃밭까지 넘어가던 문제, 2026-11-11)
+  const from0 = useSharedValue(-1), settling = useSharedValue(false);
   useAnimatedReaction(() => drv.value, (x) => { if (x >= 0) scrollTo(ref, x, 0, false); });
   const settleRef = useRef((n: number) => {
-    drv.value = -1;
+    drv.value = -1; settling.value = false;
     if (n !== pageRef.current) {
       pageRef.current = n; setPageState(n);
       track('space_viewed', { space: PAGES[n] });
@@ -53,12 +56,16 @@ export default function Spaces() {
     return {
       drag: (dx) => {
         'worklet';
+        if (settling.value) return;
+        if (from0.value < 0) from0.value = pageSV.value;
         const W = wSV.value;
-        drv.value = Math.min(W * 2, Math.max(0, W * pageSV.value - dx));
+        drv.value = Math.min(W * 2, Math.max(0, W * from0.value - dx));
       },
       end: (dx, vx, canceled) => {
         'worklet';
-        const W = wSV.value, p = pageSV.value;
+        if (from0.value < 0 || settling.value) return;
+        const W = wSV.value, p = from0.value;
+        from0.value = -1; settling.value = true;
         const from = drv.value >= 0 ? drv.value : W * p;
         let n = canceled ? Math.round(from / W)
           : dx > W * 0.25 || vx > 500 ? p - 1 : dx < -W * 0.25 || vx < -500 ? p + 1 : p;
@@ -66,10 +73,10 @@ export default function Spaces() {
         pageSV.value = n;
         drv.value = from;
         const dur = 160 + 200 * Math.min(1, Math.abs(n * W - from) / Math.max(1, W));
-        drv.value = withTiming(n * W, { duration: dur, easing: Easing.out(Easing.cubic) }, (fin) => { if (fin) scheduleOnRN(settle, n); });
+        drv.value = withTiming(n * W, { duration: dur, easing: Easing.out(Easing.cubic) }, (fin) => { if (fin) scheduleOnRN(settle, n); else settling.value = false; });
       },
     };
-  }, [drv, pageSV, wSV]);
+  }, [drv, pageSV, wSV, from0, settling]);
 
   // 너비가 정해지거나 바뀌면 보고 있던 공간(처음엔 방)으로 맞춘다
   useEffect(() => {

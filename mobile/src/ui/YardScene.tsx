@@ -488,7 +488,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     onActivate: () => { const g = G.current; g.dragging = true; g.glide = null; g.panStart = { ...g.cam }; g.over = 0; },
     onUpdate: (e: { translationX: number; translationY: number }) => {
       const g = G.current, f = fx.current;
-      if (!f) return;
+      if (!f || !g.dragging) return; // 손 뗀 뒤 늦게 온 움직임은 무시
       g.cam.x = g.panStart.x - e.translationX / g.s; g.cam.y = g.panStart.y - e.translationY / g.s;
       const want = g.cam.x;
       f.clamp(); f.push();
@@ -497,7 +497,9 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
       if (f.pager && (over > 0 || g.over > 0)) { g.over = over; f.pager.drag(over); }
     },
     onDeactivate: (e: { velocityX: number; canceled: boolean }) => {
-      const g = G.current; g.dragging = false; g.lastDrag = performance.now(); g.glide = null;
+      const g = G.current;
+      if (!g.dragging) return;
+      g.dragging = false; g.lastDrag = performance.now(); g.glide = null;
       if (fx.current?.pager && g.over > 0) fx.current.pager.end(g.over, e.velocityX, e.canceled);
       g.over = 0;
     },

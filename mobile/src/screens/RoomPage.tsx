@@ -206,11 +206,12 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
   // 넓은 방(2160) 끌어서 둘러보기 (manifest spaces.room.view): 카드는 1080 창, 끝에서 더 끌면 옆 공간으로. 자동 복귀 없음
   const V = ROOM.view;
   const camX = useSharedValue(keptCamX);
-  const drag = useRef({ start: keptCamX, over: 0 });
+  const drag = useRef({ start: keptCamX, over: 0, on: false });
   const pan = usePanGesture({
     activeOffsetX: [-10, 10], failOffsetY: [-12, 12], maxPointers: 1, runOnJS: true,
-    onActivate: () => { drag.current = { start: camX.value, over: 0 }; },
+    onActivate: () => { drag.current = { start: camX.value, over: 0, on: true }; },
     onUpdate: (e) => {
+      if (!drag.current.on) return;
       const want = drag.current.start - e.translationX / sc;
       const x = Math.min(V.max_x, Math.max(V.min_x, want));
       camX.value = x; keptCamX = x;
@@ -219,8 +220,9 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
       if (pager && (over !== 0 || drag.current.over !== 0)) { drag.current.over = over; pager.drag(over); }
     },
     onDeactivate: (e) => {
+      if (!drag.current.on) return;
       if (pager && drag.current.over !== 0) pager.end(drag.current.over, e.velocityX, e.canceled);
-      drag.current.over = 0;
+      drag.current.over = 0; drag.current.on = false;
     },
   });
   // 탭: 유리장 병 → 그 병 보기, 꽃병 → 튤립/해바라기 바꾸기
