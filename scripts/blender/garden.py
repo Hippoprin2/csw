@@ -8,7 +8,7 @@ import bpy, bmesh, math, os, sys
 from mathutils import Vector, Matrix
 sys.path.insert(0, os.path.dirname(__file__))
 import room as R
-from room import rbox, sph, cyl, M, P, group, setup_render, frame_on, item_parts
+from room import rbox, sph, cyl, M, P, group, setup_render, frame_on, item_parts, bake, tulip_bloom, strawberry_berry
 
 FLOOR = -0.5
 ELEV = 0.5
@@ -126,28 +126,25 @@ def sweet_potato(base, stage):
 
 
 def tulip(base, stage):
+    """reference photo: closed red egg-shaped cup on a smooth stem, broad lance leaves at the base"""
     x, y, z = base; L, S = M("leafd", 0.75), M("stem", 0.75)
     parts = []
     if stage == 1:
-        parts += [leaf("TuL1", (x, y, z), 0.13, 0.045, -18, -19, L), leaf("TuL2", (x, y, z), 0.11, 0.04, 22, -19, L)]
-        return parts, 0.13
-    stems = [(-0.08, 0.0, -6), (0.07, 0.03, 8), (0.0, -0.05, 0)] if stage == 3 else [(0.0, 0.0, 0)]
-    for k, (dx, dy, lean) in enumerate(stems):
-        h = 0.3 + 0.04 * (k == 2)
+        parts += [leaf("TuL1", (x, y, z), 0.14, 0.055, -16, -19, L), leaf("TuL2", (x, y, z), 0.12, 0.05, 20, 0, L)]
+        return parts, 0.14
+    stems = [(-0.07, 0.01, -9, 0.3), (0.075, 0.03, 10, 0.27), (0.0, -0.04, 0, 0.34)] if stage == 3 else [(0.0, 0.0, 0, 0.27)]
+    for k, (dx, dy, lean, h) in enumerate(stems):
         bx, by = x + dx, y + dy
-        top = (bx + math.sin(math.radians(lean)) * h, by, z + h)
-        parts.append(tube(f"TuStem{k}", [(bx, by, z), (bx + (top[0] - bx) * 0.3, by, z + h * 0.5), top], 0.009, S))
-        parts += [leaf(f"TuLa{k}", (bx, by, z), 0.2, 0.05, -20 + lean, -19, L), leaf(f"TuLb{k}", (bx, by, z), 0.17, 0.045, 25 + lean, -19, L)]
-        if stage == 2:
-            parts.append(sph(f"TuBud{k}", 0.035, (top[0], top[1], top[2] + 0.03), M("leaf"), (0.8, 0.8, 1.3)))
-            parts.append(sph(f"TuBudTip{k}", 0.022, (top[0], top[1], top[2] + 0.058), M("coral"), (0.8, 0.8, 1.2)))
+        rot = Matrix.Rotation(math.radians(lean), 4, "Y")
+        top = Vector((bx, by, z)) + (rot @ Vector((0, 0, h, 0))).to_3d()
+        parts.append(tube(f"TuStem{k}", [(bx, by, z), (bx + (top.x - bx) * 0.4, by, z + h * 0.5), tuple(top)], 0.011, S))
+        parts += [leaf(f"TuLa{k}", (bx, by, z), 0.22, 0.075, -22 + lean, -19 + 25, L, thick=0.25),
+                  leaf(f"TuLb{k}", (bx, by, z), 0.19, 0.065, 24 + lean, -19 - 25, M("leaf", 0.75), thick=0.25)]
+        if stage == 2:   # green bud with a blush of red at the tip
+            parts += bake(tulip_bloom(f"TuBud{k}", 0.075, ("bud_g", "tulip_r")), Matrix.Translation(top) @ rot)
         else:
-            col = M("coral", 0.7) if k != 1 else M("pink", 0.7)
-            cup = sph(f"TuCup{k}", 0.055, (top[0], top[1], top[2] + 0.045), col, (1, 1, 1.15)); parts.append(cup)
-            for q in range(3):                                   # three petal tips around the rim
-                a = q * 2 * math.pi / 3 + 0.3
-                parts.append(sph(f"TuTip{k}{q}", 0.028, (top[0] + 0.035 * math.cos(a), top[1] + 0.035 * math.sin(a), top[2] + 0.095), col, (0.8, 0.8, 1.3)))
-    return parts, 0.42 if stage == 3 else 0.36
+            parts += bake(tulip_bloom(f"TuBl{k}", 0.11 if k == 2 else 0.1), Matrix.Translation(top) @ rot)
+    return parts, 0.47 if stage == 3 else 0.37
 
 
 def sunflower(base, stage):
@@ -204,13 +201,12 @@ def strawberry(base, stage):
                 parts.append(sph(f"StPet{k}{q}", 0.018, (cx + 0.02 * math.cos(a), y - 0.09, cz + 0.02 * math.sin(a)), M("petal_w", 0.7), (1, 0.4, 1)))
             parts.append(sph(f"StCtr{k}", 0.012, (cx, y - 0.1, cz), M("sun_y", 0.6)))
         return parts, 0.22
-    for k, (dx, dz, s) in enumerate(((-0.1, 0.05, 1.0), (0.0, 0.03, 1.15), (0.11, 0.06, 0.95), (0.05, 0.1, 0.8))):
-        c = (x + dx, y - 0.1, z + dz)
-        b = sph(f"StBerry{k}", 0.04 * s, c, M("berry", 0.55), (1, 0.95, 1.2)); parts.append(b)
-        parts.append(sph(f"StCalyx{k}", 0.025 * s, (c[0], c[1], c[2] + 0.04 * s), M("leafd"), (1.2, 1.2, 0.35)))
-        for q in range(4):
-            a = q * math.pi / 2 + 0.4
-            parts.append(sph(f"StSeed{k}{q}", 0.005, (c[0] + 0.022 * s * math.cos(a), c[1] - 0.035 * s, c[2] - 0.01 + 0.02 * s * math.sin(a)), M("sun_y", 0.6)))
+    # berries hang from short stalks at the front of the bush, tips pointing down-ish
+    for k, (dx, dz, s, lean) in enumerate(((-0.11, 0.12, 0.078, -25), (0.0, 0.1, 0.09, 8), (0.11, 0.13, 0.075, 30), (0.05, 0.17, 0.06, 15))):
+        top = Vector((x + dx, y - 0.1, z + dz))
+        rot = Matrix.Rotation(math.radians(-19), 4, "Z") @ Matrix.Rotation(math.radians(lean), 4, "Y")
+        parts.append(tube(f"StStalk{k}", [(x + dx * 0.5, y - 0.04, z + dz + 0.05), tuple(top + Vector((0, 0, 0.01)))], 0.004, S))
+        parts += bake(strawberry_berry(f"StB{k}", s), Matrix.Translation(top) @ rot)
     return parts, 0.24
 
 
@@ -294,13 +290,12 @@ def produce(cid):
             p = sph(f"IcPot{k}", 0.07 * s, (dx, 0.01 * k, 0.05), M("skin", 0.65), (1.7, 0.95, 0.9)); p.rotation_euler = (0, math.radians(rz), math.radians(-19)); parts.append(p)
         parts.append(sph("IcPotTip", 0.02, (-0.165, 0, 0.07), M("vine", 0.7), (1.5, 0.6, 0.6)))
     elif cid == "tulip":
-        for k, (dx, col) in enumerate(((-0.04, "coral"), (0.0, "coral"), (0.045, "pink"))):
-            top = (dx * 2, 0, 0.26 + 0.02 * (k == 1))
-            st = tube(f"IcTuS{k}", [(dx * 0.3, 0, 0.0), (dx, 0, 0.12), top], 0.008, M("stem"))
-            parts += [st, sph(f"IcTuC{k}", 0.045, top, M(col, 0.7), (1, 1, 1.2))]
-            for q in range(3):
-                a = q * 2.1 + 0.3
-                parts.append(sph(f"IcTuT{k}{q}", 0.022, (top[0] + 0.028 * math.cos(a), 0.028 * math.sin(a), top[2] + 0.04), M(col, 0.7), (0.8, 0.8, 1.3)))
+        for k, (dx, h, lean) in enumerate(((-0.05, 0.22, -12), (0.0, 0.26, 0), (0.05, 0.21, 13))):
+            base = Vector((dx * 0.3, 0, 0))
+            rot = Matrix.Rotation(math.radians(lean), 4, "Y")
+            top = base + (rot @ Vector((0, 0, h, 0))).to_3d()
+            parts.append(tube(f"IcTuS{k}", [tuple(base), tuple(base + (top - base) * 0.5), tuple(top)], 0.009, M("stem")))
+            parts += bake(tulip_bloom(f"IcTu{k}", 0.1), Matrix.Translation(top) @ rot)
         parts.append(rbox("IcTuRibbon", (0.07, 0.05, 0.03), (0, -0.01, 0.07), M("lemon", 0.7), r=0.45))
     elif cid == "sunflower":
         face = Matrix.Rotation(math.radians(-19), 3, "Z") @ Matrix.Rotation(math.radians(-90), 3, "X")
@@ -312,13 +307,9 @@ def produce(cid):
             pe.rotation_euler = (face @ Matrix.Rotation(a + math.pi / 2, 3, "Z")).to_euler(); parts.append(pe)
         parts.append(tube("IcSuStem", [(0, 0.01, 0.0), (0.0, 0.01, -0.12)], 0.012, M("stem")))
     else:
-        for k, (dx, dz, s) in enumerate(((-0.05, 0.0, 1.0), (0.05, 0.01, 0.9))):
-            c = (dx, 0, dz)
-            parts += [sph(f"IcStB{k}", 0.06 * s, c, M("berry", 0.55), (1, 0.95, 1.2)),
-                      sph(f"IcStC{k}", 0.04 * s, (dx, 0, dz + 0.065 * s), M("leafd"), (1.2, 1.2, 0.35))]
-            for q in range(6):
-                a = q * 1.05 + 0.3
-                parts.append(sph(f"IcStS{k}{q}", 0.007, (dx + 0.035 * s * math.cos(a), -0.055 * s, dz - 0.01 + 0.035 * s * math.sin(a)), M("sun_y", 0.6)))
+        for k, (dx, s, tilt) in enumerate(((-0.075, 0.12, -10), (0.075, 0.105, 12))):
+            rot = Matrix.Rotation(math.radians(-19), 4, "Z") @ Matrix.Rotation(math.radians(tilt), 4, "Y")
+            parts += bake(strawberry_berry(f"IcSt{k}", s), Matrix.Translation((dx, 0.01 * k, 0.12)) @ rot)
     return group(f"produce_{cid}", parts)
 
 

@@ -140,6 +140,74 @@ SILL_Z = WZ - WH / 2 - 0.02 + 0.0225   # top of sill
 SILL_Y = YB - 0.09
 
 
+# ------------------------------------------------------------------ shared plant parts (room sill, garden, icons)
+P.update({"tulip_r": (0.90, 0.31, 0.31), "tulip_r2": (0.80, 0.25, 0.28), "bud_g": (0.62, 0.80, 0.52),
+          "berry": (0.90, 0.25, 0.28), "berry_seed": (0.95, 0.56, 0.47), "sepal": (0.36, 0.64, 0.38)})
+
+
+def bake(parts, mtx):
+    """bake world transforms into mesh data, then apply mtx (place/rotate a part built at the origin)"""
+    bpy.context.view_layer.update()
+    for o in parts:
+        if o.type != "MESH": continue
+        o.data = o.data.copy()
+        o.data.transform(mtx @ o.matrix_world); o.matrix_world = Matrix.Identity(4)
+        o.data.update()
+    return parts
+
+
+def lathe(name, profile, m, seg=28):
+    """revolve (radius, z) points around Z"""
+    bm = bmesh.new()
+    vs = [bm.verts.new((r, 0, z)) for r, z in profile]
+    for a, b in zip(vs, vs[1:]):
+        bm.edges.new((a, b))
+    bmesh.ops.spin(bm, geom=bm.verts[:] + bm.edges[:], cent=(0, 0, 0), axis=(0, 0, 1), angle=math.tau, steps=seg, use_duplicate=False)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _link(bm, name, m, weighted=False)
+
+
+def tulip_bloom(name, h, colors=("tulip_r", "tulip_r2")):
+    """closed egg-shaped tulip cup (reference: 대표 사진) — 3 outer + 3 inner pointed petals, base at origin, height h"""
+    outer, inner = M(colors[0], 0.6), M(colors[1], 0.65)
+    parts = [sph(f"{name}Base", 0.3 * h, (0, 0, 0.28 * h), outer, (1, 1, 0.9))]
+    for i in range(6):
+        is_in = i % 2 == 1
+        a = math.radians(i * 60 + (19 if not is_in else 0))
+        r0 = (0.18 if is_in else 0.23) * h
+        c = Vector((math.cos(a) * r0, math.sin(a) * r0, (0.56 if is_in else 0.5) * h))
+        p = sph(f"{name}P{i}", 0.5 * h, c, inner if is_in else outer, (0.62, 0.22, 1.0 if not is_in else 1.04))
+        # face outward, top leaning in a little so the cup closes like the photo
+        p.rotation_euler = (math.radians(9), 0, a - math.pi / 2)       # thin axis radial, top tipped inward
+        parts.append(p)
+    return parts
+
+
+def strawberry_berry(name, s):
+    """heart/cone strawberry (wide shoulders, rounded point), star sepals + stem, soft seeds. Top at origin, hangs down -Z."""
+    prof = [(0.0, 0.02), (0.2, 0.03), (0.38, -0.01), (0.48, -0.1), (0.52, -0.22), (0.5, -0.36), (0.44, -0.52),
+            (0.35, -0.67), (0.24, -0.81), (0.13, -0.92), (0.05, -0.985), (0.0, -1.0)]
+    body = lathe(f"{name}Body", [(r * s, z * s) for r, z in prof], M("berry", 0.45), seg=32)
+    sub = body.modifiers.new("sub", "SUBSURF"); sub.levels = sub.render_levels = 2
+    parts = [body]
+    # seeds: small, low contrast (대표: 노란 씨는 강조되지 않게)
+    for row, (z, r) in enumerate(((-0.22, 0.52), (-0.42, 0.49), (-0.62, 0.4), (-0.8, 0.26))):
+        n = 9 - row
+        for k in range(n):
+            a = k * math.tau / n + row * 0.35
+            rr = r * 0.95 * s          # subsurf shrinks the body ~5% -> sit the seeds in the surface, not on bumps
+            parts.append(sph(f"{name}Sd{row}{k}", 0.019 * s, (math.cos(a) * rr, math.sin(a) * rr, z * s), M("berry_seed", 0.6), (1, 1, 1.4)))
+    for k in range(7):          # pointed sepals spread like a star, tips drooping over the shoulders
+        a = k * math.tau / 7
+        d = Vector((math.cos(a), math.sin(a), 0))
+        sp = sph(f"{name}Sp{k}", 0.25 * s, d * 0.24 * s + Vector((0, 0, 0.045 * s)), M("sepal", 0.7), (1.0, 0.26, 0.08))
+        sp.rotation_euler = (0, math.radians(14), a)
+        parts.append(sp)
+    parts.append(cyl(f"{name}Stem", 0.035 * s, 0.22 * s, (0, 0, 0.12 * s), M("sepal", 0.7), bevel=0, seg=10))
+    return parts
+
+
 # 창턱 수확 선반: 3 spots right of the hippo's head (the left part of the sill is hidden behind it)
 SILL_VASE, SILL_PLATE, SILL_BASKET = 0.07, 0.24, 0.41
 P.update({"berry": (0.93, 0.33, 0.36), "sun_y": (1.0, 0.82, 0.30), "sun_c": (0.55, 0.36, 0.22), "skin": (0.62, 0.36, 0.55),
@@ -165,15 +233,14 @@ def _vase(x, col):
 def harvest_tulip():
     """튤립 꽃병 (vase spot, swaps with sunflower)"""
     x = SILL_VASE; parts = _vase(x, "off")
-    for k, (dx, h, col) in enumerate(((-0.03, 0.13, "coral"), (0.0, 0.16, "coral"), (0.032, 0.12, "pink"))):
-        top = (x + dx * 1.6, SILL_Y, SILL_Z + 0.1 + h)
-        st = cyl(f"TvStem{k}", 0.004, h, (x + dx * 0.8, SILL_Y, SILL_Z + 0.1 + h / 2), M("stem"), bevel=0, seg=8)
-        st.rotation_euler = (0, math.atan2(dx * 0.8, h) * 1.0, 0)
-        parts += [st, sph(f"TvCup{k}", 0.022, top, M(col, 0.7), (1, 1, 1.2))]
-        for q in range(3):
-            a = q * 2.1 + 0.3
-            parts.append(sph(f"TvTip{k}{q}", 0.011, (top[0] + 0.014 * math.cos(a), top[1] + 0.014 * math.sin(a), top[2] + 0.02), M(col, 0.7), (0.8, 0.8, 1.3)))
-    parts.append(sph("TvLeaf", 0.03, (x - 0.03, SILL_Y - 0.01, SILL_Z + 0.13), M("leaf"), (0.4, 0.25, 1.2)))
+    for k, (dx, h, lean) in enumerate(((-0.028, 0.12, -14), (0.0, 0.15, 0), (0.03, 0.11, 15))):
+        base = Vector((x + dx * 0.4, SILL_Y, SILL_Z + 0.1))
+        rot = Matrix.Rotation(math.radians(lean), 4, "Y")
+        top = base + (rot @ Vector((0, 0, h, 0))).to_3d()
+        st = cyl(f"TvStem{k}", 0.0045, h, (base + top) / 2, M("stem"), bevel=0, seg=8); st.rotation_euler = (0, math.radians(lean), 0)
+        bloom = bake(tulip_bloom(f"Tv{k}", 0.055), Matrix.Translation(top) @ rot)
+        parts += [st] + bloom
+    parts.append(sph("TvLeaf", 0.035, (x - 0.03, SILL_Y - 0.01, SILL_Z + 0.14), M("leaf"), (0.4, 0.25, 1.3)))
     return group("harvest_tulip", parts)
 
 
@@ -196,10 +263,9 @@ def harvest_strawberry():
     """딸기 접시"""
     x = SILL_PLATE
     parts = [cyl("Plate", 0.07, 0.014, (x, SILL_Y, SILL_Z + 0.007), M("off", 0.6), r2=0.055, bevel=0.4)]
-    for k, (dx, dy, dz) in enumerate(((-0.025, 0.01, 0.03), (0.028, 0.0, 0.03), (0.0, -0.02, 0.05))):
-        c = (x + dx, SILL_Y + dy, SILL_Z + dz)
-        parts += [sph(f"PbBerry{k}", 0.022, c, M("berry", 0.55), (1, 0.95, 1.2)),
-                  sph(f"PbCalyx{k}", 0.014, (c[0], c[1], c[2] + 0.022), M("leaf"), (1.2, 1.2, 0.35))]
+    for k, (dx, dy, tilt, yaw) in enumerate(((-0.035, 0.01, 75, 200), (0.035, 0.0, 80, -20), (0.0, -0.03, 70, 250))):
+        rot = Matrix.Rotation(math.radians(yaw), 4, "Z") @ Matrix.Rotation(math.radians(tilt), 4, "Y")
+        parts += bake(strawberry_berry(f"Pb{k}", 0.055), Matrix.Translation((x + dx, SILL_Y + dy, SILL_Z + 0.03)) @ rot)
     return group("harvest_strawberry", parts)
 
 

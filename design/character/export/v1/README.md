@@ -3,7 +3,7 @@
 만든 곳: 캐릭터 스레드 (2026-11-08). 앱에 붙이는 작업은 앱 개발 스레드가 한다. 대상 파일은 `mobile/src/ui/Pet.tsx`.
 
 ## 파일
-- `hippo_<key>.webp`: 움직이는 WebP, 600x800, 투명 배경, 24fps. 전체 약 7.5MB.
+- `hippo_<key>.webp`: 움직이는 WebP, 600x800, 투명 배경, 24fps. 전체 약 11MB(15클립, 그림자 포함).
 - `hippo_<key>_poster.png`: 첫 프레임(로딩 중이나 정지 화면용)
 - `manifest.json`: 프레임 수, 길이(ms), 반복 여부
 
@@ -15,6 +15,11 @@
 - 텃밭(카메라 25°, WORLD.md W2): `garden_idle`(반복), `garden_cheer`(수확 만세, 한 번). 방 클립(6.5°)과 섞어 쓰지 말 것. 25°에서는 색종이 시작 위치를 머리 위로 올려 렌더함
 - `work`는 새 카테고리다. '공부·일'을 공부(study)와 업무(work)로 나눴다(STATUS.md 결정 사항). 분류 로직과 문구 추가가 필요하다.
 
+## 바닥 그림자 (2026-11-10)
+- 모든 클립에 부드러운 타원 그림자가 들어 있다. 점프하면 작아지고 옅어지며, 앉으면 조금 넓어진다. **앱에서 그림자를 따로 그리지 않는다.**
+- 바닥 기준점(발이 닿는 곳, 600x800 프레임 기준): 방 6.5° 클립 = (303, 713), 텃밭 25° 클립 = (303, 697). 공간 그림에서 단짝 자리 바닥점에 이 점을 맞춰 얹는다.
+- 그림자 때문에 프레임 아래쪽에 반투명 픽셀이 있다(방 y 674~727, 텃밭 y 658~743). 자를 때 이 영역을 남긴다.
+
 ## 재생 규칙
 - 한 번 재생하는 동작은 모두 대기 자세로 시작해서 대기 자세로 끝난다. 그래서 idle → 동작 → idle로 바로 이어 붙여도 튀지 않는다.
 - 동작이 끝난 시점은 `duration_ms` 타이머로 판단한다. 디코더의 반복 횟수 설정(loop=1)은 플랫폼마다 다르게 동작할 수 있다.
@@ -22,5 +27,5 @@
 - 실기기에서 확인할 것: expo-image의 움직이는 WebP 재생, 메모리 사용량, 저가 안드로이드 성능.
 
 ## 다시 만들기
-- 렌더: `scripts/blender/render_actions.sh <clip...>` (idle은 `rig_idle.py`, cheer는 `anim_cheer.py`)
+- 동작 수정: `scripts/blender/anim_actions.py`(idle은 `rig_idle.py`, cheer는 `anim_cheer.py`)로 .blend 저장 → 최종 렌더는 전부 `scripts/blender/rerender_all.sh`(render_clip.py: 공통 조명·카메라 + 바닥 그림자, 책상은 카메라 보간)
 - 내보내기: `python scripts/export_app_assets.py` (Pillow 필요)
