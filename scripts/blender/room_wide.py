@@ -11,8 +11,8 @@ import room as R
 from room import M, P, rbox, sph, cyl, group, lathe, FLOOR, YB
 from props import mat
 
-SCREENS = 1.6
-WIDE = int(round(1080 * SCREENS / 2) * 2)          # 1728
+SCREENS = 2.0      # 2026-11-11 대표 결정 R1: 양쪽으로 화면 0.5장씩
+WIDE = int(round(1080 * SCREENS / 2) * 2)          # 2160
 ORTHO_W = R.ORTHO * SCREENS                         # 4.32 units visible width
 OFFSET_X = (WIDE - 1080) // 2                       # original 1080 frame sits in the middle (start view = hippo centred)
 
@@ -44,21 +44,29 @@ def glass_mat(name, rgb, alpha):
 JAR_W, JAR_H = 0.13, 0.175      # outer width, height incl. lid
 
 
-def jar(name, loc, seed=0, marbles=True):
-    """closed jar: see-through glass body + rim + cork lid with coral cloth band; marbles = category colours"""
+JAR_BODY_H = JAR_H - 0.045
+JAR_INNER = dict(r=JAR_W / 2 * 0.72, z0=0.012, z1=JAR_BODY_H - 0.03)   # where marbles sit (app draws them, R4)
+
+
+def jar(name, loc, seed=0, marbles=True, part="all"):
+    """closed jar. part: all | back (see-through glass body) | front (rim + cork lid + coral band + shine).
+    marbles = category colours (preview only; the app draws real per-jar colours between back and front)"""
     x, y, z = loc
     r = JAR_W / 2
-    body_h = JAR_H - 0.045
-    prof = [(0.0, 0.0), (r * 0.82, 0.0), (r, 0.03), (r, body_h - 0.035), (r * 0.78, body_h - 0.01), (r * 0.72, body_h)]
-    g = lathe(name + "Glass", prof, glass_mat("R_jarglass", P["glass"], 0.14))
-    g.location = (x, y, z)
-    parts = [g,
-             cyl(name + "Rim", r * 0.78, 0.022, (x, y, z + body_h + 0.004), M("jar_rim", 0.6), bevel=0.35),
-             cyl(name + "Lid", r * 0.8, 0.035, (x, y, z + body_h + 0.03), M("lid", 0.8), bevel=0.35),
-             cyl(name + "Band", r * 0.83, 0.014, (x, y, z + body_h + 0.022), M("coral", 0.8), bevel=0.3)]
-    if marbles:
+    body_h = JAR_BODY_H
+    parts = []
+    if part in ("all", "back"):
+        prof = [(0.0, 0.0), (r * 0.82, 0.0), (r, 0.03), (r, body_h - 0.035), (r * 0.78, body_h - 0.01), (r * 0.72, body_h)]
+        g = lathe(name + "Glass", prof, glass_mat("R_jarglass", P["glass"], 0.14))
+        g.location = (x, y, z); parts.append(g)
+    if part in ("all", "front"):
+        parts += [cyl(name + "Rim", r * 0.78, 0.022, (x, y, z + body_h + 0.004), M("jar_rim", 0.6), bevel=0.35),
+                  cyl(name + "Lid", r * 0.8, 0.035, (x, y, z + body_h + 0.03), M("lid", 0.8), bevel=0.35),
+                  cyl(name + "Band", r * 0.83, 0.014, (x, y, z + body_h + 0.022), M("coral", 0.8), bevel=0.3)]
+        sh = rbox(name + "Shine", (0.008, 0.003, body_h * 0.5), (x - r * 0.55, y - r - 0.004, z + body_h * 0.55), glass_mat("R_jarshine", P["off"], 0.45), r=0.45)
+        parts.append(sh)
+    if marbles and part == "all":
         rnd = random.Random(seed)
-        # skewed mix so jars differ (like real category mixes)
         w = [rnd.random() ** 5 for _ in CAT_COLS]
         mr = 0.015
         k = 0
@@ -77,10 +85,11 @@ def jar(name, loc, seed=0, marbles=True):
 
 
 # ------------------------------------------------------------------ glass cabinet (유리장)
-CAB = dict(x=1.52, w=0.74, d=0.27, h=1.46, base=0.36, cols=4, rows=3)
+CAB = dict(x=1.95, w=0.74, d=0.27, h=1.46, base=0.36, cols=4, rows=3)
 
 
-def glass_cabinet(closed=0, cap=None):
+def glass_cabinet(closed=0, split=False):
+    """returns (body_group, front_group or None, slots). split=True: glass doors in their own group (drawn over the jars)"""
     c = CAB; x, w, d, h = c["x"], c["w"], c["d"], c["h"]
     y = YB - d / 2 - 0.01
     leg = 0.06
@@ -108,6 +117,7 @@ def glass_cabinet(closed=0, cap=None):
     # glass doors: two very light panes + slim frames + one faint streak each
     fy = y - d / 2 - 0.012
     gz0, gz1 = zb + lo, zb + h - 0.03
+    body = parts; front = []; parts = front
     for sx in (-1, 1):
         cx = x + sx * (w / 4 - 0.006)
         parts.append(rbox(f"CabPane{sx}", (w / 2 - 0.05, 0.006, gz1 - gz0 - 0.04), (cx, fy, (gz0 + gz1) / 2), glass_mat("R_cabglass", P["glass"], 0.05), r=0.2))
@@ -126,13 +136,15 @@ def glass_cabinet(closed=0, cap=None):
             sx_ = x - (w - 0.14) / 2 + pitch * (col + 0.5)
             slots.append((sx_, y + 0.01, sz))
     for k, s in enumerate(slots[:closed]):
-        parts += jar(f"Jar{k}", s, seed=k + 3)
-    return group("glass_cabinet", parts), slots
+        body += jar(f"Jar{k}", s, seed=k + 3)
+    if split:
+        return group("glass_cabinet", body), group("glass_cabinet_front", front), slots
+    return group("glass_cabinet", body + front), None, slots
 
 
 # ------------------------------------------------------------------ door to the garden (left extension, free)
 def garden_door():
-    x = -2.12; w, h = 0.56, 1.28
+    x = -2.6; w, h = 0.56, 1.28
     zb = FLOOR
     parts = [
         rbox("DoorFrame", (w + 0.1, 0.06, h + 0.06), (x, YB - 0.015, zb + (h + 0.06) / 2), M("off", 0.7), r=0.2),
@@ -180,7 +192,7 @@ if __name__ == "__main__":
         if hv: R.HARVEST[hv]()
     for i in ids:
         R.ITEMS[i]()
-    _, slots = glass_cabinet(closed)
+    _, _, slots = glass_cabinet(closed)
     garden_door()
     bpy.data.objects["HippoRig"].location = (*R.HIPPO, 0)
     sc.render.filepath = os.path.abspath(out)

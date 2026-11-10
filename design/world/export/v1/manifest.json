@@ -5,20 +5,28 @@
  "spaces": {
   "room": {
    "canvas": [
-    1080,
+    2160,
     1080
    ],
    "background": "room/background.webp",
    "px_per_unit": 400.0,
+   "view": {
+    "w": 1080,
+    "h": 1080,
+    "start_x": 540,
+    "min_x": 0,
+    "max_x": 1080,
+    "note": "the room card shows a 1080x1080 window of the canvas (scale = card width / 1080). Open at start_x (pet centred, = the old room). Finger drag pans x within [min_x, max_x]; dragging past an end hands over to the pager (left = garden, right = yard). No auto-return."
+   },
    "pet": {
     "clips": "room (default, 6.5°): idle + all actions",
     "center": [
-     525.8,
+     1065.8,
      785.9
     ],
     "w": 435.0,
     "h": 580.0,
-    "x": 308.3,
+    "x": 848.3,
     "y": 495.9,
     "note": "draw the character clip (600x800 frame) scaled to w x h with its centre at `center`",
     "z": 18
@@ -29,7 +37,7 @@
      "file": "room/curtain.webp",
      "slot": "window",
      "z": 0,
-     "x": 432,
+     "x": 972,
      "y": 267,
      "w": 489,
      "h": 386
@@ -39,17 +47,17 @@
      "file": "room/frame.webp",
      "slot": "wall_left",
      "z": 1,
-     "x": 280,
-     "y": 328,
-     "w": 143,
-     "h": 139
+     "x": 671,
+     "y": 302,
+     "w": 292,
+     "h": 165
     },
     {
      "id": "wall_clock",
      "file": "room/wall_clock.webp",
      "slot": "wall_right",
      "z": 2,
-     "x": 912,
+     "x": 1452,
      "y": 383,
      "w": 114,
      "h": 132
@@ -59,7 +67,7 @@
      "file": "room/garland.webp",
      "slot": "wall_top",
      "z": 3,
-     "x": 86,
+     "x": 626,
      "y": 96,
      "w": 849,
      "h": 165
@@ -69,7 +77,7 @@
      "file": "room/string_lights.webp",
      "slot": "wall_top",
      "z": 4,
-     "x": 87,
+     "x": 627,
      "y": 97,
      "w": 847,
      "h": 147
@@ -79,69 +87,69 @@
      "file": "room/mobile.webp",
      "slot": "ceiling",
      "z": 5,
-     "x": 267,
+     "x": 808,
      "y": 0,
-     "w": 246,
-     "h": 538
+     "w": 245,
+     "h": 537
     },
     {
      "id": "bookshelf",
      "file": "room/bookshelf.webp",
      "slot": "back_right",
      "z": 6,
-     "x": 693,
+     "x": 1233,
      "y": 565,
-     "w": 387,
-     "h": 515
+     "w": 525,
+     "h": 489
     },
     {
      "id": "bed",
      "file": "room/bed.webp",
      "slot": "back_left",
      "z": 7,
-     "x": 0,
+     "x": 543,
      "y": 717,
-     "w": 650,
-     "h": 309
+     "w": 649,
+     "h": 302
     },
     {
      "id": "radio_stand",
      "file": "room/radio_stand.webp",
      "slot": "bedside",
      "z": 8,
-     "x": 0,
+     "x": 456,
      "y": 715,
-     "w": 162,
-     "h": 257
+     "w": 246,
+     "h": 256
     },
     {
      "id": "aquarium",
      "file": "room/aquarium.webp",
      "slot": "bedside",
      "z": 9,
-     "x": 0,
+     "x": 443,
      "y": 742,
-     "w": 162,
-     "h": 230
+     "w": 259,
+     "h": 238
     },
     {
      "id": "easel",
      "file": "room/easel.webp",
      "slot": "lean",
      "z": 10,
-     "x": 665,
+     "x": 1202,
      "y": 694,
-     "w": 186,
-     "h": 309
+     "w": 189,
+     "h": 302
     },
     {
      "id": "guitar",
      "file": "room/guitar.webp",
      "slot": "lean",
      "z": 11,
-     "x": 723,
+     "x": 1264,
      "y": 558,
-     "w": 103,
+     "w": 102,
      "h": 325
     },
     {
@@ -149,19 +157,19 @@
      "file": "room/harvest_tulip.webp",
      "slot": "sill_vase",
      "z": 12,
-     "x": 624,
-     "y": 461,
-     "w": 73,
-     "h": 199
+     "x": 1162,
+     "y": 462,
+     "w": 75,
+     "h": 198
     },
     {
      "id": "harvest_sunflower",
      "file": "room/harvest_sunflower.webp",
      "slot": "sill_vase",
      "z": 13,
-     "x": 624,
+     "x": 1163,
      "y": 465,
-     "w": 75,
+     "w": 71,
      "h": 195
     },
     {
@@ -169,7 +177,7 @@
      "file": "room/harvest_strawberry.webp",
      "slot": "sill_plate",
      "z": 14,
-     "x": 684,
+     "x": 1224,
      "y": 583,
      "w": 78,
      "h": 96
@@ -179,9 +187,9 @@
      "file": "room/harvest_sweet_potato.webp",
      "slot": "sill_basket",
      "z": 15,
-     "x": 730,
+     "x": 1277,
      "y": 558,
-     "w": 119,
+     "w": 114,
      "h": 124
     },
     {
@@ -189,7 +197,7 @@
      "file": "room/rug.webp",
      "slot": "floor_center",
      "z": 16,
-     "x": 202,
+     "x": 742,
      "y": 971,
      "w": 660,
      "h": 72
@@ -199,9 +207,9 @@
      "file": "room/low_table.webp",
      "slot": "floor_right",
      "z": 17,
-     "x": 669,
+     "x": 1210,
      "y": 878,
-     "w": 252,
+     "w": 263,
      "h": 176
     },
     {
@@ -209,9 +217,9 @@
      "file": "room/lamp.webp",
      "slot": "front_left",
      "z": 19,
-     "x": 0,
+     "x": 531,
      "y": 619,
-     "w": 234,
+     "w": 243,
      "h": 410
     },
     {
@@ -219,17 +227,17 @@
      "file": "room/squirrel.webp",
      "slot": "front_center",
      "z": 20,
-     "x": 215,
+     "x": 757,
      "y": 832,
-     "w": 177,
-     "h": 219
+     "w": 175,
+     "h": 220
     },
     {
      "id": "cushion",
      "file": "room/cushion.webp",
      "slot": "front_center",
      "z": 21,
-     "x": 206,
+     "x": 746,
      "y": 968,
      "w": 183,
      "h": 78
@@ -239,11 +247,315 @@
      "file": "room/big_plant.webp",
      "slot": "front_right",
      "z": 22,
-     "x": 787,
+     "x": 1326,
      "y": 802,
-     "w": 226,
+     "w": 227,
      "h": 278
     }
+   ],
+   "jar_cabinet": {
+    "jar_back": {
+     "file": "room/jar_back.webp",
+     "w": 57,
+     "h": 59
+    },
+    "jar_front": {
+     "file": "room/jar_front.webp",
+     "w": 51,
+     "h": 65
+    },
+    "glass": {
+     "file": "room/cabinet_glass.webp",
+     "x": 1753,
+     "y": 405,
+     "w": 273,
+     "h": 444
+    },
+    "slots": [
+     {
+      "i": 0,
+      "back": [
+       1797,
+       483
+      ],
+      "front": [
+       1799,
+       462
+      ],
+      "marbles": [
+       1800,
+       500,
+       35,
+       36
+      ],
+      "tap": [
+       1780,
+       448,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 1,
+      "back": [
+       1854,
+       485
+      ],
+      "front": [
+       1856,
+       464
+      ],
+      "marbles": [
+       1856,
+       502,
+       35,
+       36
+      ],
+      "tap": [
+       1836,
+       451,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 2,
+      "back": [
+       1910,
+       487
+      ],
+      "front": [
+       1912,
+       466
+      ],
+      "marbles": [
+       1913,
+       504,
+       35,
+       36
+      ],
+      "tap": [
+       1893,
+       453,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 3,
+      "back": [
+       1967,
+       490
+      ],
+      "front": [
+       1969,
+       469
+      ],
+      "marbles": [
+       1969,
+       506,
+       35,
+       36
+      ],
+      "tap": [
+       1950,
+       455,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 4,
+      "back": [
+       1797,
+       622
+      ],
+      "front": [
+       1799,
+       601
+      ],
+      "marbles": [
+       1800,
+       639,
+       35,
+       36
+      ],
+      "tap": [
+       1780,
+       588,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 5,
+      "back": [
+       1854,
+       624
+      ],
+      "front": [
+       1856,
+       603
+      ],
+      "marbles": [
+       1856,
+       641,
+       35,
+       36
+      ],
+      "tap": [
+       1836,
+       590,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 6,
+      "back": [
+       1910,
+       626
+      ],
+      "front": [
+       1912,
+       606
+      ],
+      "marbles": [
+       1913,
+       643,
+       35,
+       36
+      ],
+      "tap": [
+       1893,
+       592,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 7,
+      "back": [
+       1967,
+       629
+      ],
+      "front": [
+       1969,
+       608
+      ],
+      "marbles": [
+       1969,
+       645,
+       35,
+       36
+      ],
+      "tap": [
+       1950,
+       594,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 8,
+      "back": [
+       1797,
+       761
+      ],
+      "front": [
+       1799,
+       740
+      ],
+      "marbles": [
+       1800,
+       778,
+       35,
+       36
+      ],
+      "tap": [
+       1780,
+       727,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 9,
+      "back": [
+       1854,
+       763
+      ],
+      "front": [
+       1856,
+       742
+      ],
+      "marbles": [
+       1856,
+       780,
+       35,
+       36
+      ],
+      "tap": [
+       1836,
+       729,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 10,
+      "back": [
+       1910,
+       766
+      ],
+      "front": [
+       1912,
+       745
+      ],
+      "marbles": [
+       1913,
+       782,
+       35,
+       36
+      ],
+      "tap": [
+       1893,
+       731,
+       57,
+       100
+      ]
+     },
+     {
+      "i": 11,
+      "back": [
+       1967,
+       768
+      ],
+      "front": [
+       1969,
+       747
+      ],
+      "marbles": [
+       1969,
+       784,
+       35,
+       36
+      ],
+      "tap": [
+       1950,
+       733,
+       57,
+       100
+      ]
+     }
+    ],
+    "rules": "12 slots, row-major from top-left. Show the most recent closed jars (max 12, jar no ascending from slot 0); every jar stays on the jar tab shelf (R3, nothing is removed). Per filled slot draw jar_back at `back`, then marbles inside the `marbles` rect (category colours in the jar's proportions, e.g. jarMarbles(), small dots filling bottom-up), then jar_front at `front`. After all slots draw `glass`. Tap a slot's `tap` rect -> /jar/<no>. Cabinet is free base art (in the background) and shows empty with 0 jars."
+   },
+   "draw_order": [
+    "background",
+    "jar_cabinet slots (back, marbles, front)",
+    "jar_cabinet.glass",
+    "items you own+placed and the pet in ascending z"
    ],
    "rules": "draw background, then items you own+placed and the pet in ascending z. One item per slot (sill_vase: tulip or sunflower). harvest_* appear after the first harvest of that crop."
   },

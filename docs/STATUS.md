@@ -6,7 +6,7 @@
 - 유리병 꽉 차면: 50개에 뚜껑 닫아 선반 진열 + 새 병 — 앱 구현 완료(2026-11-10). '닫은 병이 방 소품'은 마당 업데이트 때
 - 유리병 앨범 J1 = A (대표 결정 2026-11-10) — 앱 구현 완료: 병 번호 서버 고정, 최근 2주 목록 + 선반 병 열기 + 찾기, 2,000개 한계 제거. FEATURES C6
 - **공간 스레드 할 일**: 방 좌우 확장 + 유리장 그림 (2026-11-10 대표 결정, WORLD 1장 '방' 절). 그림 오면 앱 스레드가 끌어서 둘러보기·유리장 연결
-  - 2026-11-11 시안 v2 완료(design/world/room/wide/wide_v2_sheet.jpg, 1728×1080 = 화면 1.6장, 왼쪽 텃밭 문 / 오른쪽 유리장 12칸). **대표 확인 대기: R1~R4**(넓히는 방향·칸 수·다 찼을 때·병 그림 방식, WORLD '방' 절). 확정 전엔 앱 스레드는 방 끌어서 둘러보기 코드만 준비 가능(그림 크기 1728 고정), 유리장 칸 수·병 그리는 방식은 기다릴 것
+  - 2026-11-11 **그림 export 완료** (R1 양쪽 0.5장씩 = 2160×1080, R2 12칸, R3 최근 12병만·기록은 그대로, R4 빈 병 + 앱이 구슬 점). 매니페스트 `spaces.room` 의 canvas·view·jar_cabinet 참고, WORLD '방' 절. **개발 스레드 차례**: RoomPage 끌어서 둘러보기 + 유리장 연결. 주의: 방 좌표가 모두 +540 바뀌었으니 `scripts/gen_world.py`·`export_app_assets.py` 는 RoomPage 수정과 같이 돌릴 것(따로 돌리면 지금 앱 방이 어긋남)
 - 출시 막힘: 이름·도메인, Apple 계정, 사업자·구독, 처리방침용 운영자 이름·문의 이메일, continue/kill 기준. 대표 몫: 2FA 7개 계정
 - 프로토타입: design/prototype.html → https://csw-prototype.vercel.app (배포: `python3 scripts/deploy_prototype.py`)
 - 마당 움직임 테스트(웹, 실제 앱 아님): design/yard_test/index.html → https://csw-yard-test.vercel.app (배포: `python3 scripts/deploy_yard_test.py`, 커밋된 world export를 그대로 씀). ⚙︎에서 낮/밤·구역·카메라 수치 조절 — 대표가 정한 수치를 manifest `spaces.yard.camera`와 앱에 반영

@@ -11,6 +11,7 @@ from mathutils import Vector
 from bpy_extras.object_utils import world_to_camera_view
 sys.path.insert(0, os.path.dirname(__file__))
 import room as R
+import room_wide as RW
 import garden as G
 import yard as Y
 
@@ -180,24 +181,65 @@ SLOT = {"frame": "wall_left", "garland": "wall_top", "cushion": "front_center", 
 
 
 def export_room():
+    """wide room (2026-11-11 R1~R4): canvas RW.WIDE x 1080 (2 screens), old 1080 frame in the middle.
+    Free base = room + calendar + garden door (left) + glass cabinet body (right). Glass doors are their own layer drawn
+    over the jars. Jars: one empty-jar image pair (back glass / front lid) reused for every slot (ortho = pure shift)."""
     global sc, cam
-    sc, cam = R.setup_render(SIZE, SIZE, R.ORTHO)
+    W_ = RW.WIDE
+    sc, cam = R.setup_render(W_, SIZE, RW.ORTHO_W)
     cam.location = R.TARGET + Vector((0.35, -1, R.ELEV)).normalized() * 12
     cam.rotation_euler = (R.TARGET - cam.location).to_track_quat("-Z", "Y").to_euler()
     sc.frame_set(1); hide(HIPPO_OBJS)
     d = os.path.join(OUT, "room"); os.makedirs(d, exist_ok=True)
-    base = R.base(); cal = R.calendar()
-    base_objs = meshes(base) + meshes(cal)
+    R.W = 3.0
+    base = R.base(); cal = R.calendar(); door = RW.garden_door()
+    cab, cab_front, slots = RW.glass_cabinet(0, split=True)
+    base_objs = meshes(base) + meshes(cal) + meshes(door) + meshes(cab)
+    front_objs = meshes(cab_front)
+    hide(front_objs)
     B = render(os.path.join(TMP, "room_B.png"))
     save_png(B, os.path.join(d, "background.png"))
+    # glass doors layer (no own shadow)
+    hide(base_objs); hide(front_objs, False)
+    F = render(os.path.join(TMP, "room_F.png"))
+    fx, fy, fw, fh = crop_bbox(F)
+    save_png(F[fy:fy + fh, fx:fx + fw], os.path.join(d, "cabinet_glass.png"))
+    hide(base_objs, False); hide(front_objs)
+    # jar images at slot 0
+    jars = {}
+    for part in ("back", "front"):
+        objs = RW.jar("ExJar", slots[0], marbles=False, part=part)
+        hide(base_objs); J = render(os.path.join(TMP, "jar.png")); hide(base_objs, False)
+        jx, jy, jw, jh = crop_bbox(J, pad=2)
+        save_png(J[jy:jy + jh, jx:jx + jw], os.path.join(d, f"jar_{part}.png"))
+        jars[part] = tuple(int(v) for v in (jx, jy, jw, jh))
+        for o in objs: bpy.data.objects.remove(o, do_unlink=True)
+    c = RW.CAB; pitch = (c["w"] - 0.14) / c["cols"]
+    ir = RW.JAR_INNER
+    p0 = project(slots[0])
+    slot_entries = []
+    for k, (sx, sy, sz) in enumerate(slots):
+        pk = project((sx, sy, sz)); dx, dy = pk[0] - p0[0], pk[1] - p0[1]
+        corners = [project((sx + ex, sy - RW.JAR_W / 2, sz + ez)) for ex in (-ir["r"], ir["r"]) for ez in (ir["z0"], ir["z1"])]
+        mx0, mx1 = min(q[0] for q in corners), max(q[0] for q in corners)
+        my0, my1 = min(q[1] for q in corners), max(q[1] for q in corners)
+        tap = [project((sx + ex, sy - c["d"] / 2, sz + ez)) for ex in (-pitch / 2, pitch / 2) for ez in (-0.01, RW.JAR_H + 0.06)]
+        tx0, tx1 = min(q[0] for q in tap), max(q[0] for q in tap); ty0, ty1 = min(q[1] for q in tap), max(q[1] for q in tap)
+        slot_entries.append({
+            "i": k,
+            "back": [round(jars["back"][0] + dx), round(jars["back"][1] + dy)],
+            "front": [round(jars["front"][0] + dx), round(jars["front"][1] + dy)],
+            "marbles": [round(mx0), round(my0), round(mx1 - mx0), round(my1 - my0)],
+            "tap": [round(tx0), round(ty0), round(tx1 - tx0), round(ty1 - ty0)]})
     builders = dict(R.ITEMS); builders.update({f"harvest_{k}": v for k, v in R.HARVEST.items()})
+    catchers = base_objs
     entries = []
     for z, iid in enumerate(ROOM_ORDER):
         if iid == "PET" or (os.environ.get("ONLY") and iid not in os.environ["ONLY"].split(",")):
             continue
         g = builders[iid]()
         hide(base_objs); I = render(os.path.join(TMP, "I.png")); hide(base_objs, False)
-        S = shadow_pass(os.path.join(TMP, "S.png"), base_objs, meshes(g))
+        S = shadow_pass(os.path.join(TMP, "S.png"), catchers, meshes(g))
         L = layer(I, S)
         x, y, w, h = crop_bbox(L)
         save_png(L[y:y + h, x:x + w], os.path.join(d, f"{iid}.png"))
@@ -207,8 +249,24 @@ def export_room():
     pet = pet_entry(R.HIPPO, SIZE / R.ORTHO, "room (default, 6.5°): idle + all actions")
     pet["z"] = ROOM_ORDER.index("PET")
     clear_scene_meshes(HIPPO_OBJS)
-    return {"canvas": [SIZE, SIZE], "background": "room/background.png", "px_per_unit": SIZE / R.ORTHO,
+    return {"canvas": [W_, SIZE], "background": "room/background.png", "px_per_unit": SIZE / R.ORTHO,
+            "view": {"w": SIZE, "h": SIZE, "start_x": RW.OFFSET_X, "min_x": 0, "max_x": W_ - SIZE,
+                     "note": "the room card shows a 1080x1080 window of the canvas (scale = card width / 1080). Open at "
+                             "start_x (pet centred, = the old room). Finger drag pans x within [min_x, max_x]; dragging past "
+                             "an end hands over to the pager (left = garden, right = yard). No auto-return."},
             "pet": pet, "items": entries,
+            "jar_cabinet": {
+                "jar_back": {"file": "room/jar_back.png", "w": jars["back"][2], "h": jars["back"][3]},
+                "jar_front": {"file": "room/jar_front.png", "w": jars["front"][2], "h": jars["front"][3]},
+                "glass": {"file": "room/cabinet_glass.png", "x": int(fx), "y": int(fy), "w": int(fw), "h": int(fh)},
+                "slots": slot_entries,
+                "rules": "12 slots, row-major from top-left. Show the most recent closed jars (max 12, jar no ascending from "
+                         "slot 0); every jar stays on the jar tab shelf (R3, nothing is removed). Per filled slot draw jar_back at "
+                         "`back`, then marbles inside the `marbles` rect (category colours in the jar's proportions, e.g. "
+                         "jarMarbles(), small dots filling bottom-up), then jar_front at `front`. After all slots draw `glass`. "
+                         "Tap a slot's `tap` rect -> /jar/<no>. Cabinet is free base art (in the background) and shows empty with 0 jars."},
+            "draw_order": ["background", "jar_cabinet slots (back, marbles, front)", "jar_cabinet.glass",
+                           "items you own+placed and the pet in ascending z"],
             "rules": "draw background, then items you own+placed and the pet in ascending z. One item per slot "
                      "(sill_vase: tulip or sunflower). harvest_* appear after the first harvest of that crop."}
 
