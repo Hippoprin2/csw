@@ -1,6 +1,6 @@
 # Export room + garden art for the app: backgrounds, per-item layers (item + its own soft shadow), crop images,
 # harvest decorations, and a manifest with pixel positions, draw order and the pet anchor.
-# usage: blender -b design/character/3d/rig/hippo_rig_idle.blend --python scripts/blender/export_world.py -- <out_dir> [room|garden|all]
+# usage: blender -b design/character/3d/rig/hippo_rig_idle.blend --python scripts/blender/export_world.py -- <out_dir> [room|garden|yard|walk|all]
 #
 # Layers: item colour = Eevee render of the item alone (transparent); its shadow = Cycles shadow-catcher pass
 #   (background objects as catchers, item as holdout). layer = item over black shadow.
@@ -12,6 +12,7 @@ from bpy_extras.object_utils import world_to_camera_view
 sys.path.insert(0, os.path.dirname(__file__))
 import room as R
 import garden as G
+import yard as Y
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 OUT = os.path.abspath(argv[0]); WHAT = argv[1] if len(argv) > 1 else "all"
@@ -264,6 +265,291 @@ def export_garden():
             "draw_order": ["background", "pet", "crops (plot 0, 1, 2)", "UI: progress dots, Zzz, sparkle"]}
 
 
+# ------------------------------------------------------------------ walking (yard + garden): ground polygon helpers
+def ground_px(x, y):
+    return list(project((x, y, R.FLOOR)))
+
+
+def px_to_ground(u, v):
+    """inverse of ground_px (ortho camera -> affine on the ground plane)"""
+    p0, px_, py_ = Vector(ground_px(0, 0)), Vector(ground_px(1, 0)), Vector(ground_px(0, 1))
+    a, b = px_ - p0, py_ - p0
+    det = a.x * b.y - a.y * b.x
+    du, dv = u - p0.x, v - p0.y
+    return ((du * b.y - dv * b.x) / det, (a.x * dv - a.y * du) / det)
+
+
+def clip_poly(poly, inside, cross):
+    """Sutherland-Hodgman against one half-plane"""
+    out = []
+    for i, cur in enumerate(poly):
+        prev = poly[i - 1]
+        if inside(cur):
+            if not inside(prev): out.append(cross(prev, cur))
+            out.append(cur)
+        elif inside(prev):
+            out.append(cross(prev, cur))
+    return out
+
+
+def walk_area(world_y_min, world_y_max, x_margin, y_top, y_bottom):
+    """screen rect [x_margin, SIZE-x_margin] x [y_top, y_bottom] (feet positions) ∩ world y range -> polygon (px)"""
+    poly = [(x_margin, y_top), (SIZE - x_margin, y_top), (SIZE - x_margin, y_bottom), (x_margin, y_bottom)]
+    for lim, keep_below in ((world_y_max, True), (world_y_min, False)):
+        f = lambda p: px_to_ground(*p)[1]
+        inside = (lambda p, l=lim: f(p) <= l) if keep_below else (lambda p, l=lim: f(p) >= l)
+        def cross(a, b, l=lim):
+            fa, fb = f(a), f(b); t = (l - fa) / (fb - fa)
+            return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+        poly = clip_poly(poly, inside, cross)
+    return [[round(u, 1), round(v, 1)] for u, v in poly]
+
+
+def ellipse_px(cx, cy, rx, ry, n=12):
+    return [[round(c, 1) for c in ground_px(cx + rx * math.cos(k / n * math.tau), cy + ry * math.sin(k / n * math.tau))] for k in range(n)]
+
+
+def rect_px(cx, cy, hx, hy):
+    return [[round(c, 1) for c in ground_px(cx + sx * hx, cy + sy * hy)] for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+
+
+def feet_rule(ppu):
+    c = project((0, 0, 0.07)); f = project((0, 0, R.FLOOR))
+    s = ppu / CLIP_PX_PER_UNIT
+    return {"feet_to_center": [round(c[0] - f[0], 1), round(c[1] - f[1], 1)], "w": round(600 * s, 1), "h": round(800 * s, 1),
+            "note": "pet feet at (fx, fy) -> draw the 600x800 clip scaled to w x h centred at (fx, fy) + feet_to_center; "
+                    "sort key = fy"}
+
+
+# ------------------------------------------------------------------ garden walk data (no re-render)
+def garden_walk():
+    global sc, cam
+    sc, cam = R.setup_render(SIZE, SIZE, G.ORTHO)
+    cam.location = G.TARGET + G.cam_dir() * 12
+    cam.rotation_euler = (G.TARGET - cam.location).to_track_quat("-Z", "Y").to_euler()
+    bpy.context.view_layer.update()
+    ppu = SIZE / G.ORTHO
+    plot_back = G.PLOT_Y + G.PLOT_D / 2
+    return {
+        "area": walk_area(plot_back + 0.3, 0.98, 110, 0, SIZE),
+        "blocked": {"sign": ellipse_px(1.0, 0.95, 0.2, 0.1), "watering_can": ellipse_px(-1.25, 0.75, 0.16, 0.12)},
+        "home": [round(c, 1) for c in ground_px(*G.HIPPO)],
+        "plot_stand": [[round(c, 1) for c in ground_px(px, plot_back + 0.35)] for px in G.PLOT_X],
+        "pet": feet_rule(ppu),
+        "rules": "the pet only walks the strip behind the plots (crops are drawn after the pet, so they never hide behind it). "
+                 "Harvest: walk to plot_stand[i], face front, cheer. Tap on the grass -> walk to the nearest point inside "
+                 "`area` that is not in `blocked`.",
+        "world": {"y_range": [round(plot_back + 0.3, 2), 0.98], "units": "hippo height = 1"},
+    }
+
+
+# ------------------------------------------------------------------ yard
+YARD_NIGHT_OVERLAY = [26, 34, 80, 0.38]
+YARD_GROUND = ("picnic_mat",)        # flat: drawn under everything that sorts by y (pet sits on it)
+
+
+def night_sky(B):
+    """day background -> night version: sky pixels become a navy gradient with stars + moon (ground untouched,
+    the app lays the night overlay over everything)"""
+    Bn = B.copy()
+    a = Bn[..., 3:4]
+    h = SIZE
+    t = (np.arange(h, dtype=np.float32) / h)[:, None, None]
+    top, bot = np.array([0.16, 0.20, 0.42]), np.array([0.36, 0.40, 0.66])
+    sky = top + (bot - top) * np.clip(t / 0.35, 0, 1)
+    sky = np.broadcast_to(sky, (h, SIZE, 3)).copy()
+    rng = np.random.default_rng(3)
+    yy, xx = np.mgrid[0:h, 0:SIZE]
+    for _ in range(46):
+        sx, sy, r = rng.uniform(0, SIZE), rng.uniform(0, 260), rng.uniform(1.6, 3.4)
+        d = np.sqrt((xx - sx) ** 2 + (yy - sy) ** 2)
+        sky += np.clip(1 - d / r, 0, 1)[..., None] * np.array([1.0, 0.97, 0.85]) * 0.9
+    mx, my, mr = 860, 110, 46            # crescent moon
+    d1 = np.sqrt((xx - mx) ** 2 + (yy - my) ** 2); d2 = np.sqrt((xx - mx - 20) ** 2 + (yy - my + 12) ** 2)
+    moon = np.clip((mr - d1) / 2, 0, 1) * np.clip((d2 - mr * 0.92) / 2, 0, 1)
+    halo = np.clip(1 - d1 / (mr * 2.6), 0, 1) ** 2 * 0.25
+    sky = sky * (1 - moon[..., None]) + np.array([1.0, 0.95, 0.78]) * moon[..., None] + halo[..., None] * np.array([1.0, 0.95, 0.8])
+    Bn[..., :3] = Bn[..., :3] * a + np.clip(sky, 0, 1) * (1 - a); Bn[..., 3] = 1.0
+    return Bn
+
+
+def add_glow(L, cx, cy, r, col=(1.0, 0.86, 0.5), strength=0.55):
+    """note: the halo must stay inside the crop box -> crop is computed after adding it"""
+    """warm halo (premultiplied-over) around a lit lamp, baked into the night layer"""
+    yy, xx = np.mgrid[0:L.shape[0], 0:L.shape[1]]
+    g = (np.clip(1 - np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2) / r, 0, 1) ** 2 * strength)[..., None]
+    a = L[..., 3:4]
+    out_a = a + g * (1 - a)
+    rgb = np.where(out_a > 1e-4, (L[..., :3] * a + np.array(col) * g * (1 - a)) / np.maximum(out_a, 1e-4), 0)
+    return np.concatenate([rgb, out_a], axis=2)
+
+
+def export_yard():
+    global sc, cam
+    sc, cam = R.setup_render(SIZE, SIZE, Y.ORTHO)
+    Y.place_cam(sc, cam)
+    sc.frame_set(1); hide(HIPPO_OBJS)
+    bpy.context.view_layer.update()
+    d = os.path.join(OUT, "yard"); os.makedirs(d, exist_ok=True)
+    ppu = SIZE / Y.ORTHO
+    bg = Y.background(); bg_objs = meshes(bg)
+    sky = np.array([0xCD, 0xE8, 0xF5], dtype=np.float32) / 255.0
+    B = render(os.path.join(TMP, "yard_B.png"))
+    Bo = B.copy(); a = Bo[..., 3:4]
+    Bo[..., :3] = Bo[..., :3] * a + sky * (1 - a); Bo[..., 3] = 1.0
+    save_png(Bo, os.path.join(d, "background.png"))
+    save_png(night_sky(B), os.path.join(d, "background_night.png"))
+    only = os.environ.get("ONLY", "").split(",") if os.environ.get("ONLY") else None
+
+    def shoot(name, g, union=None, glow=None):
+        hide(bg_objs); I = render(os.path.join(TMP, "I.png")); hide(bg_objs, False)
+        S = shadow_pass(os.path.join(TMP, "S.png"), bg_objs, meshes(g))
+        L = layer(I, S)
+        if glow: L = add_glow(L, *glow)
+        box = union or crop_bbox(L)
+        x, y, w, h = box
+        save_png(L[y:y + h, x:x + w], os.path.join(d, f"{name}.png"))
+        return box, L
+
+    def entry(iid, file, box, sort_y, **kw):
+        x, y, w, h = box
+        e = {"id": iid, "file": f"yard/{file}.png", "x": int(x), "y": int(y), "w": int(w), "h": int(h), "sort_y": round(sort_y, 1)}
+        e.update(kw); return e
+
+    # ---- items
+    items = []
+    for iid in Y.ITEMS:
+        if only and iid not in only: continue
+        sx, sy = Y.SPOT[iid]
+        foot = Y.FOOT[iid]
+        sort_y = project((sx, sy - (foot[1] if foot else 0), R.FLOOR))[1]
+        if iid in ("garden_lamp", "tent"):     # day + lit night versions share one crop box
+            g = Y.ITEMS[iid]()
+            hide(bg_objs); I = render(os.path.join(TMP, "I.png")); hide(bg_objs, False)
+            Ld = layer(I, shadow_pass(os.path.join(TMP, "S.png"), bg_objs, meshes(g))); remove(g)
+            g2 = Y.ITEMS[iid](lit=True)
+            glow = None
+            if iid == "garden_lamp":
+                gx, gy = project((sx, sy, R.FLOOR + 0.55)); glow = (gx, gy, 130, (1.0, 0.85, 0.5), 0.7)
+            else:
+                gx, gy = project((sx, sy - 0.33, R.FLOOR + 0.18)); glow = (gx, gy, 170, (1.0, 0.85, 0.5), 0.55)
+            hide(bg_objs); I = render(os.path.join(TMP, "I.png")); hide(bg_objs, False)
+            S = shadow_pass(os.path.join(TMP, "S.png"), bg_objs, meshes(g2))
+            Lr = layer(I, S)
+            # night layer = the day layer already darkened by the night overlay + only the light the lamp adds
+            # (drawn on top of the overlay, so it must not be a full-bright copy of the object)
+            ov = np.array(YARD_NIGHT_OVERLAY[:3]) / 255.0; oa = YARD_NIGHT_OVERLAY[3]
+            add = np.clip(Lr[..., :3] * Lr[..., 3:4] - Ld[..., :3] * Ld[..., 3:4], 0, 1)
+            base = (Ld[..., :3] * (1 - oa) + ov * oa) * Ld[..., 3:4]
+            a_ = np.maximum(Ld[..., 3:4], Lr[..., 3:4])
+            lit_m = np.clip(add.sum(axis=2, keepdims=True) * 3, 0, 1)          # glowing glass/door keep full brightness
+            rgb = (base + add) * (1 - lit_m) + Lr[..., :3] * Lr[..., 3:4] * lit_m
+            Ln = np.concatenate([np.clip(rgb / np.maximum(a_, 1e-4), 0, 1), a_], axis=2)
+            Ln = add_glow(Ln, *glow)
+            m = np.maximum(Ld[..., 3], Ln[..., 3])
+            box = crop_bbox(np.dstack([np.zeros_like(Ld[..., :3]), m]))
+            x, y, w, h = box
+            save_png(Ld[y:y + h, x:x + w], os.path.join(d, f"{iid}.png"))
+            save_png(Ln[y:y + h, x:x + w], os.path.join(d, f"{iid}_night.png"))
+            remove(g2)
+            e = entry(iid, iid, box, sort_y, night_file=f"yard/{iid}_night.png")
+        else:
+            g = Y.ITEMS[iid](); box, _ = shoot(iid, g); remove(g)
+            e = entry(iid, iid, box, sort_y)
+        e["price"] = Y.PRICES[iid]; e["name_ko"] = Y.NAMES_KO[iid]
+        e["layer"] = "ground" if iid in YARD_GROUND else ("pond" if iid == "duck_float" else "sorted")
+        items.append(e)
+        print("YARD", iid, e["x"], e["y"], e["w"], e["h"])
+    # flowers planted in the flower bed: 3 spots x (tulip, sunflower)
+    bed_flowers = []
+    if not only or "bed" in only:
+        for i in range(3):
+            for kind in ("tulip", "sunflower"):
+                g = Y.bed_flower(kind, i); box, _ = shoot(f"bed_{kind}_{i}", g); remove(g)
+                fx, fy = Y.SPOT["flower_bed"]
+                bed_flowers.append(entry(f"bed_{kind}_{i}", f"bed_{kind}_{i}", box,
+                                         project((fx + Y.BED_SPOTS[i], fy - 0.02, R.FLOOR))[1], spot=i, flower=kind))
+    # ---- memory tree stages + one fruit image + fruit positions per stage
+    tree = []
+    if not only or "tree" in only:
+        tx, ty = Y.TREE
+        for st in (1, 2, 3, 4):
+            g = Y.memory_tree(st); box, _ = shoot(f"tree_{st}", g); remove(g)
+            tree.append(entry(f"tree_{st}", f"tree_{st}", box, project((tx, ty - 0.1, R.FLOOR))[1], stage=st,
+                              fruits=[[round(c, 1) for c in project(tuple(p))] for p in Y.fruit_points(st)]))
+        # single fruit sprite centred on (0,0,0) world -> cropped; app centres it on each fruit point
+        fr = Y.sph("Fruit", 0.055, (0, 0, 0), Y.M("fruit", 0.45))
+        parts = [fr, Y.sph("FruitBlush", 0.03, (0.02, -0.03, -0.015), Y.M("fruit2", 0.5), (1, 0.5, 1)),
+                 Y.leaf("FruitLeaf", (0, 0, 0.045), 0.06, 0.035, 55, -19, Y.M("leaf")),
+                 Y.sph("FruitShine", 0.012, (-0.02, -0.05, 0.025), Y.M("off", 0.3, 1.0))]
+        hide(bg_objs); I = render(os.path.join(TMP, "I.png")); hide(bg_objs, False)
+        cx, cy = project((0, 0, 0)); half = 40
+        x0, y0 = int(round(cx - half)), int(round(cy - half))
+        save_png(I[y0:y0 + 2 * half, x0:x0 + 2 * half], os.path.join(d, "fruit.png"))
+        for o in parts: bpy.data.objects.remove(o, do_unlink=True)
+    # ---- pond water (drawn over the pet's legs while it splashes) + guests
+    extras = {}
+    if not only or "extras" in only:
+        water = [o for o in bg_objs if o.name.startswith(("PondWater", "PondDeep", "PondLily"))]
+        others = [o for o in bg_objs if o not in water]
+        hide(others); I = render(os.path.join(TMP, "I.png")); hide(others, False)
+        box = crop_bbox(I); x, y, w, h = box
+        save_png(I[y:y + h, x:x + w], os.path.join(d, "pond_water.png"))
+        extras["pond_water"] = entry("pond_water", "pond_water", box, 0, note="draw over the pet only during `splash`")
+        g = Y.sparrow("perch", Y.FEEDER_PERCH()); box, _ = shoot("sparrow_perch", g); remove(g)
+        extras["sparrow_perch"] = entry("sparrow_perch", "sparrow_perch", box, 0, needs="bird_feeder",
+                                        note="draw right after bird_feeder")
+        g = Y.sparrow("ground", (0, 0, R.FLOOR)); box, _ = shoot("sparrow_ground", g); remove(g)
+        f = project((0, 0, R.FLOOR))
+        extras["sparrow_ground"] = entry("sparrow_ground", "sparrow_ground", box, 0,
+                                         anchor=[round(f[0] - box[0], 1), round(f[1] - box[1], 1)],
+                                         note="movable sprite: put `anchor` (feet, px inside the image) on any walkable point; sort by its y")
+        for fr_ in ("open", "closed"):
+            g = Y.butterfly(fr_, (0, 0, 0)); box, _ = shoot(f"butterfly_{fr_}", g); remove(g)
+            c = project((0, 0, 0))
+            extras[f"butterfly_{fr_}"] = entry(f"butterfly_{fr_}", f"butterfly_{fr_}", box, 0,
+                                               anchor=[round(c[0] - box[0], 1), round(c[1] - box[1], 1)],
+                                               note="2-frame flap (open/closed ~6 fps); float it around above the flower bed, drawn on top")
+
+    # ---- walking data
+    blocked = {"pond": ellipse_px(*Y.POND, Y.POND_R[0] + 0.12, Y.POND_R[1] + 0.1),
+               "tree": ellipse_px(*Y.TREE, 0.2, 0.14)}
+    item_blocked = {i: rect_px(*Y.SPOT[i], *Y.FOOT[i]) for i in Y.ITEMS if Y.FOOT[i]}
+    interact = {}
+    for i, (dx, dy, face, act) in Y.INTERACT.items():
+        sx, sy = Y.SPOT[i]
+        interact[i] = {"stand": [round(c, 1) for c in ground_px(sx + dx, sy + dy)], "face": face, "action": act}
+    interact["pond"] = {"stand": [round(c, 1) for c in ground_px(Y.POND[0] - 0.05, Y.POND[1])], "face": "front", "action": "splash",
+                        "note": "free (no item). Walk to the rim point `enter`, then hop to `stand`; draw pond_water over the pet"}
+    interact["pond"]["enter"] = [round(c, 1) for c in ground_px(Y.POND[0] - Y.POND_R[0] - 0.15, Y.POND[1] - 0.05)]
+    interact["tree"] = {"stand": [round(c, 1) for c in ground_px(Y.TREE[0] + 0.3, Y.TREE[1] - 0.3)], "face": "back",
+                        "action": "show_fruit", "note": "free. tap a fruit -> pet walks here, then the memory card opens"}
+    hippo_home = [round(c, 1) for c in ground_px(*Y.HIPPO)]
+    walk = {"area": walk_area(-1.2, 1.55, 110, 0, SIZE * 5 / 6), "blocked": blocked, "item_blocked": item_blocked,
+            "interact": interact, "home": hippo_home, "pet": feet_rule(ppu),
+            "rules": "walkable = inside `area` and outside `blocked` and outside item_blocked[id] for owned items. "
+                     "area already excludes the front 1/6 (buttons) and 0.3 in front of the hedge. "
+                     "Loop: idle 4-8 s -> walk to a random walkable point -> every 3rd time go to a random owned interact[id] "
+                     "(pond/tree are free) and play its action 5-10 s. Tap -> stop and walk to the tapped point "
+                     "(nearest walkable point if outside). interact stand points may lie inside item_blocked (the pet takes the last step in). Walk speed ~ 0.6 unit/s = ppu*0.6 px/s. 4 directions = 3 clips (left = right mirrored)."}
+    clear_scene_meshes(HIPPO_OBJS)
+    return {"canvas": [SIZE, SIZE], "background": "yard/background.png", "background_night": "yard/background_night.png",
+            "px_per_unit": ppu, "items": items, "bed_flowers": bed_flowers, "tree": tree,
+            "fruit": {"file": "yard/fruit.png", "size": [80, 80], "note": "centre the image on each tree[stage].fruits point"},
+            "extras": extras, "walk": walk,
+            "night": {"hours": "19:00-06:00 local time = night, otherwise day",
+                      "overlay": YARD_NIGHT_OVERLAY,
+                      "draw": "background_night instead of background; draw everything as by day using <item>.night_file when it has one "
+                              "(lit lamp / tent glow); then fill the canvas with `overlay` rgba EXCEPT the *_night lit layers, "
+                              "which go on top of the overlay"},
+            "draw_order": ["background (or background_night)", "layer=ground items (picnic_mat)",
+                           "layer=pond (duck_float)", "tree[stage] + layer=sorted items + bed_flowers + pet + sparrow_ground, ascending sort_y "
+                           "(pet sort key = feet y)", "sparrow_perch right after bird_feeder", "fruits on the tree",
+                           "pond_water over the pet only while splashing", "butterfly", "night overlay"],
+            "rules": "one of each item; all positions are fixed (no slots to swap in v1 of the yard). "
+                     "bed_flowers: spot i shows the flower the user planted there (tulip/sunflower), 3 spots."}
+
+
 if __name__ == "__main__":
     manifest = {"version": 1, "units": "px on the canvas; scale everything by (card width / canvas width)",
                 "made_by": "scripts/blender/export_world.py", "spaces": {}}
@@ -274,5 +560,9 @@ if __name__ == "__main__":
         manifest["spaces"]["room"] = export_room()
     if WHAT in ("garden", "all"):
         manifest["spaces"]["garden"] = export_garden()
+    if WHAT in ("garden", "all", "walk"):
+        manifest["spaces"]["garden"]["walk"] = garden_walk()
+    if WHAT in ("yard", "all"):
+        manifest["spaces"]["yard"] = export_yard()
     json.dump(manifest, open(mp, "w"), ensure_ascii=False, indent=1)
     print("MANIFEST", mp)

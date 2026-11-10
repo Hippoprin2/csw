@@ -5,7 +5,7 @@ import glob, json, os, shutil, subprocess, sys
 
 D = os.path.abspath(sys.argv[1])
 root = os.path.dirname(os.path.dirname(os.path.dirname(D)))          # design/world
-for src, dst in (("room/thumbs", "thumbs"), ("garden/icons", "icons")):
+for src, dst in (("room/thumbs", "thumbs"), ("yard/thumbs", "thumbs"), ("garden/icons", "icons")):
     os.makedirs(os.path.join(D, dst), exist_ok=True)
     for p in glob.glob(os.path.join(root, "world", src, "*.png")):
         shutil.copy(p, os.path.join(D, dst))
