@@ -47,7 +47,8 @@
 - 공간 그림은 정사각형 캔버스(1080) → 카드도 정사각형. 방 = min(화면너비-32, max(300, 화면높이 45%)) 가운데 정렬, 텃밭·마당 = 화면너비-32 (`ui/layout.ts`). 모든 위치는 manifest px × (카드/1080)
 - 좌우 넘기기 페이지 너비: onLayout 측정값, 없으면 화면 너비(웹에서 onLayout이 간헐적으로 안 와서 빈 화면 나던 문제 수정)
 - 웹 확인 크기: 375×667(SE), 360×800(안드로이드 보급형), 393×852(15), 430×932(Pro Max) — 2026-11-10 모두 단짝·입력창 정상
-- 남은 확인: 큰 글씨 설정(Dynamic Type)에서 넘침, 안드로이드 실기기, 키보드 올라올 때 입력창 가림
+- 키보드: 방 ScrollView가 키보드에 덮이는 만큼 아래 여백을 늘리고 맨 아래로 스크롤 (RoomPage, 2026-11-10 대표 폰에서 가림 보고 → 수정)
+- 남은 확인: 큰 글씨 설정(Dynamic Type)에서 넘침, 안드로이드 실기기
 
 ## 배포·운영 메모
 - 마이그레이션: `supabase db push --linked` (CLI: `/Users/soniakang/.bun/install/global/node_modules/supabase/bin/supabase`, 비번은 루트 .env.local `SUPABASE_DB_PASSWORD`)

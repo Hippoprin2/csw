@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -49,6 +49,24 @@ export function RoomPage() {
   const [notifTime, setNotifTime] = useState('21:00');
   const [err, setErr] = useState('');
   const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 키보드가 입력창을 가리지 않게: 키보드가 스크롤 영역 아래를 얼마나 덮는지 재서 그만큼 아래 여백을 늘리고 맨 아래로 스크롤.
+  // (iOS는 화면이 줄지 않음. 안드로이드는 화면이 줄어드는 경우가 많아 덮는 양이 0이면 그대로)
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const [kbPad, setKbPad] = useState(0);
+  useEffect(() => {
+    const showEv = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEv = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEv, (e) => {
+      scrollRef.current?.measureInWindow((_x, y, _w, h) => {
+        const overlap = Math.max(0, y + h - e.endCoordinates.screenY);
+        setKbPad(overlap);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+      });
+    });
+    const hide = Keyboard.addListener(hideEv, () => setKbPad(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const today = kstToday();
   const todayCount = wins.filter((w) => w.win_date === today).length;
@@ -173,7 +191,8 @@ export function RoomPage() {
 
   return (
     <View style={st.wrap}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
+        contentContainerStyle={{ paddingBottom: 32 + kbPad }}>
         <View style={[st.room, { width: roomSize, height: roomSize }]}>
           <Image source={ROOM.background} style={StyleSheet.absoluteFill} contentFit="cover" loading="eager" />
           {back.map(draw)}
