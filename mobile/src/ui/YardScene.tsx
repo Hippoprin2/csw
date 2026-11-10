@@ -23,6 +23,13 @@ const SPEED = 0.9; // 걷는 속도 (땅 위 단위/초, 1단위 = 400px) — �
 const DEPTH = 0.426; // 25° 카메라: 화면 세로 1px = 땅 위 1/0.426px (character manifest walk.depth_factor)
 type Face = 'idle' | 'front' | 'side' | 'back';
 const FACE_CLIP = { idle: 'garden_idle', front: 'walk_front', side: 'walk_side', back: 'walk_back' } as const;
+// 밤 단짝 = 밤 색을 미리 입힌 클립 한 장 (scripts/gen_yard_night_pet.py). 움직이는 그림 두 장을 겹치면 각자 재생돼 어긋남
+const NIGHT_CLIP = {
+  idle: require('@/assets/pet/hippo_garden_idle_night.webp'),
+  front: require('@/assets/pet/hippo_walk_front_night.webp'),
+  side: require('@/assets/pet/hippo_walk_side_night.webp'),
+  back: require('@/assets/pet/hippo_walk_back_night.webp'),
+} as const;
 const ACT_MS = 6000;
 export const ACT_KO: Record<string, string> = {
   sniff: '🌷 킁킁', sit_bench: '🪑 쉬는 중', sit_eat: '🧺 냠냠', lie: '😴 쿨쿨', splash: '💦 첨벙', show_fruit: '🍑 이거 봐!',
@@ -414,8 +421,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
                 <Sprite file={sp.file} x={ground.x - (sp.anchor?.[0] ?? 0)} y={ground.y - (sp.anchor?.[1] ?? 0)} w={sp.w} h={sp.h} night={night} z={moverZ(ground.x, ground.y)} />
               )}
               <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: P.w, height: P.h, zIndex: petZ }, petStyle]}>
-                <Image source={PET_CLIPS[FACE_CLIP[face]].source} style={StyleSheet.absoluteFill} contentFit="contain" loading="eager" />
-                {night && <Image source={PET_CLIPS[FACE_CLIP[face]].source} style={[StyleSheet.absoluteFill, { opacity: OA }]} tintColor={TINT} contentFit="contain" loading="eager" />}
+                <Image source={night ? NIGHT_CLIP[face] : PET_CLIPS[FACE_CLIP[face]].source} style={StyleSheet.absoluteFill} contentFit="contain" loading="eager" />
               </Animated.View>
               {splashOn && <Sprite {...YARD.extras.pond_water} night={night} z={900} />}
               {hasFly && (
