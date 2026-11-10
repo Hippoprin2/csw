@@ -61,6 +61,13 @@ export default function Spaces() {
       track('space_viewed', { space: PAGES[p] });
     }
   }
+  // 방 페이지 여백에서 끌기 (바깥 스크롤은 방에서 꺼 둠 — 방 그림 끌기와 안 겹치게): 손가락 따라 넘기고 놓으면 맞춤
+  function pageDrag(dx: number, done: boolean, vx: number) {
+    const p = pageRef.current;
+    if (!done) { ref.current?.scrollTo({ x: Math.min(w * 2, Math.max(0, w * p - dx)), animated: false }); return; }
+    const next = dx > w * 0.25 || vx > 600 ? p - 1 : dx < -w * 0.25 || vx < -600 ? p + 1 : p;
+    go(Math.min(2, Math.max(0, next)));
+  }
   function go(p: number) {
     ref.current?.scrollTo({ x: w * p, animated: Platform.OS !== 'web' }); // 웹 부드러운 스크롤은 스냅과 겹쳐 중간에 멈출 때가 있음
     if (p !== page) {
@@ -96,7 +103,7 @@ export default function Spaces() {
             onMomentumScrollEnd={onScrollEnd} onScrollEndDrag={onScrollEnd} scrollEventThrottle={16}
             contentOffset={{ x: w * HOME, y: 0 }} keyboardShouldPersistTaps="handled">
             <View style={{ width: w }}><GardenPage /></View>
-            <View style={{ width: w }}><RoomPage onEdge={(side) => go(side === 'left' ? 0 : 2)} /></View>
+            <View style={{ width: w }}><RoomPage onEdge={(side) => go(side === 'left' ? 0 : 2)} onPageDrag={pageDrag} /></View>
             <View style={{ width: w, height: pageH || undefined }}><YardPage active={page === 2} onLeave={() => go(1)} /></View>
           </ScrollView>
         )}

@@ -298,6 +298,32 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 크기·구역이 바뀔 때만 다시 맞춤
   }, [size.cw, size.ch, zonesKey]);
 
+  // 마당에 들어올 때마다: 하던 것 없이 화면 가운데에서 시작 (대표 결정 2026-11-11). 나갈 때: 그 자리에서 멈춤
+  function dropAct() {
+    const pet = G.current.pet, A = pet.act;
+    if (A?.then && A.action === 'show_fruit') A.then(); // 딴 열매 카드는 열어 줌
+    if (A) A.then = null;
+    pet.act = null; pet.path = []; pet.state = 'idle';
+  }
+  useEffect(() => {
+    if (!size.cw) return;
+    const g = G.current, pet = g.pet;
+    dropAct();
+    showClip('garden_idle');
+    if (!active) return;
+    const m = getWalk(), [zx, zy, zw, zh] = YARD.walk.zones['1'].rect;
+    g.cam.x = zx + zw / 2 - g.vw / 2; g.cam.y = zy + zh / 2 - g.vh / 2; clamp();
+    let fx = g.cam.x + g.vw / 2 - P.feet_to_center[0], fy = g.cam.y + g.vh / 2 - P.feet_to_center[1];
+    if (!walkable(m, fx, fy)) [fx, fy] = cellPt(m, nearestCell(m, fx, fy));
+    pet.x = fx; pet.y = fy; pet.dir = 1; pet.until = performance.now() + 3000 + Math.random() * 2000;
+    const [cx, cy] = petCenter();
+    g.cam.x = cx - g.vw / 2; g.cam.y = cy - g.vh / 2; clamp();
+    g.glide = null; g.glided = true; g.lastDrag = 0;
+    push(); petX.value = pet.x; petY.value = pet.y; petDir.value = 1;
+    setPetZ(moverZFrom(staticsRef.current, pet.x, pet.y));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 들어오고 나갈 때만
+  }, [active, size.cw]);
+
   // 밤 클립 미리 받기 (낮 클립은 Pet.tsx가 앱 시작 때 받아 둠)
   useEffect(() => {
     if (!night || Platform.OS === 'web') return;

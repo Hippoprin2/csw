@@ -36,7 +36,8 @@ const store = {
 };
 
 // 방 = 홈. 기록 입력창·축하 8종·곁에 앉기·먹이기/선물하기는 방에서만 (STATUS 2026-11-09 결정)
-export function RoomPage({ onEdge }: { onEdge?: (side: 'left' | 'right') => void } = {}) {
+type PageDrag = (dx: number, done: boolean, vx: number) => void;
+export function RoomPage({ onEdge, onPageDrag }: { onEdge?: (side: 'left' | 'right') => void; onPageDrag?: PageDrag } = {}) {
   const { jars, profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
   const { roomSize } = useSpaceSize();
@@ -234,6 +235,12 @@ export function RoomPage({ onEdge }: { onEdge?: (side: 'left' | 'right') => void
     },
   });
   const roomGesture = useCompetingGestures(pan, tap);
+  // 방 그림 밖(여백·기록 칸)에서 좌우로 끌면 페이지 넘기기 → 텃밭/마당. 방 그림 안의 끌기가 먼저
+  const pagePan = usePanGesture({
+    activeOffsetX: [-15, 15], failOffsetY: [-12, 12], maxPointers: 1, runOnJS: true, requireToFail: pan,
+    onUpdate: (e) => onPageDrag?.(e.translationX, false, 0),
+    onDeactivate: (e) => onPageDrag?.(e.translationX, true, e.velocityX),
+  });
   const worldStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -camX.value * sc }] }));
 
   const jarDots = (j: (typeof cab)[number], slot: (typeof JC.slots)[number]) => {
@@ -248,6 +255,7 @@ export function RoomPage({ onEdge }: { onEdge?: (side: 'left' | 'right') => void
   };
 
   return (
+    <GestureDetector gesture={pagePan}>
     <View style={st.wrap}>
       <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
         contentContainerStyle={{ paddingBottom: 32 + kbPad }}>
@@ -378,6 +386,7 @@ export function RoomPage({ onEdge }: { onEdge?: (side: 'left' | 'right') => void
         ))}
       </Sheet>
     </View>
+    </GestureDetector>
   );
 }
 
