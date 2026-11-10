@@ -614,7 +614,7 @@ def export_yard():
             "draw_order": ["background tiles that intersect the viewport (night_file at night)", "locks[z] for every locked zone",
                            "layer=ground items (picnic_mat)",
                            "layer=pond (duck_float)", "tree[stage] + layer=sorted items + bed_flowers + pet + sparrow_ground, ascending sort_y "
-                           "(pet sort key = feet y)", "sparrow_perch right after bird_feeder", "fruits right after tree[stage] (same sort slot as the tree, so a pet in front of the tree covers them)", "fruits on the tree",
+                           "(pet sort key = feet y)", "sparrow_perch right after bird_feeder", "fruits right after tree[stage] (same sort slot as the tree, so a pet in front of the tree covers them)",
                            "pond_water over the pet only while splashing", "butterfly", "night overlay"],
             "rules": "one of each item; all positions are fixed (no slots to swap in v1 of the yard). Zone 1 items only for now; "
                      "zone 2/3 items arrive with later updates and use the same entry format. "
