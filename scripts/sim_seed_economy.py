@@ -10,7 +10,8 @@ YARD = {                                                           # first updat
 }
 SEED_PER_RECORD, GIFT, PLANT = 3, 6, 3
 PLOTS, DAYS_TO_HARVEST = 3, 9
-YARD_BEADS = 10                    # yard opens at 10 records (beads)
+YARD_OPEN_DAYS = 7                 # yard opens after 7 recorded days (cumulative, 2026-11-10 대표 결정)
+ZONES = [60, 120]                  # extra yard zones bought with seeds (2026-11-10 대표 결정: 씨앗으로 삼)
 
 ARCH = {"light": (3, 4), "normal": (5, 10), "heavy": (7, 21), "max": (7, 70)}
 
@@ -24,7 +25,8 @@ def schedule(days_per_week, recs_per_week):
     return out
 
 
-def sim(arch, yard_release_day, garden=True, yard_prices=YARD, weeks=60):
+def sim(arch, yard_release_day, garden=True, yard_prices=YARD, weeks=60, zones=None):
+    zones = list(ZONES if zones is None else zones)
     dpw, rpw = ARCH[arch]
     week = schedule(dpw, rpw)
     seeds, records, rec_days = GIFT, 0, 0
@@ -33,7 +35,7 @@ def sim(arch, yard_release_day, garden=True, yard_prices=YARD, weeks=60):
     plot_progress = [0] * PLOTS        # recorded days since planting; -1 = empty
     first_free = True
     log = {"room_done": None, "yard_done": None, "yard_open": None, "owned_w1": None, "owned_w4": None,
-           "yard_owned_2w_after_open": None, "garden_spend": 0}
+           "yard_owned_2w_after_open": None, "garden_spend": 0, "zones": []}
     for day in range(weeks * 7):
         n = week[day % 7]
         if n:
@@ -50,7 +52,7 @@ def sim(arch, yard_release_day, garden=True, yard_prices=YARD, weeks=60):
                             seeds -= PLANT; log["garden_spend"] += PLANT; plot_progress[i] = 0
                         else:
                             plot_progress[i] = -10 ** 6    # waits; never matters in practice (checked below)
-        yard_open = day >= yard_release_day and records >= YARD_BEADS
+        yard_open = day >= yard_release_day and rec_days >= YARD_OPEN_DAYS
         if yard_open and log["yard_open"] is None:
             log["yard_open"] = day
         # buy cheapest available
@@ -61,6 +63,9 @@ def sim(arch, yard_release_day, garden=True, yard_prices=YARD, weeks=60):
             c, src = min(pool, key=lambda t: t[0])
             seeds -= c
             src.remove(c)
+        # zones: bought (in order) once every item on sale is owned — zone items come with later updates
+        while yard_open and zones and not room_left and not yard_left and seeds >= zones[0]:
+            seeds -= zones.pop(0); log["zones"].append(day)
         owned = (len(ROOM) - len(room_left)) + (len(yard_prices) - len(yard_left))
         if day == 6: log["owned_w1"] = owned
         if day == 27: log["owned_w4"] = owned
@@ -85,4 +90,7 @@ if __name__ == "__main__":
             ng = sim(a, release, garden=False)
             print(f"{a:6} open {wk(r['yard_open'])} | room done {wk(r['room_done'])} | yard done {wk(r['yard_done'])} "
                   f"(no garden {wk(ng['yard_done'])}) | owned w1 {r['owned_w1']} w4 {r['owned_w4']} | "
-                  f"yard items 2w after open {r['yard_owned_2w_after_open']}")
+                  f"yard items 2w after open {r['yard_owned_2w_after_open']} | zones {[wk(d) for d in r['zones']]}")
+    print("\n== zone price options (launch user): weeks when zone 2 / zone 3 become affordable after the yard is full")
+    for zs in ([45, 90], [60, 120], [90, 180], [120, 240]):
+        print(zs, {a: [wk(d) for d in sim(a, 28, zones=zs)["zones"]] for a in ARCH})

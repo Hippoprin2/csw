@@ -41,6 +41,8 @@ HIPPO = (-0.2, 0.45)       # default standing spot (also where the app spawns th
 # ------------------------------------------------------------------ base (free)
 def background():
     parts = [rbox("Grass", (12, 6.2, 0.1), (0, -0.7, FLOOR - 0.05), M("grass", 0.9), r=0.02)]
+    if os.environ.get("VIEW_H"):          # portrait mock (viewport down to the tab bar): grass reaches further front
+        parts.append(rbox("GrassFront", (12, 6.0, 0.1), (0, -6.5, FLOOR - 0.05), M("grass", 0.9), r=0.02))
     rnd = random.Random(7)
     for k in range(40):
         gx, gy = rnd.uniform(-2.4, 2.2), rnd.uniform(-1.6, 2.3)
@@ -425,7 +427,12 @@ if __name__ == "__main__":
         out = argv[1]
         ids = argv[2:] or ["all"]
         ids = list(ITEMS) if ids == ["all"] else ([] if ids == ["none"] else ids)
-        sc, cam = setup_render(1080, 1080, ORTHO); place_cam(sc, cam); sc.frame_set(1)
+        vh = int(os.environ.get("VIEW_H", "1080"))
+        sc, cam = setup_render(1080, vh, ORTHO * max(1, vh / 1080)); place_cam(sc, cam)
+        if vh > 1080:                      # keep the top edge, extend the frame downward (screen-up = camera +Y)
+            up = cam.matrix_world.to_quaternion() @ Vector((0, 1, 0))
+            cam.location -= up * ((vh - 1080) / 2 / (1080 / ORTHO))
+        sc.frame_set(1)
         background()
         st = int(os.environ.get("TREE", "4")); memory_tree(st)
         if os.environ.get("FRUITS", "1") == "1" and st > 1: memory_fruits(st)
