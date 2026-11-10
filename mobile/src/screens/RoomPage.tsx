@@ -18,6 +18,7 @@ import { useApp } from '@/state/app';
 import { Btn, HelpLines } from '@/ui/kit';
 import { Pet, type PetAction } from '@/ui/Pet';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
+import type { Pager } from '@/ui/pager';
 import { SpaceImage } from '@/ui/SpaceImage';
 import { useSpaceSize } from '@/ui/layout';
 import { C, R } from '@/ui/theme';
@@ -26,7 +27,6 @@ const DAILY_REWARD_CAP = 10;
 const NOTIF_ASKED_KEY = 'csw.notifAsked';
 const SAFETY_DAY_KEY = 'csw.safetyShownDay';
 const VASE_KEY = 'csw.sillVase'; // 창턱 꽃병 자리: 튤립/해바라기 둘 다 있으면 탭해서 바꿈 (기기에만 저장)
-const EDGE_PX = 70; // 방 끝에서 이만큼(화면 px) 더 끌면 옆 공간으로 넘어감
 const DOT = 7; // 유리장 병 속 구슬 한 칸 (캔버스 px)
 let keptCamX: number = ROOM.view.start_x; // 둘러본 위치 유지 (앱을 켜 둔 동안). 처음엔 단짝 가운데(= 예전 방)
 
@@ -36,8 +36,7 @@ const store = {
 };
 
 // 방 = 홈. 기록 입력창·축하 8종·곁에 앉기·먹이기/선물하기는 방에서만 (STATUS 2026-11-09 결정)
-type PageDrag = (dx: number, done: boolean, vx: number) => void;
-export function RoomPage({ onEdge, onPageDrag }: { onEdge?: (side: 'left' | 'right') => void; onPageDrag?: PageDrag } = {}) {
+export function RoomPage({ pager }: { pager?: Pager } = {}) {
   const { jars, profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
   const { roomSize } = useSpaceSize();
@@ -207,19 +206,21 @@ export function RoomPage({ onEdge, onPageDrag }: { onEdge?: (side: 'left' | 'rig
   // 넓은 방(2160) 끌어서 둘러보기 (manifest spaces.room.view): 카드는 1080 창, 끝에서 더 끌면 옆 공간으로. 자동 복귀 없음
   const V = ROOM.view;
   const camX = useSharedValue(keptCamX);
-  const drag = useRef({ start: keptCamX, handed: false });
+  const drag = useRef({ start: keptCamX, over: 0 });
   const pan = usePanGesture({
     activeOffsetX: [-10, 10], failOffsetY: [-12, 12], maxPointers: 1, runOnJS: true,
-    onActivate: () => { drag.current = { start: camX.value, handed: false }; },
+    onActivate: () => { drag.current = { start: camX.value, over: 0 }; },
     onUpdate: (e) => {
       const want = drag.current.start - e.translationX / sc;
       const x = Math.min(V.max_x, Math.max(V.min_x, want));
       camX.value = x; keptCamX = x;
-      const over = (want - x) * sc;
-      if (onEdge && !drag.current.handed && Math.abs(over) > EDGE_PX) {
-        drag.current.handed = true;
-        onEdge(over < 0 ? 'left' : 'right');
-      }
+      // 방 끝을 넘겨 끈 만큼 페이지가 손가락을 따라 옴 (텃밭/마당)
+      const over = (x - want) * sc;
+      if (pager && (over !== 0 || drag.current.over !== 0)) { drag.current.over = over; pager.drag(over); }
+    },
+    onDeactivate: (e) => {
+      if (pager && drag.current.over !== 0) pager.end(drag.current.over, e.velocityX, e.canceled);
+      drag.current.over = 0;
     },
   });
   // 탭: 유리장 병 → 그 병 보기, 꽃병 → 튤립/해바라기 바꾸기
@@ -237,9 +238,9 @@ export function RoomPage({ onEdge, onPageDrag }: { onEdge?: (side: 'left' | 'rig
   const roomGesture = useCompetingGestures(pan, tap);
   // 방 그림 밖(여백·기록 칸)에서 좌우로 끌면 페이지 넘기기 → 텃밭/마당. 방 그림 안의 끌기가 먼저
   const pagePan = usePanGesture({
-    activeOffsetX: [-15, 15], failOffsetY: [-12, 12], maxPointers: 1, runOnJS: true, requireToFail: pan,
-    onUpdate: (e) => onPageDrag?.(e.translationX, false, 0),
-    onDeactivate: (e) => onPageDrag?.(e.translationX, true, e.velocityX),
+    activeOffsetX: [-12, 12], failOffsetY: [-12, 12], maxPointers: 1, requireToFail: pan,
+    onUpdate: (e) => { 'worklet'; pager?.drag(e.translationX); },
+    onDeactivate: (e) => { 'worklet'; pager?.end(e.translationX, e.velocityX, e.canceled); },
   });
   const worldStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -camX.value * sc }] }));
 

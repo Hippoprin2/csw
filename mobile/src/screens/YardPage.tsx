@@ -16,6 +16,7 @@ import { useSpaceSize } from '@/ui/layout';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
 import { C } from '@/ui/theme';
 import { YardScene, type YardSceneHandle, type YardTap } from '@/ui/YardScene';
+import type { Pager } from '@/ui/pager';
 
 // 마당 = 첫 업데이트 (WORLD 7장 Y1~Y8, FEATURES 7장)
 // - 열림: 기록한 날 누적 7일(서버 yard_state.open, 한 번 열리면 영구). 남은 날 카운트다운은 넣지 않음
@@ -25,7 +26,7 @@ import { YardScene, type YardSceneHandle, type YardTap } from '@/ui/YardScene';
 
 const GUEST_CHANCE = 0.3;
 
-export function YardPage({ active = true, onLeave }: { active?: boolean; onLeave?: () => void }) {
+export function YardPage({ active = true, pager }: { active?: boolean; pager?: Pager }) {
   const { yard, reloadYard, owned, items, balance, setBalance, crops, bag, reloadGarden, profile } = useApp();
   const pet = profile?.pet_name ?? '단짝';
   const showDev = yard.tester || __DEV__;
@@ -159,7 +160,7 @@ export function YardPage({ active = true, onLeave }: { active?: boolean; onLeave
     <View style={st.wrap}>
       <YardScene
         zones={yard.zones} items={ownedYard} stage={stage} fruitsHidden={picked} night={night} guests={guests}
-        active={active} onTap={onTap} onLeave={onLeave} bubble={bubble} sceneRef={sceneRef}
+        active={active} onTap={onTap} pager={pager} bubble={bubble} sceneRef={sceneRef}
       />
       {ownedYard.includes('picnic_mat') && edibles.length > 0 && (
         <Pressable style={st.feedBtn} onPress={() => { setErr(''); setFeedOpen(true); }} accessibilityRole="button">

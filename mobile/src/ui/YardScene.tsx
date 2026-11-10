@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { Image as RNImage, Platform } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { GestureDetector, usePanGesture, usePinchGesture, useSimultaneousGestures, useCompetingGestures, useTapGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -11,6 +11,7 @@ import { HIT_CELL, YARD_HIT } from '@/data/yardHit';
 import { YARD, YARD_IMG } from '@/data/yard';
 import type { Poly, Pt } from '@/data/yardTypes';
 import { buildWalk, camBounds, cellPt, findPath, inPoly, lineY, nearestCell, walkable, zoneAt, type WalkMap } from '@/lib/yardGeo';
+import type { Pager } from '@/ui/pager';
 
 // 마당 화면 (export README '마당' 절, 참고 구현 design/yard_test/index.html)
 // - 큰 캔버스(2160×3100)를 카드 너비 = 1080px 기준으로 줄여 창처럼 보여줌. 끌기 = 둘러보기, 두 손가락 = 줌(0.6~1, 유지), 탭 = 걸어가기
@@ -66,7 +67,8 @@ function hitSprite(key: string, e: { x: number; y: number; w: number; h: number 
   return H.bits[r * H.cols + c] === '1' || HIT_CELL <= 0;
 }
 
-let keptZoom = 1; // 줌 유지 (앱을 켜 둔 동안)
+const kept = { zoom: 1 }; // 줌 유지 (앱을 켜 둔 동안)
+const keepZoom = (z: number) => { kept.zoom = z; };
 
 type Guest = { k: 'perch' } | { k: 'ground'; x: number; y: number } | { k: 'fly'; cx: number; cy: number };
 export type YardTap =
@@ -86,7 +88,7 @@ type Props = {
   guests: boolean;          // 이번 방문에 손님이 오는지 (30%)
   active: boolean;          // 지금 보이는 페이지일 때만 움직임
   onTap: (t: YardTap) => void;
-  onLeave?: () => void;     // 왼쪽 끝에서 더 끌면 (방으로)
+  pager?: Pager;            // 왼쪽 끝을 넘겨 끌면 방 페이지가 손가락을 따라 옴
   bubble?: string | null;   // 단짝 말풍선 (밖에서 정함, 예: 먹이기)
   sceneRef?: React.RefObject<YardSceneHandle | null>;
 };
@@ -117,7 +119,7 @@ function spawnGuests(items: Set<string>, m: WalkMap): Guest[] {
   return [{ k: 'fly', cx: b.x + b.w * 0.6, cy: b.y - 40 }];
 }
 
-export function YardScene({ zones, items, stage, fruitsHidden, night, guests, active, onTap, onLeave, bubble, sceneRef }: Props) {
+export function YardScene({ zones, items, stage, fruitsHidden, night, guests, active, onTap, pager, bubble, sceneRef }: Props) {
   const [size, setSize] = useState({ cw: 0, ch: 0 });
   const own = new Set([1, ...zones]);
   const ownItems = new Set(items);
@@ -149,10 +151,10 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   const flyX = useSharedValue(0), flyY = useSharedValue(0), flyOpen = useSharedValue(0);
 
   const G = useRef({
-    cam: { x: 0, y: 0 }, zoom: keptZoom, s: 1, vw: 1080, vh: 1860, started: false,
+    cam: { x: 0, y: 0 }, zoom: kept.zoom, s: 1, vw: 1080, vh: 1860, started: false,
     pet: { x: YARD.walk.home[0], y: YARD.walk.home[1], dir: 1, face: 'side' as Face, t: 0, state: 'idle' as 'idle' | 'walk' | 'act', path: [] as Pt[], act: null as null | Act, until: 0, walks: 0 },
     dragging: false, lastDrag: -1e9, glide: null as null | { t0: number; x: number; y: number }, glided: true,
-    panStart: { x: 0, y: 0 }, pinchStart: 1, left: false,
+    panStart: { x: 0, y: 0 }, pinchStart: 1, over: 0,
   });
 
   // 정렬 대상 (나무·sorted 소품·화단 꽃) → zIndex
@@ -194,7 +196,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   function setZoom(z: number, ax?: number, ay?: number) {
     const g = G.current, oldW = g.vw, oldH = g.vh;
     g.zoom = Math.min(1, Math.max(zoomFloor(), z));
-    keptZoom = g.zoom;
+    keepZoom(g.zoom);
     view();
     if (ax !== undefined && ay !== undefined) {
       g.cam.x = ax - ((ax - g.cam.x) * g.vw) / oldW;
@@ -216,7 +218,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   }
   function startAct(a: Act) {
     const pet = G.current.pet;
-    pet.state = 'act'; pet.act = a; a.i = 0; a.reqAt = performance.now(); a.shownAt = null;
+    pet.state = 'act'; pet.act = a; a.i = 0; a.reqAt = clock(); a.shownAt = null;
     [pet.x, pet.y] = a.seq[0].move ? a.seq[0].move.from : a.stand;
     showClip(a.seq[0].clip);
   }
@@ -247,7 +249,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     if (a) a.then = then ?? null;
     if (!path.length && a) { startAct(a); return; }
     pet.state = path.length ? 'walk' : 'idle';
-    pet.until = performance.now() + 4000;
+    pet.until = clock() + 4000;
   }
   function walkToInteract(id: string, then?: () => void, opts?: { eat?: ClipKey }) {
     const pet = G.current.pet;
@@ -255,7 +257,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     if (opts?.eat && pet.state === 'act' && pet.act?.id === id && pet.act.action === 'sit_eat') {
       const A = pet.act, ph = A.seq[A.i], last = A.seq.length - 1;
       if (A.i > 0 && A.i < last && ph.clip === A.seq[last - 1].clip) {
-        const L = clipMs(ph.clip), el = A.shownAt === null ? 0 : performance.now() - A.shownAt;
+        const L = clipMs(ph.clip), el = A.shownAt === null ? 0 : clock() - A.shownAt;
         ph.ms = Math.max(L, Math.ceil((el + 1) / L) * L);
         const hold = L * Math.ceil(6000 / L);
         A.seq = [...A.seq.slice(0, A.i + 1), { clip: opts.eat, ms: clipMs(opts.eat) }, { clip: ph.clip, ms: hold }, A.seq[last]];
@@ -283,7 +285,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
   useEffect(() => {
     if (!size.cw) return;
     const g = G.current;
-    g.zoom = keptZoom;
+    g.zoom = kept.zoom;
     view();
     g.zoom = Math.min(1, Math.max(zoomFloor(), g.zoom));
     view();
@@ -438,39 +440,6 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 루프는 G(ref)를 읽음
   }, [active, size.cw, size.ch, itemsKey, zonesKey]);
 
-  // 손가락: 끌기 = 둘러보기, 두 손가락 = 줌, 탭 = 걸어가기/구역·열매
-  const pan = usePanGesture({
-    minDistance: 8, maxPointers: 1, runOnJS: true,
-    onActivate: () => { const g = G.current; g.dragging = true; g.glide = null; g.panStart = { ...g.cam }; g.left = false; },
-    onUpdate: (e) => {
-      const g = G.current;
-      g.cam.x = g.panStart.x - e.translationX / g.s; g.cam.y = g.panStart.y - e.translationY / g.s;
-      const want = g.cam.x;
-      clamp(); push();
-      // 왼쪽 끝에서 더 끌면 방으로
-      if (onLeave && !g.left && g.cam.x - want > 90 / g.s) { g.left = true; onLeave(); }
-    },
-    onDeactivate: () => { const g = G.current; g.dragging = false; g.lastDrag = performance.now(); g.glide = null; },
-  });
-  const pinch = usePinchGesture({
-    runOnJS: true,
-    onActivate: () => { const g = G.current; g.dragging = true; g.pinchStart = g.zoom; },
-    onUpdate: (e) => {
-      const g = G.current;
-      setZoom(g.pinchStart * e.scale, g.cam.x + e.focalX / g.s, g.cam.y + e.focalY / g.s);
-    },
-    onDeactivate: () => { const g = G.current; g.dragging = false; g.lastDrag = performance.now(); },
-  });
-  const tap = useTapGesture({
-    maxDistance: 8, runOnJS: true,
-    onDeactivate: (e) => {
-      if (e.canceled) return;
-      const g = G.current;
-      handleTap(g.cam.x + e.x / g.s, g.cam.y + e.y / g.s);
-    },
-  });
-  const gesture = useCompetingGestures(useSimultaneousGestures(pan, pinch), tap);
-
   function handleTap(x: number, y: number) {
     // 열매
     const fi = tree.fruits.findIndex(([fx, fy], i) => !fruitsHidden.includes(i) && Math.hypot(fx - x, fy - y) < 60);
@@ -507,6 +476,50 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     if (inPoly(x, y, YARD.walk.blocked.pond)) { walkToInteract('pond'); return; }
     goTo([x, y]);
   }
+
+  // 손가락: 끌기 = 둘러보기, 두 손가락 = 줌, 탭 = 걸어가기/구역·열매
+  // 설정 객체는 한 번만 만듦: 단짝이 걷는 동안 다시 그려질 때마다 설정이 바뀌면 끌던 손가락이 끊길 수 있어서 (2026-11-11 "이동 중 방으로 안 넘어감")
+  const fx = useRef<{ clamp: typeof clamp; push: typeof push; setZoom: typeof setZoom; handleTap: typeof handleTap; pager?: Pager } | null>(null);
+  useEffect(() => {
+    fx.current = { clamp: () => clamp(), push: () => push(), setZoom: (z, ax, ay) => setZoom(z, ax, ay), handleTap: (x, y) => handleTap(x, y), pager };
+  });
+  const pan = usePanGesture(useMemo(() => ({
+    minDistance: 8, maxPointers: 1, runOnJS: true,
+    onActivate: () => { const g = G.current; g.dragging = true; g.glide = null; g.panStart = { ...g.cam }; g.over = 0; },
+    onUpdate: (e: { translationX: number; translationY: number }) => {
+      const g = G.current, f = fx.current;
+      if (!f) return;
+      g.cam.x = g.panStart.x - e.translationX / g.s; g.cam.y = g.panStart.y - e.translationY / g.s;
+      const want = g.cam.x;
+      f.clamp(); f.push();
+      // 왼쪽 끝을 넘겨 끈 만큼 방 페이지가 따라 옴 (놓으면 1/4 넘었거나 빠르면 방으로)
+      const over = Math.max(0, (g.cam.x - want) * g.s);
+      if (f.pager && (over > 0 || g.over > 0)) { g.over = over; f.pager.drag(over); }
+    },
+    onDeactivate: (e: { velocityX: number; canceled: boolean }) => {
+      const g = G.current; g.dragging = false; g.lastDrag = performance.now(); g.glide = null;
+      if (fx.current?.pager && g.over > 0) fx.current.pager.end(g.over, e.velocityX, e.canceled);
+      g.over = 0;
+    },
+  }), []));
+  const pinch = usePinchGesture(useMemo(() => ({
+    runOnJS: true,
+    onActivate: () => { const g = G.current; g.dragging = true; g.pinchStart = g.zoom; },
+    onUpdate: (e: { scale: number; focalX: number; focalY: number }) => {
+      const g = G.current;
+      fx.current?.setZoom(g.pinchStart * e.scale, g.cam.x + e.focalX / g.s, g.cam.y + e.focalY / g.s);
+    },
+    onDeactivate: () => { const g = G.current; g.dragging = false; g.lastDrag = performance.now(); },
+  }), []));
+  const tap = useTapGesture(useMemo(() => ({
+    maxDistance: 8, runOnJS: true,
+    onDeactivate: (e: { canceled: boolean; x: number; y: number }) => {
+      if (e.canceled) return;
+      const g = G.current;
+      fx.current?.handleTap(g.cam.x + e.x / g.s, g.cam.y + e.y / g.s);
+    },
+  }), []));
+  const gesture = useCompetingGestures(useSimultaneousGestures(pan, pinch), tap);
 
   function onLayout(e: LayoutChangeEvent) {
     const { width, height } = e.nativeEvent.layout;
