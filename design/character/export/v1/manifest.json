@@ -125,6 +125,41 @@
       "duration_ms": 1667,
       "loop": false,
       "source_clip": "cheer25"
+    },
+    "walk_front": {
+      "file": "hippo_walk_front.webp",
+      "poster": "hippo_walk_front_poster.png",
+      "frames": 48,
+      "duration_ms": 2000,
+      "loop": true,
+      "source_clip": "walk_front25"
+    },
+    "walk_side": {
+      "file": "hippo_walk_side.webp",
+      "poster": "hippo_walk_side_poster.png",
+      "frames": 48,
+      "duration_ms": 2000,
+      "loop": true,
+      "source_clip": "walk_side25"
+    },
+    "walk_back": {
+      "file": "hippo_walk_back.webp",
+      "poster": "hippo_walk_back_poster.png",
+      "frames": 48,
+      "duration_ms": 2000,
+      "loop": true,
+      "source_clip": "walk_back25"
     }
+  },
+  "walk": {
+    "clips": {
+      "front": "walk_front",
+      "back": "walk_back",
+      "right": "walk_side",
+      "left": "walk_side (draw mirrored)"
+    },
+    "speed_px_s": 126,
+    "depth_factor": 0.426,
+    "note": "speed in yard/garden canvas px at pet w=435. Screen-down/up movement is foreshortened by the 25 deg camera: ground distance = hypot(dx, dy / depth_factor); move so that ground distance grows by speed_px_s per second (pure horizontal = 126 px/s, pure vertical = 54 px/s). Clip: |dx| >= |dy / depth_factor| -> side (mirror when dx < 0), else dy > 0 -> front, dy < 0 -> back. Feet = same floor point as the garden clips (303, 697)."
   }
 }
