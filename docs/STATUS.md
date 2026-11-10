@@ -1,7 +1,10 @@
 # CSW (Celebrate Small Wins) — STATUS
 
-## 현재 상태 (2026-11-08)
-- 단계: 앱 개발 v0 — Expo 앱(`mobile/`) + Supabase(`csw` 프로젝트) MVP 화면·서버 규칙 구현, 실서버 테스트 통과. 실기기 로그인은 메일 발송(SMTP) 설정 후 가능. 상세·남은 일: docs/DEV.md
+## 현재 상태 (2026-11-10)
+- 단계: 앱 개발 2단계(텃밭·좌우 공간) 완료 + 공간 export v1·캐릭터 텃밭 클립 연결, 보안 보강(SECURITY.md), 기종별 화면 대응, '버틴 하루' 분류. 상세·남은 일: docs/DEV.md
+- 대표 확인 대기: (1) 키보드가 입력창을 가리는 문제 수정 → 폰에서 확인 (2) "힘들다" → 버틴 하루로 보이는지
+- 대표 결정 대기: 유리병 꽉 차면 — 추천안 '50개 차면 뚜껑 닫아 선반 진열 + 새 병'(출시 범위), '닫은 병이 방 소품'은 마당 업데이트 때. 개수(추천 50) 미정
+- 출시 막힘: 이름·도메인, Apple 계정, 사업자·구독, 처리방침용 운영자 이름·문의 이메일, continue/kill 기준. 대표 몫: 2FA 7개 계정
 - 프로토타입: design/prototype.html → https://csw-prototype.vercel.app (배포: `python3 scripts/deploy_prototype.py`)
 - 게임 디자인: docs/GAME_DESIGN.md
 
