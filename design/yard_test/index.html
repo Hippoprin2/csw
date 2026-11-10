@@ -283,7 +283,7 @@ function draw(now) {
   items.filter(e => e.layer === "ground").forEach(e => img(e.file, e.x, e.y, e.w, e.h));
   items.filter(e => e.layer === "pond").forEach(e => img(e.file, e.x, e.y, e.w, e.h));
   const tree = Y.tree.find(t => t.stage === S.stage);
-  const list = [{ y: tree.sort_y, f: () => img(tree.file, tree.x, tree.y, tree.w, tree.h) }];
+  const list = [{ y: tree.sort_y, f: () => { img(tree.file, tree.x, tree.y, tree.w, tree.h); for (const [fx, fy] of tree.fruits) img(Y.fruit.file, fx - 40, fy - 40, 80, 80); } }];
   const lit = [];
   for (const e of items.filter(e => e.layer === "sorted")) list.push({ y: e.sort_y, f: () => {
     img(e.file, e.x, e.y, e.w, e.h); if (S.night && e.night_file) lit.push(e);
@@ -293,7 +293,6 @@ function draw(now) {
   for (const g of guests) if (g.k === "ground") { const e = Y.extras.sparrow_ground; list.push({ y: g.y, f: () => img(e.file, g.x - e.anchor[0], g.y - e.anchor[1], e.w, e.h) }); }
   list.push({ y: pet.y, f: () => drawPet(now) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
-  for (const [fx, fy] of tree.fruits) img(Y.fruit.file, fx - 40, fy - 40, 80, 80);
   if (pet.state === "act" && pet.act && pet.act.action === "splash") { const w = Y.extras.pond_water; img(w.file, w.x, w.y, w.w, w.h); }
   for (const g of guests) if (g.k === "fly") {
     g.t += 1 / 60; const e = Y.extras[Math.floor(now / 160) % 2 ? "butterfly_open" : "butterfly_closed"];

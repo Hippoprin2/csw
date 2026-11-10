@@ -2180,7 +2180,7 @@
     "layer=pond (duck_float)",
     "tree[stage] + layer=sorted items + bed_flowers + pet + sparrow_ground, ascending sort_y (pet sort key = feet y)",
     "sparrow_perch right after bird_feeder",
-    "fruits on the tree",
+    "fruits right after tree[stage] (same sort slot as the tree, so a pet in front of the tree covers them)",
     "pond_water over the pet only while splashing",
     "butterfly",
     "night overlay"

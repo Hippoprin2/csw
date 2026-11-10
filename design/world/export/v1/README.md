@@ -20,7 +20,7 @@
 - 배경은 1080 타일(`tiles[]`, 낮 `file` / 밤 `night_file`) — 화면에 걸친 타일만 그림
 - **구역** `walk.zones["1".."4"]`: `rect`·`price`(1 = 0 무료, 2 = 60, 3 = 120, 4 = 풍경만)·`area`·`blocked`·`gate`. 산 구역의 `area`를 합친 곳만 걸음. 안 산 구역은 `locks[z]` 울타리 그림을 그리고, 그 구역이나 문을 탭하면 구역 구매 시트
 - **화면 이동** `camera`: 단짝 따라감(부드럽게) + 손가락으로 끌어 둘러보기 → 손 떼고 3초 뒤 단짝에게 복귀. 탭 = 단짝이 그곳으로 걸어감. 화면은 산 구역 범위 + 이웃 잠긴 구역으로 `peek`(260px)까지만
-- 그리는 순서는 `draw_order`: 배경 타일 → 잠긴 구역 울타리 → `layer=ground`(피크닉 매트) → `layer=pond`(오리 튜브) → 나무 `tree[단계]` + `layer=sorted` 소품 + `bed_flowers` + 단짝 + 땅 참새를 **sort_y 오름차순**(단짝 키 = 발 y) → 열매 → (물장구 중) `extras.pond_water` → 나비 → 밤 덮개
+- 그리는 순서는 `draw_order`: 배경 타일 → 잠긴 구역 울타리 → `layer=ground`(피크닉 매트) → `layer=pond`(오리 튜브) → 나무 `tree[단계]` + `layer=sorted` 소품 + `bed_flowers` + 단짝 + 땅 참새를 **sort_y 오름차순**(단짝 키 = 발 y). 열매는 나무를 그린 직후 같은 순서에 그려(나무 앞에 선 단짝이 열매도 가리게) → (물장구 중) `extras.pond_water` → 나비 → 밤 덮개
 - 소품은 자기 자리 1개씩(바꿔 끼우기 없음). 가진 것만 그림. 화단 3칸 = `bed_flowers`(spot 0~2 × tulip/sunflower). 지금 소품은 전부 1구역, 2·3구역 소품은 업데이트 때 같은 형식으로 추가
 - 추억 나무: `tree[stage-1]` + 그 단계의 `fruits` 좌표마다 `fruit.webp`(80×80)를 가운데 맞춰. 단계 기준은 WORLD.md 7장(기록한 날 10/30/60)
 - 손님: `sparrow_perch`(새 모이통 있을 때, 모이통 바로 뒤에) / `sparrow_ground`·`butterfly_open|closed`는 `anchor`를 원하는 점에 두는 움직이는 그림
