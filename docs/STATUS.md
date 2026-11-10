@@ -6,6 +6,7 @@
 - 유리병 꽉 차면: 50개에 뚜껑 닫아 선반 진열 + 새 병 — 앱 구현 완료(2026-11-10). '닫은 병이 방 소품'은 마당 업데이트 때
 - 출시 막힘: 이름·도메인, Apple 계정, 사업자·구독, 처리방침용 운영자 이름·문의 이메일, continue/kill 기준. 대표 몫: 2FA 7개 계정
 - 프로토타입: design/prototype.html → https://csw-prototype.vercel.app (배포: `python3 scripts/deploy_prototype.py`)
+- 마당 움직임 테스트(웹, 실제 앱 아님): design/yard_test/index.html → https://csw-yard-test.vercel.app (배포: `python3 scripts/deploy_yard_test.py`, 커밋된 world export를 그대로 씀). ⚙︎에서 낮/밤·구역·카메라 수치 조절 — 대표가 정한 수치를 manifest `spaces.yard.camera`와 앱에 반영
 - 게임 디자인: docs/GAME_DESIGN.md
 
 ## 결정 사항
