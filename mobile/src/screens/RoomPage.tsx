@@ -7,6 +7,7 @@ import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput,
 import { CANVAS, ICONS, ROOM } from '@/data/world';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
+import { JAR_SIZE, justSealed } from '@/lib/jars';
 import { CATEGORY_ORDER, CATS, CHIPS, SAFETY_LINE, classifyByKeyword, pickLine, type Category } from '@/lib/categories';
 import { kstToday, kstYesterday } from '@/lib/dates';
 import { askPermission } from '@/lib/notifications';
@@ -118,7 +119,11 @@ export function RoomPage() {
         track('safety_shown', { repeat: shownToday });
       } else {
         setAction({ kind: category, key: Date.now() });
-        say(r.first ? '첫 구슬이 유리병에 들어갔어!' : pickLine(category));
+        const total = wins.length + 1;
+        if (justSealed(total)) {
+          say('유리병이 꽉 찼어! 뚜껑 닫아서 선반에 올려둘게. 새 병 시작이야', 6000);
+          track('jar_sealed', { no: total / JAR_SIZE });
+        } else say(r.first ? '첫 구슬이 유리병에 들어갔어!' : pickLine(category));
       }
       if (r.earned) {
         const fk = Date.now();

@@ -6,6 +6,7 @@ import { api, friendlyError, type Win } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { CATEGORY_ORDER, CATS, type Category } from '@/lib/categories';
 import { addDays, formatDay, kstToday, weekStart } from '@/lib/dates';
+import { splitJars, type GlassJar } from '@/lib/jars';
 import { useApp } from '@/state/app';
 import { Btn, Card, H, Sub } from '@/ui/kit';
 import { Confirm, Sheet, st as sheetSt } from '@/ui/Sheet';
@@ -25,6 +26,37 @@ function groupDay(ws: Win[]): Row[] {
     else m.set(key, { key: w.id, text: key, category: w.category, count: 1, latest: w });
   }
   return [...m.values()];
+}
+
+// 선반 위 닫힌 병 (뚜껑 + 구슬 색 띠)
+function ShelfJar({ jar, onPress }: { jar: GlassJar; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={st.shelfItem} accessibilityRole="button" accessibilityLabel={`${jar.no}번째 병, 구슬 ${jar.wins.length}개, 눌러서 보기`}>
+      <View style={st.lid} />
+      <View style={st.miniJar}>
+        {jar.wins.map((w) => <View key={w.id} style={[st.miniMarble, { backgroundColor: CATS[w.category].color }]} />)}
+      </View>
+      <Text style={st.shelfLabel}>{jar.no}번째 병</Text>
+    </Pressable>
+  );
+}
+
+function JarSheet({ jar, onClose }: { jar: GlassJar | null; onClose: () => void }) {
+  if (!jar) return <Sheet visible={false} onClose={onClose}>{null}</Sheet>;
+  const byCat = CATEGORY_ORDER.map((c) => [c, jar.wins.filter((w) => w.category === c).length] as const).filter(([, n]) => n > 0);
+  return (
+    <Sheet visible onClose={onClose}>
+      <Text style={sheetSt.title}>{jar.no}번째 병</Text>
+      <Text style={st.weekBody}>{formatDay(jar.from)} ~ {formatDay(jar.to)} · 구슬 {jar.wins.length}개</Text>
+      <View style={[st.marbles, { marginTop: 12 }]}>
+        {jar.wins.map((w) => <View key={w.id} style={[st.marble, { backgroundColor: CATS[w.category].color }]} />)}
+      </View>
+      <View style={st.catRow}>
+        {byCat.map(([c, n]) => <Text key={c} style={st.catPill}>{CATS[c].prop} {CATS[c].name} {n}</Text>)}
+      </View>
+      <Btn title="닫기" kind="ghost" onPress={onClose} />
+    </Sheet>
+  );
 }
 
 function WeekCard({ start, wins, title }: { start: string; wins: Win[]; title: string }) {
@@ -78,8 +110,10 @@ export default function Jar() {
   const [editCat, setEditCat] = useState<Category>('cheer');
   const [confirmDel, setConfirmDel] = useState(false);
   const [err, setErr] = useState('');
+  const [openJar, setOpenJar] = useState<GlassJar | null>(null);
 
   const today = kstToday();
+  const { shelf, current } = splitJars(wins); // React Compiler가 메모이즈
   const thisWeek = weekStart(today);
   const days = useMemo(() => {
     const m = new Map<string, Win[]>();
@@ -119,9 +153,24 @@ export default function Jar() {
         <H>나의 작은 승리 유리병</H>
         <Sub>지금까지 구슬 {wins.length}개. 구슬은 줄어들지 않아.</Sub>
 
-        <View style={st.jar}>
-          {wins.slice(0, 60).map((w) => <View key={w.id} style={[st.jarMarble, { backgroundColor: CATS[w.category].color }]} />)}
+        <View style={st.jar} accessibilityLabel={`${current.no}번째 병, 구슬 ${current.wins.length}개`}>
+          {current.wins.map((w) => <View key={w.id} style={[st.jarMarble, { backgroundColor: CATS[w.category].color }]} />)}
         </View>
+        {shelf.length > 0 && (
+          <Text style={st.jarCaption}>
+            {current.wins.length === 0 ? `새 병이야. 다음 구슬은 여기에 들어가.` : `${current.no}번째 병`}
+          </Text>
+        )}
+
+        {shelf.length > 0 && (
+          <View style={{ marginBottom: 18 }}>
+            <Text style={st.weekTitle}>선반 · 꽉 찬 병 {shelf.length}개</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.shelf}>
+              {[...shelf].reverse().map((j) => <ShelfJar key={j.no} jar={j} onPress={() => { setOpenJar(j); track('jar_viewed', { no: j.no }); }} />)}
+            </ScrollView>
+            <View style={st.shelfBoard} />
+          </View>
+        )}
 
         <WeekCard start={thisWeek} wins={wins} title="이번 주 유리병" />
         {pastWeeks.length > 0 && (
@@ -172,6 +221,7 @@ export default function Jar() {
           <Btn title="저장" onPress={saveEdit} disabled={!editText.trim()} style={{ flex: 1 }} />
         </View>
       </Sheet>
+      <JarSheet jar={openJar} onClose={() => setOpenJar(null)} />
       <Confirm
         visible={confirmDel} title="이 기록을 지울까?" body="이미 받은 씨앗은 그대로 있어." confirm="지우기" danger
         onConfirm={del} onCancel={() => setConfirmDel(false)}
@@ -182,8 +232,17 @@ export default function Jar() {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, maxWidth: 520, width: '100%', alignSelf: 'center' },
-  jar: { alignSelf: 'center', width: 150, height: 170, borderWidth: 4, borderTopWidth: 10, borderColor: '#d9c9b1', borderTopLeftRadius: 26, borderTopRightRadius: 26, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: '#fffaf2', flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 10, gap: 5, overflow: 'hidden', marginBottom: 18 },
-  jarMarble: { width: 20, height: 20, borderRadius: 10 },
+  jar: { alignSelf: 'center', width: 150, height: 170, borderWidth: 4, borderTopWidth: 10, borderColor: '#d9c9b1', borderTopLeftRadius: 26, borderTopRightRadius: 26, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: '#fffaf2', flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 9, gap: 3, overflow: 'hidden', marginBottom: 8 },
+  // 50개가 다 들어가는 크기 (한 줄 7개 × 8줄)
+  jarMarble: { width: 14, height: 14, borderRadius: 7 },
+  jarCaption: { textAlign: 'center', fontSize: 13, color: C.muted, marginBottom: 18 },
+  shelf: { gap: 12, paddingHorizontal: 6, alignItems: 'flex-end' },
+  shelfBoard: { height: 8, borderRadius: 4, backgroundColor: '#d9c9b1', marginTop: -2 },
+  shelfItem: { alignItems: 'center', width: 64 },
+  lid: { width: 40, height: 9, borderRadius: 3, backgroundColor: '#c9a27a', marginBottom: -1 },
+  miniJar: { width: 54, height: 62, borderWidth: 3, borderColor: '#d9c9b1', borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, backgroundColor: '#fffaf2', flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 3, gap: 1, overflow: 'hidden' },
+  miniMarble: { width: 6, height: 6, borderRadius: 3 },
+  shelfLabel: { fontSize: 11, color: C.muted, marginTop: 4, marginBottom: 6 },
   weekTitle: { fontSize: 13, color: C.muted, fontWeight: '700', marginBottom: 6 },
   weekBig: { fontSize: 18, fontWeight: '800', color: C.ink, marginBottom: 10 },
   weekBody: { fontSize: 15, color: C.ink, lineHeight: 22 },
