@@ -24,50 +24,262 @@ P.update({
     "fruit": (1.0, 0.66, 0.45), "fruit2": (0.98, 0.56, 0.42), "blossom": (1.0, 0.80, 0.85),
     "tent": (0.82, 0.80, 0.90), "tent2": (0.70, 0.66, 0.84), "duck": (1.0, 0.86, 0.35),
     "bird": (0.74, 0.54, 0.38), "bird2": (0.60, 0.42, 0.30), "lamp_glass": (1.0, 0.93, 0.70),
-    "lily": (0.46, 0.74, 0.50),
+    "lily": (0.46, 0.74, 0.50), "lime": (0.66, 0.82, 0.46), "red": (0.92, 0.38, 0.36),
 })
 
-# ------------------------------------------------------------------ layout (world units, hippo height 1; x right, y back)
-TREE = (-1.25, 1.3)
-POND = (0.5, 0.42); POND_R = (0.55, 0.36)
-SPOT = {   # item anchors (footprint centre on the ground)
-    "mailbox": (-0.62, 1.95), "tent": (0.3, 1.9), "bench": (-0.35, 1.1), "bird_feeder": (0.92, 1.05),
-    "hammock": (-0.95, 0.32), "duck_float": (0.78, 0.47), "pinwheel": (1.28, -0.42),
-    "picnic_mat": (-0.25, -0.5), "flower_bed": (0.8, -0.62), "garden_lamp": (-1.0, -0.42),
+# ------------------------------------------------------------------ world canvas (2026-11-10: portrait viewport + zones)
+# The yard is one big pre-rendered canvas; the app shows a 1080-px-wide window of it (card down to the tab bar,
+# ≈1080×1860) and moves that window with the pet. Canvas px are the shared coordinate system for everything
+# (items, walk data, zones). Zone 1's top-left = canvas (0,0); the old square framing = canvas (0,0)-(1080,1080).
+PPU = 400                                   # px per world unit (same hippo size as room/garden)
+CANVAS = (2160, 3100)
+ZONES = {   # rect = (x, y, w, h) in canvas px
+    1: {"rect": (0, 0, 1080, 1860), "price": 0, "name_ko": "집 앞마당", "note": "free when the yard opens"},
+    2: {"rect": (1080, 0, 1080, 1860), "price": 60, "name_ko": "개울가", "note": "bought with seeds; its items ship with update 2"},
+    3: {"rect": (0, 1860, 1080, 1240), "price": 120, "name_ko": "꽃언덕 숲길", "note": "bought with seeds; its items ship with a later update"},
+    4: {"rect": (1080, 1860, 1080, 1240), "price": None, "name_ko": "숲", "note": "scenery only (not walkable, not for sale yet)"},
 }
-HIPPO = (-0.2, 0.45)       # default standing spot (also where the app spawns the pet)
+_D = Vector((0.35, -1, ELEV)).normalized()          # target -> camera
+RX = Vector((1, 0.35, 0)).normalized()              # screen right
+UP = RX.cross(-_D).normalized()                     # screen up
+
+
+def px(p):
+    """world -> canvas px (exact for the ortho camera)"""
+    d = Vector(p) - TARGET
+    return (540 + PPU * d.dot(RX), 540 - PPU * d.dot(UP))
+
+
+def ground(X, Y, z=FLOOR):
+    """canvas px -> world point on the plane z"""
+    a, b = PPU * RX.x, PPU * RX.y
+    c, d = -PPU * UP.x, -PPU * UP.y
+    A = X - 540 - PPU * (RX.z * (z - TARGET.z))
+    B = Y - 540 + PPU * (UP.z * (z - TARGET.z))
+    det = a * d - b * c
+    dx, dy = (A * d - b * B) / det, (a * B - c * A) / det
+    return (TARGET.x + dx, TARGET.y + dy)
+
+
+# ------------------------------------------------------------------ zone 1 layout (canvas px of each footprint centre)
+TREE_PX = (215, 790)
+POND_PX = (700, 1095); POND_R = (0.55, 0.36)
+SPOT_PX = {
+    "mailbox": (300, 585), "tent": (770, 640), "bench": (480, 860), "bird_feeder": (960, 900),
+    "hammock": (250, 1180), "picnic_mat": (430, 1440), "flower_bed": (790, 1470), "garden_lamp": (110, 1560),
+    "pinwheel": (1000, 1290),
+}
+HIPPO_PX = (600, 1300)          # on the path, clear of the hammock post
+TREE = ground(*TREE_PX)
+POND = ground(*POND_PX)
+SPOT = {k: ground(*v) for k, v in SPOT_PX.items()}
+SPOT["duck_float"] = (POND[0] + 0.28, POND[1] + 0.05)
+HIPPO = ground(*HIPPO_PX)       # default standing spot (also where the app spawns the pet)
+HEDGE_Y = 470                   # back hedge row (screen-horizontal line)
+GATE2 = (1085, 1265)            # zone 1 <-> 2 gate (path crossing)
+GATE3 = (560, 1850)             # zone 1 <-> 3 gate
+STREAM = [(1730, 430), (1660, 760), (1780, 1080), (1640, 1420), (1520, 1860), (1470, 2300), (1530, 2800), (1480, 3250)]
+STREAM_R = 0.3
+STONES2 = [(1460, 1262), (1560, 1268), (1650, 1262), (1745, 1270), (1850, 1262)]   # path across the stream
+WILLOW_PX = (1985, 760)
+HILL_PX = (700, 2330); HILL_R = (1.05, 0.7)
+FOREST3 = [(50, 2000), (30, 2330), (60, 2660), (110, 3000), (380, 3160), (660, 3140), (930, 3170)]
+
+
+def _catmull(pts, n=10):
+    out = []
+    P_ = [pts[0]] + pts + [pts[-1]]
+    for i in range(1, len(P_) - 2):
+        p0, p1, p2, p3 = P_[i - 1], P_[i], P_[i + 1], P_[i + 2]
+        for k in range(n):
+            t = k / n
+            out.append(tuple(0.5 * ((2 * p1[j]) + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t * t
+                                    + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t ** 3) for j in range(2)))
+    out.append(pts[-1])
+    return out
+
+
+STREAM_PTS = _catmull(STREAM, 12)
+PATH1 = [(-40, 1300), (120, 1270), (300, 1240), (470, 1225), (640, 1255), (800, 1275), (960, 1268), (1085, 1265)]
+PATH1B = [(640, 1255), (600, 1420), (610, 1600), (570, 1760), (560, 1850)]
+PATH3 = [(560, 1850), (520, 2050), (420, 2300), (330, 2560), (290, 2800), (250, 3150)]
+
+
+def ground_poly(name, pts_px, mat, z=FLOOR):
+    bm = bmesh.new()
+    vs = [bm.verts.new((*ground(*q, z), z)) for q in pts_px]
+    bm.faces.new(vs)
+    return _link(bm, name, mat, weighted=False)
+
+
+def round_tree(name, X, Y, s=1.0, cols=("hedge", "leafd"), rnd=None):
+    x, y = ground(X, Y)
+    h = 0.35 * s
+    parts = [cyl(f"{name}T", 0.06 * s, h, (x, y, FLOOR + h / 2), M("wood2"), r2=0.045 * s, bevel=0.2)]
+    for k, (dx, dz, r) in enumerate(((0, 0.3, 0.36), (-0.24, 0.12, 0.26), (0.24, 0.14, 0.26), (0.02, 0.5, 0.24))):
+        parts.append(sph(f"{name}C{k}", r * s, (x + dx * s, y, FLOOR + h + dz * s), M(cols[k % 2], 0.85), (1, 0.9, 0.95)))
+    return parts
 
 
 # ------------------------------------------------------------------ base (free)
-def background():
-    parts = [rbox("Grass", (12, 6.2, 0.1), (0, -0.7, FLOOR - 0.05), M("grass", 0.9), r=0.02)]
-    if os.environ.get("VIEW_H"):          # portrait mock (viewport down to the tab bar): grass reaches further front
-        parts.append(rbox("GrassFront", (12, 6.0, 0.1), (0, -6.5, FLOOR - 0.05), M("grass", 0.9), r=0.02))
+def background(zones=(1, 2, 3, 4)):
+    W, H = CANVAS
+    grass = ground_poly("Grass", [(-400, HEDGE_Y - 10), (W + 600, HEDGE_Y - 10), (W + 600, H + 500), (-400, H + 500)], M("grass", 0.9))
+    parts = [grass]
     rnd = random.Random(7)
-    for k in range(40):
-        gx, gy = rnd.uniform(-2.4, 2.2), rnd.uniform(-1.6, 2.3)
-        if ((gx - POND[0]) / (POND_R[0] + 0.15)) ** 2 + ((gy - POND[1]) / (POND_R[1] + 0.15)) ** 2 < 1: continue
-        if any(abs(gx - sx) < 0.45 and abs(gy - sy) < 0.35 for sx, sy in SPOT.values()): continue
+    def free(X, Y):
+        if ((X - POND_PX[0]) / 260) ** 2 + ((Y - POND_PX[1]) / 110) ** 2 < 1: return False
+        if any(abs(X - a) < 150 and abs(Y - b) < 90 for a, b in SPOT_PX.values()): return False
+        if min((X - a) ** 2 + (Y - b) ** 2 for a, b in STREAM_PTS) < 150 ** 2: return False
+        if ((X - HILL_PX[0]) / 430) ** 2 + ((Y - HILL_PX[1]) / 140) ** 2 < 1: return False
+        if X > 1080 and Y > 1900: return False
+        return True
+    for k in range(260):
+        X, Y = rnd.uniform(0, W), rnd.uniform(HEDGE_Y + 70, H - 40)
+        if not free(X, Y): continue
+        gx, gy = ground(X, Y)
         if k % 3 == 0:
             parts.append(sph(f"Fl{k}", 0.018, (gx, gy, FLOOR + 0.012), M(rnd.choice(["petal_w", "pink", "sun_y"]), 0.7), (1, 1, 0.6)))
         else:
             parts.append(sph(f"Tuft{k}", 0.04, (gx, gy, FLOOR), M("grass2", 0.9), (1.3, 0.8, 0.45)))
-    # back hedge row + round trees behind (same language as the garden, no picket fence: the yard is open)
-    hy = 2.3
-    for k in range(10):
-        x = -3.4 + k * 0.78
-        parts.append(sph(f"Hedge{k}", 0.46, (x, hy, FLOOR + 0.3), M("hedge" if k % 2 else "hedge2", 0.85), (1.2, 0.8, 1.0)))
-    # the yard is open to the sky (night stars/moon read there): only two low round trees peek over the hedge
-    for k, (x, s) in enumerate(((0.95, 0.42), (2.0, 0.5))):
-        parts.append(sph(f"Crown{k}", s, (x, hy + 0.55, FLOOR + 0.62 + s * 0.4), M("leafd" if k % 2 else "hedge", 0.85), (1.1, 0.85, 0.9)))
-    # stepping-stone path from the left edge (the way from the room) into the middle
-    for k, (sx, sy) in enumerate(((-1.85, -0.25), (-1.5, -0.18), (-1.15, -0.08), (-0.8, -0.05), (-0.48, 0.0))):
-        parts.append(sph(f"Stone{k}", 0.1, (sx, sy, FLOOR), M("pebble", 0.85), (1.3, 1.0, 0.22)))
+    # back hedge row along the whole top + a few round trees peeking over it (sky stays open for the night)
+    for k, X in enumerate(range(-160, W + 300, 290)):
+        x, y = ground(X, HEDGE_Y)
+        parts.append(sph(f"Hedge{k}", 0.46, (x, y, FLOOR + 0.3), M("hedge" if k % 2 else "hedge2", 0.85), (1.2, 0.8, 1.0)))
+    for k, (X, s) in enumerate(((870, 0.42), (1300, 0.5), (2080, 0.46))):
+        x, y = ground(X, HEDGE_Y - 150)
+        parts.append(sph(f"Crown{k}", s, (x, y, FLOOR + 0.62 + s * 0.4), M("leafd" if k % 2 else "hedge", 0.85), (1.1, 0.85, 0.9)))
+    # stepping-stone paths (from the room on the left -> home -> zone 2 gate; branch down to the zone 3 gate)
+    k = 0
+    for path, step in ((PATH1, 120), (PATH1B, 125)):
+        pts = _catmull(path, 20)
+        acc, last = 0, None
+        for q in pts:
+            if last is not None:
+                acc += math.dist(q, last)
+            last = q
+            if acc >= step or k == 0:
+                acc = 0; x, y = ground(*q)
+                parts.append(sph(f"Stone{k}", 0.1, (x, y, FLOOR), M("pebble", 0.85), (1.3, 1.0, 0.22))); k += 1
     parts += pond()
+    if 2 in zones: parts += zone2_base()
+    if 3 in zones: parts += zone3_base()
+    if 4 in zones: parts += zone4_base()
     for o in parts:
-        if o.name.startswith(("Grass", "Pond")):
+        if o.name.startswith(("Grass", "Pond", "Stream", "Bank", "Dirt", "Hill")):
             o.visible_shadow = False
     return group("YardBase", parts)
+
+
+def zone2_base():
+    """개울가: a stream from under the back hedge down into the forest, stepping stones, willow, reeds, rocks"""
+    parts = []
+    for i, q in enumerate(STREAM_PTS):
+        x, y = ground(*q)
+        b = cyl(f"Bank{i}", 1.0, 0.02, (x, y, FLOOR + 0.003), M("sand", 0.9), bevel=0.4); b.scale = (STREAM_R + 0.1, STREAM_R * 0.8 + 0.08, 1)
+        w = cyl(f"StreamW{i}", 1.0, 0.02, (x, y, FLOOR + 0.012), M("water", 0.35), bevel=0.4); w.scale = (STREAM_R, STREAM_R * 0.8, 1)
+        parts += [b, w]
+        if i % 3 == 1:
+            x2, y2 = ground(q[0] + 25, q[1] + 6)
+            d = cyl(f"StreamD{i}", 1.0, 0.02, (x2, y2, FLOOR + 0.014), M("water2", 0.35), bevel=0.4); d.scale = (STREAM_R * 0.45, STREAM_R * 0.3, 1)
+            parts.append(d)
+    for k, q in enumerate(STONES2):
+        x, y = ground(*q)
+        parts.append(sph(f"SStone{k}", 0.13, (x, y, FLOOR + 0.02), M("pebble", 0.85), (1.25, 1.0, 0.35)))
+    rnd = random.Random(11)
+    for k in range(26):                 # reeds / cattails / rocks along the banks
+        q = STREAM_PTS[rnd.randrange(4, len(STREAM_PTS) - 30)]
+        side = rnd.choice((-1, 1))
+        X, Y = q[0] + side * rnd.uniform(150, 190), q[1] + rnd.uniform(-20, 20)
+        if abs(Y - 1265) < 70: continue
+        x, y = ground(X, Y)
+        if k % 3 == 0:
+            parts.append(sph(f"Rock{k}", rnd.uniform(0.06, 0.1), (x, y, FLOOR + 0.02), M("pebble", 0.85), (1.3, 1.0, 0.6)))
+        else:
+            for j in range(3):
+                h = rnd.uniform(0.16, 0.28)
+                parts.append(cyl(f"Reed{k}_{j}", 0.008, h, (x + j * 0.025 - 0.025, y, FLOOR + h / 2), M("leafd", 0.8), bevel=0))
+                if j == 1 and k % 2:
+                    parts.append(sph(f"Cat{k}", 0.018, (x, y, FLOOR + h + 0.01), M("brown", 0.7), (1, 1, 2.4)))
+    # willow: trunk + round crown + hanging fronds
+    x, y = ground(*WILLOW_PX)
+    parts.append(cyl("WilT", 0.08, 0.5, (x, y, FLOOR + 0.25), M("wood2"), r2=0.06, bevel=0.2))
+    parts.append(sph("WilC", 0.42, (x, y, FLOOR + 0.82), M("lime", 0.85), (1.15, 1.0, 0.75)))
+    for k in range(9):
+        a = math.radians(-160 + k * 20)
+        fx, fy = x + math.cos(a) * 0.38, y + math.sin(a) * 0.2 - 0.05
+        parts.append(sph(f"WilF{k}", 0.07, (fx, fy, FLOOR + 0.6), M("lime" if k % 2 else "leaf", 0.85), (0.8, 0.6, 3.0)))
+    # flowers on the far bank
+    for k, (X, Y) in enumerate(((1250, 700), (1300, 1550), (2050, 1450), (1960, 1650), (1230, 980))):
+        x, y = ground(X, Y)
+        for j in range(4):
+            parts.append(sph(f"BkFl{k}_{j}", 0.025, (x + (j % 2) * 0.06, y + (j // 2) * 0.05, FLOOR + 0.02), M(("pink", "lemon", "petal_w", "lav")[j], 0.7), (1, 1, 0.7)))
+    return parts
+
+
+def zone3_base():
+    """꽃언덕 숲길: a low flower hill, a dirt path into the trees, mushrooms"""
+    parts = []
+    x, y = ground(*HILL_PX)
+    parts.append(sph("Hill", 1.0, (x, y, FLOOR - 0.2), M("grass2", 0.9), (HILL_R[0], HILL_R[1], 0.42)))
+    rnd = random.Random(5)
+    for k in range(70):
+        a = rnd.uniform(0, math.tau); rr = math.sqrt(rnd.uniform(0, 0.85))
+        fx, fy = x + math.cos(a) * rr * HILL_R[0], y + math.sin(a) * rr * HILL_R[1]
+        z = FLOOR - 0.2 + 0.42 * math.sqrt(max(0, 1 - rr * rr))
+        parts.append(sph(f"HillFl{k}", 0.026, (fx, fy, z + 0.012), M(rnd.choice(["pink", "lemon", "petal_w", "lav", "sun_y"]), 0.7), (1, 1, 0.6)))
+    for i, q in enumerate(_catmull(PATH3, 10)):
+        px_, py_ = ground(*q)
+        d = cyl(f"Dirt{i}", 1.0, 0.012, (px_, py_, FLOOR + 0.004), M("sand", 0.95), bevel=0.4); d.scale = (0.2, 0.15, 1); parts.append(d)
+    for k, (X, Y) in enumerate(FOREST3):
+        parts += round_tree(f"F3T{k}", X, Y, 0.85 + (k % 3) * 0.1, ("hedge", "leafd") if k % 2 else ("leafd", "hedge2"))
+    for k, (X, Y) in enumerate(((180, 2150), (230, 2480), (860, 2750), (150, 2830))):
+        mx, my = ground(X, Y)
+        parts.append(cyl(f"MushS{k}", 0.018, 0.05, (mx, my, FLOOR + 0.025), M("off", 0.8), bevel=0))
+        parts.append(sph(f"MushC{k}", 0.04, (mx, my, FLOOR + 0.055), M("red", 0.6), (1, 1, 0.6)))
+    return parts
+
+
+def zone4_base():
+    parts = []
+    rnd = random.Random(9)
+    for k, (X, Y) in enumerate([(1290 + c * 200 + (r % 2) * 95 + rnd.uniform(-25, 25), 2160 + r * 250 + rnd.uniform(-25, 25))
+                                for r in range(5) for c in range(5)]):
+        if min(abs(X - qx) + abs(Y - qy) for qx, qy in STREAM_PTS) < 110: continue
+        parts += round_tree(f"F4T{k}", X, Y, 0.78 + (k % 3) * 0.1, ("hedge", "leafd") if k % 2 else ("leafd", "hedge2"))
+    return parts
+
+
+def fence(name, a_px, b_px, gate_px):
+    """low wooden fence between two canvas points with a closed gate at gate_px (drawn only while the zone is locked)"""
+    parts = []
+    A, B = Vector((*ground(*a_px), 0)), Vector((*ground(*b_px), 0)); G_ = Vector((*ground(*gate_px), 0))
+    L = (B - A).length; dirv = (B - A).normalized()
+    ang = math.atan2(dirv.y, dirv.x)
+    n = int(L / 0.32)
+    tg = (G_ - A).dot(dirv)
+    for i in range(n + 1):
+        t = i * L / n
+        if abs(t - tg) < 0.22: continue
+        p = A + dirv * t
+        parts.append(rbox(f"{name}Post{i}", (0.05, 0.05, 0.24), (p.x, p.y, FLOOR + 0.12), M("wood", 0.8), r=0.012))
+    for t0, t1 in ((0, tg - 0.24), (tg + 0.24, L)):
+        if t1 - t0 < 0.05: continue
+        c = A + dirv * ((t0 + t1) / 2)
+        for h in (0.08, 0.17):
+            rail = rbox(f"{name}Rail{t0:.1f}{h}", (t1 - t0, 0.025, 0.035), (c.x, c.y, FLOOR + h), M("wood", 0.8), r=0.008)
+            rail.rotation_euler = (0, 0, ang); parts.append(rail)
+    # gate: two posts + a little arch board, door closed
+    for s in (-1, 1):
+        p = G_ + dirv * (s * 0.22)
+        parts.append(rbox(f"{name}GP{s}", (0.06, 0.06, 0.32), (p.x, p.y, FLOOR + 0.16), M("wood2", 0.8), r=0.015))
+    door = rbox(f"{name}Door", (0.38, 0.03, 0.2), (G_.x, G_.y, FLOOR + 0.12), M("wood", 0.8), r=0.01); door.rotation_euler = (0, 0, ang); parts.append(door)
+    knob = sph(f"{name}Knob", 0.018, (G_.x, G_.y - 0.03, FLOOR + 0.14), M("yellow", 0.5)); parts.append(knob)
+    return group(name, parts)
+
+
+LOCKS = {2: lambda: fence("Lock2", (1092, HEDGE_Y + 40), (1092, 1860), GATE2),
+         3: lambda: fence("Lock3", (0, 1852), (1080, 1852), GATE3)}
 
 
 def pond():
@@ -419,6 +631,18 @@ def place_cam(sc, cam):
     cam.rotation_euler = (TARGET - cam.location).to_track_quat("-Z", "Y").to_euler()
 
 
+def place_cam_rect(sc, cam, rect):
+    """frame the canvas rect (x, y, w, h) px exactly: resolution = w×h, same 400 px/unit"""
+    x, y, w, h = rect
+    sc.render.resolution_x, sc.render.resolution_y = int(w), int(h)
+    cam.data.ortho_scale = max(w, h) / PPU
+    place_cam(sc, cam)
+    cx, cy = x + w / 2 - 540, y + h / 2 - 540          # canvas offset from TARGET's px
+    cam.location = TARGET + cam_dir() * 40 + RX * (cx / PPU) - UP * (cy / PPU)   # far back: the front of zone 3 is >12 units nearer
+    cam.data.clip_end = 200
+    bpy.context.view_layer.update()
+
+
 if __name__ == "__main__":
     argv = sys.argv[sys.argv.index("--") + 1:]
     mode = argv[0]
@@ -427,13 +651,12 @@ if __name__ == "__main__":
         out = argv[1]
         ids = argv[2:] or ["all"]
         ids = list(ITEMS) if ids == ["all"] else ([] if ids == ["none"] else ids)
-        vh = int(os.environ.get("VIEW_H", "1080"))
-        sc, cam = setup_render(1080, vh, ORTHO * max(1, vh / 1080)); place_cam(sc, cam)
-        if vh > 1080:                      # keep the top edge, extend the frame downward (screen-up = camera +Y)
-            up = cam.matrix_world.to_quaternion() @ Vector((0, 1, 0))
-            cam.location -= up * ((vh - 1080) / 2 / (1080 / ORTHO))
+        rect = [int(v) for v in os.environ.get("RECT", "0,0,1080,1860").split(",")]
+        sc, cam = setup_render(1080, 1080, ORTHO); place_cam_rect(sc, cam, rect)
         sc.frame_set(1)
         background()
+        for z in os.environ.get("LOCKS", "").split(","):
+            if z: LOCKS[int(z)]()
         st = int(os.environ.get("TREE", "4")); memory_tree(st)
         if os.environ.get("FRUITS", "1") == "1" and st > 1: memory_fruits(st)
         for i in ids:

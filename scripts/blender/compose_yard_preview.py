@@ -1,6 +1,7 @@
 # Compose the yard from the export exactly as the app would (manifest draw rules): day | night, all items owned,
 # tree stage 4 + fruits, bed flowers, guests, pet at home (25° garden idle poster). Optional walk-area overlay.
-# usage: blender -b --python scripts/blender/compose_yard_preview.py -- <export_dir> <character_export_dir> <out.png> [walk] [tree_stage]
+# usage: blender -b --python scripts/blender/compose_yard_preview.py -- <export_dir> <character_export_dir> <out.png> [walk] [map] [own=1,2] [tree_stage]
+#   default: day | night viewports (1080 x 1860, camera rule from the manifest) ; map: the whole canvas (day)
 import bpy, json, os, sys
 import numpy as np
 
@@ -8,6 +9,9 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 D, CH, OUT = [os.path.abspath(a) for a in argv[:3]]
 SHOW_WALK = "walk" in argv[3:]
 STAGE = int(next((a for a in argv[3:] if a.isdigit()), "4"))
+MAP = "map" in argv[3:]
+OWN = [z for a in argv[3:] if a.startswith("own=") for z in a[4:].split(",")] or ["1"]
+VIEW_H = 1860
 Y = json.load(open(os.path.join(D, "manifest.json")))["spaces"]["yard"]
 
 
@@ -41,7 +45,12 @@ def poly_mask(poly, shape):
 
 
 def compose(night):
-    c = load(os.path.join(D, Y["background_night" if night else "background"]))
+    CW, CH_ = Y["canvas"]
+    c = np.zeros((CH_, CW, 4), dtype=np.float32)
+    for t in Y["tiles"]:
+        L = load(os.path.join(D, t["night_file" if night else "file"])); c[t["y"]:t["y"] + t["h"], t["x"]:t["x"] + t["w"]] = L
+    for z, lk in Y["locks"].items():
+        if z not in OWN: over(c, load(os.path.join(D, lk["file"])), lk["x"], lk["y"])
     items = {e["id"]: e for e in Y["items"]}
     walk = Y["walk"]; pr = walk["pet"]
     fx, fy = walk["home"]
@@ -77,8 +86,11 @@ def compose(night):
         for e in lit:
             over(c, load(os.path.join(D, e["night_file"])), e["x"], e["y"])
     if SHOW_WALK:
-        area = poly_mask(walk["area"], c.shape[:2])
-        blk = np.zeros_like(area)
+        area = np.zeros(c.shape[:2], dtype=bool); blk = np.zeros_like(area)
+        for z, Z in walk["zones"].items():
+            if Z["area"] is None or z not in OWN: continue
+            area |= poly_mask(Z["area"], c.shape[:2])
+            for p in Z["blocked"].values(): blk |= poly_mask(p, c.shape[:2])
         for p in list(walk["blocked"].values()) + list(walk["item_blocked"].values()):
             blk |= poly_mask(p, c.shape[:2])
         ok = area & ~blk
@@ -87,10 +99,25 @@ def compose(night):
         for it in walk["interact"].values():
             x, y = [int(v) for v in it["stand"]]
             c[max(0, y - 6):y + 6, max(0, x - 6):x + 6, :3] = [1, 1, 0]
-    return c
+    if MAP:
+        return c
+    # camera: centre on the pet, clamp to owned zones (+ peek into locked neighbours)
+    cam = Y["camera"]; peek = cam["peek"]; zs = walk["zones"]
+    rs = [zs[z]["rect"] for z in OWN]
+    x0, y0 = min(r[0] for r in rs), min(r[1] for r in rs)
+    x1, y1 = max(r[0] + r[2] for r in rs), max(r[1] + r[3] for r in rs)
+    for z, Z in zs.items():
+        if z in OWN or Z["price"] is None: continue
+        rx, ry, rw, rh = Z["rect"]
+        if rx == x1: x1 += peek
+        if ry == y1: y1 += peek
+    cx = fx + pr["feet_to_center"][0]; cy = fy + pr["feet_to_center"][1]
+    vx = int(min(max(cx - 540, x0), max(x0, x1 - 1080)))
+    vy = int(min(max(cy - VIEW_H / 2, y0), max(y0, y1 - VIEW_H)))
+    return c[vy:vy + VIEW_H, vx:vx + 1080]
 
 
-out = np.concatenate([compose(False), compose(True)], axis=1)
+out = compose(False) if MAP else np.concatenate([compose(False), compose(True)], axis=1)
 im = bpy.data.images.new("o", out.shape[1], out.shape[0], alpha=True)
 out[..., 3] = 1
 im.pixels[:] = np.ascontiguousarray(out[::-1]).ravel()

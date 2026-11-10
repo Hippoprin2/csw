@@ -134,7 +134,7 @@ def crop_bbox(L, pad=3):
 
 def project(p):
     v = world_to_camera_view(sc, cam, Vector(p))
-    return round(v.x * SIZE, 1), round((1 - v.y) * SIZE, 1)
+    return round(v.x * sc.render.resolution_x, 1), round((1 - v.y) * sc.render.resolution_y, 1)
 
 
 def hide(objs, flag=True):
@@ -345,6 +345,8 @@ def garden_walk():
 
 # ------------------------------------------------------------------ yard
 YARD_NIGHT_OVERLAY = [26, 34, 80, 0.38]
+YARD_TILE = 1080
+YARD_PEEK = 260                      # camera may look this far into a neighbouring locked zone (see the fence + scenery)
 YARD_GROUND = ("picnic_mat",)        # flat: drawn under everything that sorts by y (pet sits on it)
 
 
@@ -353,15 +355,15 @@ def night_sky(B):
     the app lays the night overlay over everything)"""
     Bn = B.copy()
     a = Bn[..., 3:4]
-    h = SIZE
-    t = (np.arange(h, dtype=np.float32) / h)[:, None, None]
+    h, W = Bn.shape[:2]
+    t = (np.arange(h, dtype=np.float32) / 1080)[:, None, None]
     top, bot = np.array([0.16, 0.20, 0.42]), np.array([0.36, 0.40, 0.66])
     sky = top + (bot - top) * np.clip(t / 0.35, 0, 1)
-    sky = np.broadcast_to(sky, (h, SIZE, 3)).copy()
+    sky = np.broadcast_to(sky, (h, W, 3)).copy()
     rng = np.random.default_rng(3)
-    yy, xx = np.mgrid[0:h, 0:SIZE]
-    for _ in range(46):
-        sx, sy, r = rng.uniform(0, SIZE), rng.uniform(0, 260), rng.uniform(1.6, 3.4)
+    yy, xx = np.mgrid[0:h, 0:W]
+    for _ in range(int(46 * W / 1080)):
+        sx, sy, r = rng.uniform(0, W), rng.uniform(0, 260), rng.uniform(1.6, 3.4)
         d = np.sqrt((xx - sx) ** 2 + (yy - sy) ** 2)
         sky += np.clip(1 - d / r, 0, 1)[..., None] * np.array([1.0, 0.97, 0.85]) * 0.9
     mx, my, mr = 860, 110, 46            # crescent moon
@@ -386,20 +388,45 @@ def add_glow(L, cx, cy, r, col=(1.0, 0.86, 0.5), strength=0.55):
 
 def export_yard():
     global sc, cam
+    # Canvas = the whole yard (all zones), px = canvas px (Y.px). Background is rendered once for the full canvas
+    # and cut into 1080-px tiles; items (all in zone 1) are rendered with the camera on the zone 1 rect, which starts
+    # at canvas (0,0), so render px == canvas px for every pass.
     sc, cam = R.setup_render(SIZE, SIZE, Y.ORTHO)
-    Y.place_cam(sc, cam)
     sc.frame_set(1); hide(HIPPO_OBJS)
-    bpy.context.view_layer.update()
     d = os.path.join(OUT, "yard"); os.makedirs(d, exist_ok=True)
-    ppu = SIZE / Y.ORTHO
+    for f in os.listdir(d):
+        if f.endswith(".png"): os.remove(os.path.join(d, f))
+    ppu = Y.PPU
     bg = Y.background(); bg_objs = meshes(bg)
     sky = np.array([0xCD, 0xE8, 0xF5], dtype=np.float32) / 255.0
+    CW, CH = Y.CANVAS
+    Y.place_cam_rect(sc, cam, (0, 0, CW, CH))
     B = render(os.path.join(TMP, "yard_B.png"))
     Bo = B.copy(); a = Bo[..., 3:4]
     Bo[..., :3] = Bo[..., :3] * a + sky * (1 - a); Bo[..., 3] = 1.0
-    save_png(Bo, os.path.join(d, "background.png"))
-    save_png(night_sky(B), os.path.join(d, "background_night.png"))
+    Bn = night_sky(B)
+    tiles = []
+    for ty in range(0, CH, YARD_TILE):
+        for tx in range(0, CW, YARD_TILE):
+            w_, h_ = min(YARD_TILE, CW - tx), min(YARD_TILE, CH - ty)
+            nm = f"bg_{ty // YARD_TILE}_{tx // YARD_TILE}"
+            save_png(Bo[ty:ty + h_, tx:tx + w_], os.path.join(d, nm + ".png"))
+            save_png(Bn[ty:ty + h_, tx:tx + w_], os.path.join(d, nm + "_night.png"))
+            tiles.append({"file": f"yard/{nm}.png", "night_file": f"yard/{nm}_night.png", "x": tx, "y": ty, "w": w_, "h": h_})
+    save_png(Bo[::4, ::4], os.path.join(TMP, "yard_full_small.png"))
     only = os.environ.get("ONLY", "").split(",") if os.environ.get("ONLY") else None
+
+    # ---- locked-zone fences (drawn only while that zone is not bought), full-canvas camera
+    locks = {}
+    for z, mk in Y.LOCKS.items():
+        g = mk()
+        hide(bg_objs); I = render(os.path.join(TMP, "I.png")); hide(bg_objs, False)
+        L = layer(I, shadow_pass(os.path.join(TMP, "S.png"), bg_objs, meshes(g))); remove(g)
+        x, y, w, h = crop_bbox(L)
+        save_png(L[y:y + h, x:x + w], os.path.join(d, f"lock_{z}.png"))
+        locks[z] = {"file": f"yard/lock_{z}.png", "x": int(x), "y": int(y), "w": int(w), "h": int(h)}
+        print("YARD lock", z, x, y, w, h)
+    Y.place_cam_rect(sc, cam, Y.ZONES[1]["rect"])
 
     def shoot(name, g, union=None, glow=None):
         hide(bg_objs); I = render(os.path.join(TMP, "I.png")); hide(bg_objs, False)
@@ -525,15 +552,57 @@ def export_yard():
     interact["tree"] = {"stand": [round(c, 1) for c in ground_px(Y.TREE[0] + 0.3, Y.TREE[1] - 0.3)], "face": "back",
                         "action": "show_fruit", "note": "free. tap a fruit -> pet walks here, then the memory card opens"}
     hippo_home = [round(c, 1) for c in ground_px(*Y.HIPPO)]
-    walk = {"area": walk_area(-1.2, 1.55, 110, 0, SIZE * 5 / 6), "blocked": blocked, "item_blocked": item_blocked,
+    # per-zone walkable polygons (canvas px, feet positions). Neighbouring zones share an edge, so the union of the
+    # owned zones is one connected area. The stream is blocked except at the stepping stones.
+    TOP = Y.HEDGE_Y + 170
+    def band(pts, half, y0, y1):
+        seg = [q for q in pts if y0 <= q[1] <= y1]
+        return [[round(x - half, 1), round(y, 1)] for x, y in seg] + [[round(x + half, 1), round(y, 1)] for x, y in reversed(seg)]
+    sy = Y.STONES2[0][1]
+    zones = {}
+    for z, Z in Y.ZONES.items():
+        x, y, w, h = Z["rect"]
+        e = {"rect": [x, y, w, h], "price": Z["price"], "name_ko": Z["name_ko"], "note": Z["note"]}
+        if z == 1:
+            # bottom-left corner left out: the crown of a zone-3 tree (baked into the background) reaches up there
+            e["area"] = [[50, TOP], [1080, TOP], [1080, 1860], [230, 1860], [230, 1700], [50, 1700]]
+            e["blocked"] = {}
+        elif z == 2:
+            e["area"] = [[1080, TOP], [2110, TOP], [2110, 1720], [1080, 1720]]     # stops above the zone-4 forest crowns
+            e["blocked"] = {"stream_upper": band(Y.STREAM_PTS, 135, 0, sy - 45), "stream_lower": band(Y.STREAM_PTS, 135, sy + 45, 1900),
+                            "willow": [[round(c, 1) for c in q] for q in ellipse_px(*Y.ground(*Y.WILLOW_PX), 0.2, 0.14)]}
+            e["gate"] = list(Y.GATE2)
+        elif z == 3:
+            e["area"] = [[230, 1860], [1000, 1860], [1000, 2600], [230, 2600]]     # front tree row is baked in: keep the pet behind it
+            e["blocked"] = {f"tree_{k}": ellipse_px(*Y.ground(*q), 0.18, 0.13) for k, q in enumerate(Y.FOREST3)}
+            e["gate"] = list(Y.GATE3)
+        else:
+            e["area"] = None
+        zones[str(z)] = e
+    # background trees are baked into the tiles (not sorted), so every walk area stays where nothing baked is in front of the pet
+    walk = {"zones": zones, "blocked": blocked, "item_blocked": item_blocked,
             "interact": interact, "home": hippo_home, "pet": feet_rule(ppu),
-            "rules": "walkable = inside `area` and outside `blocked` and outside item_blocked[id] for owned items. "
-                     "area already excludes the front 1/6 (buttons) and 0.3 in front of the hedge. "
-                     "Loop: idle 4-8 s -> walk to a random walkable point -> every 3rd time go to a random owned interact[id] "
-                     "(pond/tree are free) and play its action 5-10 s. Tap -> stop and walk to the tapped point "
-                     "(nearest walkable point if outside). interact stand points may lie inside item_blocked (the pet takes the last step in). Walk speed ~ 0.6 unit/s = ppu*0.6 px/s. 4 directions = 3 clips (left = right mirrored)."}
+            "rules": "walkable = inside the `area` of any OWNED zone, outside `blocked` (all zones) and that zone's blocked, "
+                     "outside item_blocked[id] for owned items. Keep feet >= 70 px away from an edge shared with a LOCKED zone "
+                     "(the fence stands there). "
+                     "Loop: idle 4-8 s -> walk to a random walkable point (usually in the zone the camera shows) -> every 3rd time go to "
+                     "a random owned interact[id] (pond/tree are free) and play its action 5-10 s. Tap -> stop and walk to the tapped point "
+                     "(nearest walkable point if outside). Tap on a locked zone / its gate -> zone purchase sheet. "
+                     "interact stand points may lie inside item_blocked (the pet takes the last step in). "
+                     "Walk speed ~ 0.6 unit/s = ppu*0.6 px/s. 4 directions = 3 clips (left = right mirrored)."}
+    camera = {
+        "viewport": "card width = 1080 canvas px; height = card height * 1080 / card width (≈1860 on iPhone 15, card from below "
+                    "the space tabs to just above the tab bar)",
+        "follow": "centre the viewport on the pet (feet + feet_to_center) with a soft follow (lerp ~0.12/frame, dead-zone 120 px)",
+        "drag": "finger drag pans freely; after release wait 3 s, then glide back to the pet (~0.6 s ease-out). "
+                "Tap = pet walks there (tap and drag never conflict)",
+        "bounds": "clamp the viewport to the bounding box of the OWNED zone rects, extended by peek px into each locked neighbour "
+                  "zone that shares an edge (so the fence + scenery beyond show). If the viewport is taller than the bounds, align to the top",
+        "peek": YARD_PEEK,
+        "open": "on enter: viewport centred on the pet, pet at `home` the first time",
+    }
     clear_scene_meshes(HIPPO_OBJS)
-    return {"canvas": [SIZE, SIZE], "background": "yard/background.png", "background_night": "yard/background_night.png",
+    return {"canvas": [CW, CH], "tiles": tiles, "tile": YARD_TILE, "camera": camera, "locks": locks,
             "px_per_unit": ppu, "items": items, "bed_flowers": bed_flowers, "tree": tree,
             "fruit": {"file": "yard/fruit.png", "size": [80, 80], "note": "centre the image on each tree[stage].fruits point"},
             "extras": extras, "walk": walk,
@@ -542,11 +611,13 @@ def export_yard():
                       "draw": "background_night instead of background; draw everything as by day using <item>.night_file when it has one "
                               "(lit lamp / tent glow); then fill the canvas with `overlay` rgba EXCEPT the *_night lit layers, "
                               "which go on top of the overlay"},
-            "draw_order": ["background (or background_night)", "layer=ground items (picnic_mat)",
+            "draw_order": ["background tiles that intersect the viewport (night_file at night)", "locks[z] for every locked zone",
+                           "layer=ground items (picnic_mat)",
                            "layer=pond (duck_float)", "tree[stage] + layer=sorted items + bed_flowers + pet + sparrow_ground, ascending sort_y "
                            "(pet sort key = feet y)", "sparrow_perch right after bird_feeder", "fruits on the tree",
                            "pond_water over the pet only while splashing", "butterfly", "night overlay"],
-            "rules": "one of each item; all positions are fixed (no slots to swap in v1 of the yard). "
+            "rules": "one of each item; all positions are fixed (no slots to swap in v1 of the yard). Zone 1 items only for now; "
+                     "zone 2/3 items arrive with later updates and use the same entry format. "
                      "bed_flowers: spot i shows the flower the user planted there (tulip/sunflower), 3 spots."}
 
 

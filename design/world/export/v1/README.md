@@ -15,14 +15,18 @@
 - 작물 그림은 모두 600×600 같은 크기·같은 기준점: `plots[i].crop_x, crop_y`에 그대로. 파일: `mound`(심음) / `<작물>_<1|2|3>` / `<작물>_<1|2|3>_doze`
 - `plots[i].tap_rect` = 밭 칸 터치 영역. 진행 점·Zzz·반짝임은 앱 UI
 
-## 마당 (spaces.yard) — 첫 업데이트, 2026-11-10
-- 그리는 순서는 `draw_order` 그대로: `background`(밤 `background_night`) → `layer=ground`(피크닉 매트) → `layer=pond`(오리 튜브) → 나무 `tree[단계]` + `layer=sorted` 소품 + `bed_flowers` + 단짝 + 땅 참새를 **sort_y 오름차순**(단짝 키 = 발 y) → 열매 → (물장구 중) `extras.pond_water` → 나비 → 밤 덮개
-- 소품은 자기 자리 1개씩(바꿔 끼우기 없음). 가진 것만 그림. 화단 3칸 = `bed_flowers`(spot 0~2 × tulip/sunflower)
+## 마당 (spaces.yard) — 첫 업데이트, 2026-11-10 (세로 화면 + 구역 확장판)
+- **좌표 = 큰 캔버스**(`canvas` 2160×3100 px, 1단위 = 400px). 화면은 그 위의 창: 가로 1080 = 카드 너비, 세로 = 카드 높이 × 1080 / 카드 너비(아이폰 15 ≈ 1860). 카드는 공간 탭 아래부터 하단 탭 바 바로 위까지
+- 배경은 1080 타일(`tiles[]`, 낮 `file` / 밤 `night_file`) — 화면에 걸친 타일만 그림
+- **구역** `walk.zones["1".."4"]`: `rect`·`price`(1 = 0 무료, 2 = 60, 3 = 120, 4 = 풍경만)·`area`·`blocked`·`gate`. 산 구역의 `area`를 합친 곳만 걸음. 안 산 구역은 `locks[z]` 울타리 그림을 그리고, 그 구역이나 문을 탭하면 구역 구매 시트
+- **화면 이동** `camera`: 단짝 따라감(부드럽게) + 손가락으로 끌어 둘러보기 → 손 떼고 3초 뒤 단짝에게 복귀. 탭 = 단짝이 그곳으로 걸어감. 화면은 산 구역 범위 + 이웃 잠긴 구역으로 `peek`(260px)까지만
+- 그리는 순서는 `draw_order`: 배경 타일 → 잠긴 구역 울타리 → `layer=ground`(피크닉 매트) → `layer=pond`(오리 튜브) → 나무 `tree[단계]` + `layer=sorted` 소품 + `bed_flowers` + 단짝 + 땅 참새를 **sort_y 오름차순**(단짝 키 = 발 y) → 열매 → (물장구 중) `extras.pond_water` → 나비 → 밤 덮개
+- 소품은 자기 자리 1개씩(바꿔 끼우기 없음). 가진 것만 그림. 화단 3칸 = `bed_flowers`(spot 0~2 × tulip/sunflower). 지금 소품은 전부 1구역, 2·3구역 소품은 업데이트 때 같은 형식으로 추가
 - 추억 나무: `tree[stage-1]` + 그 단계의 `fruits` 좌표마다 `fruit.webp`(80×80)를 가운데 맞춰. 단계 기준은 WORLD.md 7장(기록한 날 10/30/60)
 - 손님: `sparrow_perch`(새 모이통 있을 때, 모이통 바로 뒤에) / `sparrow_ground`·`butterfly_open|closed`는 `anchor`를 원하는 점에 두는 움직이는 그림
-- 밤(19~06시): 배경 교체, `night_file` 있는 소품(정원등·텐트)은 그 그림으로, 전부 그린 뒤 `night.overlay` rgba 덮개, `night_file` 그림만 덮개 위에 다시
-- 걷기(`walk`, 텃밭은 `spaces.garden.walk`): `area` 안 + `blocked` 밖 + 가진 소품의 `item_blocked` 밖 = 걸을 수 있는 곳. `interact[id]` = 서는 점·방향·동작. 단짝 발 (fx, fy)에 600×800 클립을 `pet.w×pet.h`로, 가운데 = 발 + `pet.feet_to_center`
-- 합성 확인: `scripts/blender/compose_yard_preview.py` (낮|밤 나란히, `walk` 넣으면 걷기 영역 표시) → design/world/yard/yard_v1_daynight.jpg
+- 밤(19~06시): 타일은 `night_file`, `night_file` 있는 소품(정원등·텐트)은 그 그림으로, 전부 그린 뒤 `night.overlay` rgba 덮개, 소품 `night_file` 그림만 덮개 위에 다시
+- 걷기(텃밭은 `spaces.garden.walk`): 산 구역 `area` 안 + `walk.blocked`·구역 `blocked` 밖 + 가진 소품의 `item_blocked` 밖. 잠긴 구역과 맞닿은 변에서는 70px 떨어져. `interact[id]` = 서는 점·방향·동작. 단짝 발 (fx, fy)에 600×800 클립을 `pet.w×pet.h`로, 가운데 = 발 + `pet.feet_to_center`
+- 합성 확인: `scripts/blender/compose_yard_preview.py` (기본 = 낮|밤 화면, `map` = 캔버스 전체, `walk` = 걷기 영역, `own=1,2` = 산 구역) → design/world/yard/yard_v2_*.jpg
 
 ## 그 밖
 - `thumbs/<items.id>.webp` 상점 썸네일, `icons/produce_<작물>.webp` 수확 바구니, `icons/packet_<작물>.webp` 씨앗 봉투
