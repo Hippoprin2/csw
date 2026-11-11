@@ -211,7 +211,7 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
     activeOffsetX: [-10, 10], failOffsetY: [-12, 12], maxPointers: 1, runOnJS: true,
     onActivate: () => { drag.current = { start: camX.value, over: 0, on: true }; },
     onUpdate: (e) => {
-      if (!drag.current.on) return;
+      if (!drag.current.on || !Number.isFinite(e.translationX)) return;
       const want = drag.current.start - e.translationX / sc;
       const x = Math.min(V.max_x, Math.max(V.min_x, want));
       camX.value = x; keptCamX = x;

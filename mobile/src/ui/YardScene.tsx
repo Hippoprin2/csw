@@ -489,6 +489,7 @@ export function YardScene({ zones, items, stage, fruitsHidden, night, guests, ac
     onUpdate: (e: { translationX: number; translationY: number }) => {
       const g = G.current, f = fx.current;
       if (!f || !g.dragging) return; // 손 뗀 뒤 늦게 온 움직임은 무시
+      if (!Number.isFinite(e.translationX) || !Number.isFinite(e.translationY)) return;
       g.cam.x = g.panStart.x - e.translationX / g.s; g.cam.y = g.panStart.y - e.translationY / g.s;
       const want = g.cam.x;
       f.clamp(); f.push();

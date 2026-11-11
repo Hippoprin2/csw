@@ -43,7 +43,7 @@ export default function Spaces() {
   // 한 번 끌기 = 한 페이지만: 끌기 시작한 페이지를 기억하고, 손 뗀 뒤 늦게 오는 끌기·두 번째 '놓기'는 무시
   // (마당 → 방으로 넘기면 방에 잠깐 섰다가 텃밭까지 넘어가던 문제, 2026-11-11)
   const from0 = useSharedValue(-1), settling = useSharedValue(false);
-  useAnimatedReaction(() => drv.value, (x) => { if (x >= 0) scrollTo(ref, x, 0, false); });
+  useAnimatedReaction(() => drv.value, (x) => { if (Number.isFinite(x) && x >= 0) scrollTo(ref, x, 0, false); });
   const settleRef = useRef((n: number) => {
     drv.value = -1; settling.value = false;
     if (n !== pageRef.current) {
@@ -56,14 +56,17 @@ export default function Spaces() {
     return {
       drag: (dx) => {
         'worklet';
-        if (settling.value) return;
+        if (settling.value || !Number.isFinite(dx)) return;
         if (from0.value < 0) from0.value = pageSV.value;
-        const W = wSV.value;
-        drv.value = Math.min(W * 2, Math.max(0, W * from0.value - dx));
+        const W = wSV.value, p = from0.value;
+        // 바로 옆 페이지까지만 보임 (마당에서 미세하게 끌 때 텃밭이 한 프레임 튀던 문제, 2026-11-11 대표 영상)
+        drv.value = Math.min(W * Math.min(2, p + 1), Math.max(W * Math.max(0, p - 1), W * p - dx));
       },
       end: (dx, vx, canceled) => {
         'worklet';
         if (from0.value < 0 || settling.value) return;
+        if (!Number.isFinite(dx)) dx = 0;
+        if (!Number.isFinite(vx)) vx = 0;
         const W = wSV.value, p = from0.value;
         from0.value = -1; settling.value = true;
         const from = drv.value >= 0 ? drv.value : W * p;
