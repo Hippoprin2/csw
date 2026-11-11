@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import Animated, { Easing, scrollTo, useAnimatedReaction, useAnimatedRef, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { scheduleOnRN } from 'react-native-worklets';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import { track } from '@/lib/analytics';
 import { todayLabel } from '@/lib/dates';
@@ -53,16 +53,15 @@ export default function Spaces() {
   });
   const pager = useMemo<Pager>(() => {
     const settle = (n: number) => settleRef.current(n);
-    return {
-      drag: (dx) => {
+    const dragUI = (dx: number) => {
         'worklet';
         if (settling.value || !Number.isFinite(dx)) return;
         if (from0.value < 0) from0.value = pageSV.value;
         const W = wSV.value, p = from0.value;
         // 바로 옆 페이지까지만 보임 (마당에서 미세하게 끌 때 텃밭이 한 프레임 튀던 문제, 2026-11-11 대표 영상)
         drv.value = Math.min(W * Math.min(2, p + 1), Math.max(W * Math.max(0, p - 1), W * p - dx));
-      },
-      end: (dx, vx, canceled) => {
+    };
+    const endUI = (dx: number, vx: number, canceled?: boolean) => {
         'worklet';
         if (from0.value < 0 || settling.value) return;
         if (!Number.isFinite(dx)) dx = 0;
@@ -77,7 +76,13 @@ export default function Spaces() {
         drv.value = from;
         const dur = 160 + 200 * Math.min(1, Math.abs(n * W - from) / Math.max(1, W));
         drv.value = withTiming(n * W, { duration: dur, easing: Easing.out(Easing.cubic) }, (fin) => { if (fin) scheduleOnRN(settle, n); else settling.value = false; });
-      },
+    };
+    // 공유값은 UI 스레드에서만 읽고 써야 함: JS 스레드(방 그림·마당 끌기, runOnJS)에서 부르면 방금 쓴 값이 아직 안 보여서
+    // 시작 페이지를 -1로 읽고 텃밭(0)으로 튀었음 (2026-11-11 대표 슬로모션 영상, 방 여백 끌기는 UI 스레드라 멀쩡했음)
+    const onUI = () => { 'worklet'; return !!(globalThis as { _WORKLET?: boolean })._WORKLET; };
+    return {
+      drag: (dx) => { 'worklet'; if (onUI()) dragUI(dx); else scheduleOnUI(dragUI, dx); },
+      end: (dx, vx, canceled) => { 'worklet'; if (onUI()) endUI(dx, vx, canceled); else scheduleOnUI(endUI, dx, vx, canceled); },
     };
   }, [drv, pageSV, wSV, from0, settling]);
 
