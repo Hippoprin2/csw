@@ -1,27 +1,23 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import Animated, { Easing, scrollTo, useAnimatedReaction, useAnimatedRef, useSharedValue, withTiming } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import { track } from '@/lib/analytics';
-import { todayLabel } from '@/lib/dates';
 import { GardenPage } from '@/screens/GardenPage';
 import { RoomPage } from '@/screens/RoomPage';
 import { YardPage } from '@/screens/YardPage';
 import { useApp } from '@/state/app';
-import { Seeds } from '@/ui/kit';
 import type { Pager } from '@/ui/pager';
 import { C } from '@/ui/theme';
 
 // 한 화면에서 좌우로 넘기기: 텃밭 ← 방(홈) → 마당 (WORLD W1). 앱을 열면 방.
 const PAGES = ['garden', 'room', 'yard'] as const;
-const LABEL = { garden: '텃밭', room: '방', yard: '마당' } as const;
 const HOME = 1;
 
 export default function Spaces() {
-  const { profile, balance, yard } = useApp();
+  const { yard } = useApp();
   const { space } = useLocalSearchParams<{ space?: string }>();
   const win = useWindowDimensions();
   const [measured, setMeasured] = useState(0);
@@ -33,7 +29,6 @@ export default function Spaces() {
   const pageSV = useSharedValue(HOME), wSV = useSharedValue(w);
   const setPage = (p: number) => { pageRef.current = p; pageSV.value = p; setPageState(p); };
   const ref = useAnimatedRef<Animated.ScrollView>();
-  const pet = profile?.pet_name ?? '단짝';
 
   useEffect(() => { wSV.value = w; }, [w, wSV]);
 
@@ -118,58 +113,39 @@ export default function Spaces() {
   }
   function go(p: number) {
     ref.current?.scrollTo({ x: w * p, animated: Platform.OS !== 'web' }); // 웹 부드러운 스크롤은 스냅과 겹쳐 중간에 멈출 때가 있음
+    // 웹: 텃밭→마당처럼 두 칸 건너뛰면 스냅 설정이 바뀌는 렌더 뒤에 처음 위치로 돌아감 → 렌더 뒤 한 번 더 맞춘다
+    if (Platform.OS === 'web') setTimeout(() => ref.current?.scrollTo({ x: w * p, animated: false }), 0);
     if (p !== page) {
       setPage(p);
       track('space_viewed', { space: PAGES[p] });
     }
   }
 
-  const title = PAGES[page] === 'room' ? `${pet}의 방` : `${pet}의 ${LABEL[PAGES[page]]}`;
+  const nav = { page, go };
 
+  // 상단 머리글·공간 탭 없음: 그림이 화면 위를 꽉 채우고 칩·전환은 각 공간이 그림 위/판 안에 띄운다 (A 포근한 창, 2026-11-13)
   return (
-    <SafeAreaView style={st.wrap} edges={['top']}>
-      <View style={st.header}>
-        <View>
-          <Text style={st.title}>{title}</Text>
-          <Text style={st.date}>{todayLabel()}</Text>
-        </View>
-        <Seeds n={balance} />
-      </View>
-      <View style={st.tabs} accessibilityRole="tablist">
-        {PAGES.map((p, i) => (
-          <Pressable key={p} onPress={() => go(i)} style={[st.tab, page === i && st.tabOn]} accessibilityRole="tab" accessibilityState={{ selected: page === i }}>
-            <Text style={[st.tabText, page === i && st.tabTextOn]}>{i === 0 ? '‹ ' : ''}{LABEL[p]}{i === 2 ? ' ›' : ''}</Text>
-          </Pressable>
-        ))}
-      </View>
+    <View style={st.wrap}>
       <View style={{ flex: 1 }} onLayout={onLayout}>
         {w > 0 && (
           <Animated.ScrollView
             ref={ref} horizontal showsHorizontalScrollIndicator={false}
             // 웹 스냅(scroll-snap)은 손가락 따라 끌기(pager)를 바로 되돌려 버려서, 웹에선 바깥 스크롤을 쓸 때만 켬
             pagingEnabled={Platform.OS !== 'web' || page === 0 || (page === 2 && !yard.open)}
-            // 방·열린 마당에서는 끌기 = 그 공간 둘러보기. 옆 공간으로는 위 탭, 방 여백, 방/마당 끝에서 더 끌어서 (pager, 2026-11-11)
+            // 방·열린 마당에서는 끌기 = 그 공간 둘러보기. 옆 공간으로는 판 안 전환·마당 '‹ 방' 손잡이, 방 여백, 방/마당 끝에서 더 끌어서 (pager, 2026-11-11)
             scrollEnabled={page === 0 || (page === 2 && !yard.open)}
             onMomentumScrollEnd={onScrollEnd} onScrollEndDrag={onScrollEnd} scrollEventThrottle={16}
             contentOffset={{ x: w * HOME, y: 0 }} keyboardShouldPersistTaps="handled">
-            <View style={{ width: w }}><GardenPage /></View>
-            <View style={{ width: w }}><RoomPage pager={pager} /></View>
-            <View style={{ width: w, height: pageH || undefined }}><YardPage active={page === 2} pager={pager} /></View>
+            <View style={{ width: w }}><GardenPage nav={nav} /></View>
+            <View style={{ width: w }}><RoomPage pager={pager} nav={nav} /></View>
+            <View style={{ width: w, height: pageH || undefined }}><YardPage active={page === 2} pager={pager} nav={nav} /></View>
           </Animated.ScrollView>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, maxWidth: 520, width: '100%', alignSelf: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 6 },
-  title: { fontSize: 22, fontWeight: '800', color: C.ink },
-  date: { fontSize: 12, color: C.muted, marginTop: 2 },
-  tabs: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingBottom: 8 },
-  tab: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999 },
-  tabOn: { backgroundColor: '#fff' },
-  tabText: { fontSize: 13, color: C.muted, fontWeight: '600' },
-  tabTextOn: { color: C.ink },
 });

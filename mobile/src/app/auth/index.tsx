@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { appleAvailable, signInWithApple, signInWithProvider } from '@/lib/auth';
 import { Btn } from '@/ui/kit';
 import { Pet } from '@/ui/Pet';
-import { C, R } from '@/ui/theme';
+import { C, H as HT, R } from '@/ui/theme';
 
 // S1/S2: 펫 인사 직후 가입 1화면 — Apple(iOS) · 카카오 · 구글 · 이메일.
 // 카카오·구글은 Supabase에 키를 넣은 뒤 env로 켠다 (키 없이 누르면 오류가 나므로).
@@ -47,8 +47,8 @@ export default function Welcome() {
           <AppleAuthentication.AppleAuthenticationButton
             buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
             buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-            cornerRadius={R.input}
-            style={{ height: 48 }}
+            cornerRadius={26}
+            style={{ height: HT.btn }}
             onPress={() => run('apple', signInWithApple)}
           />
         )}
@@ -58,7 +58,7 @@ export default function Welcome() {
           </Pressable>
         )}
         {GOOGLE && (
-          <Pressable accessibilityRole="button" disabled={!!busy} onPress={() => run('google', () => signInWithProvider('google'))} style={[st.social, { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line }]}>
+          <Pressable accessibilityRole="button" disabled={!!busy} onPress={() => run('google', () => signInWithProvider('google'))} style={[st.social, { backgroundColor: C.card }]}>
             <Text style={[st.socialText, { color: C.ink }]}>{busy === 'google' ? '연결 중…' : 'Google로 계속하기'}</Text>
           </Pressable>
         )}
@@ -75,11 +75,11 @@ export default function Welcome() {
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, padding: 24, maxWidth: 480, width: '100%', alignSelf: 'center' },
   top: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  bubble: { backgroundColor: '#fff', borderRadius: 18, paddingVertical: 12, paddingHorizontal: 16 },
+  bubble: { backgroundColor: C.card, borderRadius: R.card, paddingVertical: 14, paddingHorizontal: 20 },
   bubbleText: { fontSize: 16, fontWeight: '600', color: C.ink, textAlign: 'center', lineHeight: 23 },
   bottom: { gap: 10, paddingBottom: 8 },
-  social: { minHeight: 48, borderRadius: R.input, alignItems: 'center', justifyContent: 'center' },
+  social: { minHeight: HT.btn, borderRadius: R.pill, alignItems: 'center', justifyContent: 'center' },
   socialText: { fontSize: 15, fontWeight: '700' },
-  err: { color: '#c0392b', fontSize: 13, textAlign: 'center' },
+  err: { color: C.danger, fontSize: 13, textAlign: 'center' },
   legal: { fontSize: 12, color: C.muted, textAlign: 'center', marginTop: 6, lineHeight: 17 },
 });

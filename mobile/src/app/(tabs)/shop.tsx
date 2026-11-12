@@ -9,8 +9,17 @@ import { THUMBS } from '@/data/world';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { useApp } from '@/state/app';
-import { H, Seeds, Sub } from '@/ui/kit';
-import { C } from '@/ui/theme';
+import { H, Price, Seeds, Sub } from '@/ui/kit';
+import { C, R, TAB_SPACE } from '@/ui/theme';
+
+// 가격·상태 알약: 살 수 있으면 잎+숫자(서버 가격), 아니면 상태 글자
+function Tag({ text, price, on, dim }: { text?: string; price?: number; on?: boolean; dim?: boolean }) {
+  return (
+    <View style={[st.tag, on && { backgroundColor: C.accentBg }, dim && { opacity: 0.55 }]}>
+      {price != null ? <Price n={price} /> : <Text style={[st.tagText, on && { color: C.accentInk }]}>{text}</Text>}
+    </View>
+  );
+}
 
 // 소품 상점. 방: 소품마다 정해진 자리, 같은 자리 소품은 바꿔 끼우기(WORLD W3)
 // 마당(WORLD 7장): 소품 10개, 자리 1개씩(바꿔 끼우기 없음), 마당이 열려야 살 수 있음. 산 소품만 마당에 보임
@@ -63,7 +72,7 @@ export default function Shop() {
 
   return (
     <SafeAreaView style={st.wrap} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: TAB_SPACE + 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <H>방 꾸미기</H>
           <Seeds n={balance} />
@@ -79,13 +88,14 @@ export default function Shop() {
             const swappable = own && !placed;
             const can = (!own && balance >= it.price) || swappable;
             const label = placed ? (slotCount(it.slot) > 1 ? '놓여 있음' : '방에 있음') : swappable ? '바꿔 놓기' : `씨앗 ${it.price}`;
+            const forSale = !own;
             return (
               <Pressable key={it.id} disabled={!can || !!busy} onPress={() => (swappable ? place(it.id) : buy(it.id))}
                 style={({ pressed }) => [st.item, placed && { opacity: 0.55 }, pressed && { transform: [{ scale: 0.97 }] }]}
                 accessibilityRole="button" accessibilityLabel={`${it.name} ${label}`} accessibilityState={{ disabled: !can }}>
                 <Image source={THUMBS[it.id]} style={st.thumb} contentFit="contain" accessibilityIgnoresInvertColors />
                 <Text style={st.name}>{it.name}</Text>
-                <Text style={[st.price, !own && !can && { color: C.muted }, swappable && { color: C.accent }]}>{label}</Text>
+                {forSale ? <Tag price={it.price} dim={!can} /> : <Tag text={label} on={swappable} />}
               </Pressable>
             );
           })}
@@ -105,7 +115,7 @@ export default function Shop() {
                 accessibilityRole="button" accessibilityLabel={`${it.name} ${label}`} accessibilityState={{ disabled: !can }}>
                 <Image source={THUMBS[it.id]} style={st.thumb} contentFit="contain" accessibilityIgnoresInvertColors />
                 <Text style={st.name}>{it.name}</Text>
-                <Text style={[st.price, !own && !can && { color: C.muted }]}>{label}</Text>
+                {own ? <Tag text={label} /> : <Tag price={it.price} dim={!can} />}
               </Pressable>
             );
           })}
@@ -118,10 +128,11 @@ export default function Shop() {
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, maxWidth: 520, width: '100%', alignSelf: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  item: { width: '31%', flexGrow: 1, backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 18, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center' },
-  thumb: { width: 72, height: 72, marginBottom: 4 },
-  name: { fontSize: 13, fontWeight: '600', color: C.ink },
-  price: { fontSize: 12, color: C.seed, fontWeight: '700', marginTop: 3 },
+  item: { width: '31%', flexGrow: 1, backgroundColor: C.card, borderRadius: R.card, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center' },
+  thumb: { width: 72, height: 72, marginBottom: 6 },
+  name: { fontSize: 13, fontWeight: '700', color: C.ink, textAlign: 'center' },
+  tag: { marginTop: 8, height: 26, paddingHorizontal: 10, borderRadius: R.pill, backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center' },
+  tagText: { fontSize: 12, fontWeight: '700', color: C.muted },
   yardHead: { marginTop: 28 },
-  err: { color: '#c0392b', fontSize: 13, marginBottom: 10 },
+  err: { color: C.danger, fontSize: 13, marginBottom: 10 },
 });

@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ICONS } from '@/data/world';
-import { YARD } from '@/data/yard';
+import { YARD, YARD_IMG } from '@/data/yard';
 import { api, friendlyError, ZONE_PRICE, type MemoryCard } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { CATS } from '@/lib/categories';
@@ -11,10 +12,11 @@ import { formatDay } from '@/lib/dates';
 import { safetyKeywordHit } from '@/lib/safety';
 import { isNight, treeStage } from '@/lib/yardGeo';
 import { useApp } from '@/state/app';
+import { Icon } from '@/ui/Icon';
 import { Btn } from '@/ui/kit';
-import { useSpaceSize } from '@/ui/layout';
+import { RoomHandle, SpaceChips, type SpaceNav } from '@/ui/SpaceChrome';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
-import { C } from '@/ui/theme';
+import { C, H, R, TAB_SPACE } from '@/ui/theme';
 import { YardScene, type YardSceneHandle, type YardTap } from '@/ui/YardScene';
 import type { Pager } from '@/ui/pager';
 
@@ -22,11 +24,12 @@ import type { Pager } from '@/ui/pager';
 // - 열림: 기록한 날 누적 7일(서버 yard_state.open, 한 번 열리면 영구). 남은 날 카운트다운은 넣지 않음
 // - 구역 2·3 구매(60·120), 소품 10개(상점), 추억 나무(기록한 날 10/30/60) 열매 = 지난 기록 카드(S11)
 // - 손님 30%, 낮·밤 = 기기 시간 19~06시, 피크닉 매트에서 먹이기
-// - 테스트 스위치(⚙︎): 테스터 계정(서버 testers) 또는 개발 빌드에서만 보임. 실제 동작은 서버가 테스터만 허용
+// - 마당 화면(A 포근한 창, 2026-11-13): 그림이 화면 전체, 판·공간 전환 없음. 위쪽 칩 2개 + '‹ 방' 손잡이 + 매트 버튼만
+// - 테스트 스위치(설정 아이콘): 테스터 계정(서버 testers) 또는 개발 빌드에서만 보임. 실제 동작은 서버가 테스터만 허용
 
 const GUEST_CHANCE = 0.3;
 
-export function YardPage({ active = true, pager }: { active?: boolean; pager?: Pager }) {
+export function YardPage({ active = true, pager, nav }: { active?: boolean; pager?: Pager; nav?: SpaceNav }) {
   const { yard, reloadYard, owned, items, balance, setBalance, crops, bag, reloadGarden, profile } = useApp();
   const pet = profile?.pet_name ?? '단짝';
   const showDev = yard.tester || __DEV__;
@@ -44,6 +47,8 @@ export function YardPage({ active = true, pager }: { active?: boolean; pager?: P
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const sceneRef = useRef<YardSceneHandle | null>(null);
+  const insets = useSafeAreaInsets();
+  const belowChips = insets.top + 8 + H.chip + 12;
 
   // 낮·밤: 1분마다 기기 시간 확인
   useEffect(() => {
@@ -134,11 +139,11 @@ export function YardPage({ active = true, pager }: { active?: boolean; pager?: P
 
   const devPanel = showDev && (
     <>
-      <Pressable style={st.gear} onPress={() => setDevOpen((v) => !v)} accessibilityLabel="테스트 스위치">
-        <Text style={{ fontSize: 18 }}>⚙︎</Text>
+      <Pressable style={[st.gear, { top: belowChips }]} onPress={() => setDevOpen((v) => !v)} accessibilityLabel="테스트 스위치">
+        <Icon name="sliders" size={18} color={C.ink} />
       </Pressable>
       {devOpen && (
-        <View style={st.panel}>
+        <View style={[st.panel, { top: belowChips + 44 }]}>
           <Text style={st.panelTitle}>테스트 스위치 (테스트 계정만)</Text>
           <DevBtn title={yard.dev_open ? '마당 바로 열기 끄기' : '마당 바로 열기'} onPress={() => dev(() => api.devYard(!yard.dev_open))} />
           <DevBtn title="구역 모두 열기" onPress={() => dev(api.devAllZones)} />
@@ -151,7 +156,14 @@ export function YardPage({ active = true, pager }: { active?: boolean; pager?: P
     </>
   );
 
-  if (!yard.open) return <LockedYard devPanel={devPanel} />;
+  const chrome = (
+    <>
+      <SpaceChips space="yard" />
+      {nav && <RoomHandle onPress={() => nav.go(1)} />}
+    </>
+  );
+
+  if (!yard.open) return <LockedYard devPanel={devPanel} chrome={chrome} />;
 
   const zoneInfo = zoneAsk ? YARD.walk.zones[String(zoneAsk)] : null;
   const price = zoneAsk ? ZONE_PRICE[zoneAsk] : 0;
@@ -164,20 +176,22 @@ export function YardPage({ active = true, pager }: { active?: boolean; pager?: P
       />
       {ownedYard.includes('picnic_mat') && edibles.length > 0 && (
         <Pressable style={st.feedBtn} onPress={() => { setErr(''); setFeedOpen(true); }} accessibilityRole="button">
-          <Text style={st.feedText}>🧺 피크닉 매트에서 먹이기</Text>
+          <Icon name="basket" size={18} color={C.ink} />
+          <Text style={st.feedText}>매트에서 같이 먹기</Text>
         </Pressable>
       )}
       {toast ? <View style={st.toast} pointerEvents="none"><Text style={st.toastText}>{toast}</Text></View> : null}
+      {chrome}
       {devPanel}
 
       <Sheet visible={!!zoneAsk} onClose={() => setZoneAsk(null)}>
         <Text style={sheetSt.title}>{zoneInfo?.name_ko} 구역</Text>
         <Text style={sheetSt.body}>한 번 사면 계속 {pet}의 마당이야. 새 길로 같이 놀러 갈 수 있어.</Text>
         {err ? <Text style={st.err}>{err}</Text> : null}
-        <View style={sheetSt.row}>
-          <Btn title="다음에" kind="ghost" onPress={() => setZoneAsk(null)} style={{ flex: 1 }} />
-          <Btn title={balance >= price ? `🌱 ${price}로 열기` : `씨앗 ${price}개 필요`} disabled={balance < price || busy}
-            loading={busy} onPress={() => zoneAsk && buyZone(zoneAsk)} style={{ flex: 1 }} />
+        <View style={sheetSt.col}>
+          <Btn title={balance >= price ? `${price}로 열기` : `씨앗 ${price}개 필요`} icon={balance >= price ? 'leaf' : undefined} disabled={balance < price || busy}
+            loading={busy} onPress={() => zoneAsk && buyZone(zoneAsk)} />
+          <Btn title="다음에" kind="ghost" onPress={() => setZoneAsk(null)} />
         </View>
       </Sheet>
 
@@ -202,7 +216,7 @@ export function YardPage({ active = true, pager }: { active?: boolean; pager?: P
       <Sheet visible={!!card} onClose={() => setCard(null)}>
         {card?.c ? (
           <>
-            <Text style={st.cardKicker}>🍑 추억 열매</Text>
+            <Kicker />
             <Text style={sheetSt.title}>
               {card.c.kind === 'month' ? '한 달 전 오늘, 너는 이걸 해냈어' : `${formatDay(card.c.win_date)}, 너는 이걸 해냈어`}
             </Text>
@@ -213,7 +227,7 @@ export function YardPage({ active = true, pager }: { active?: boolean; pager?: P
           </>
         ) : (
           <>
-            <Text style={st.cardKicker}>🍑 추억 열매</Text>
+            <Kicker />
             <Text style={sheetSt.title}>아직 열매가 익는 중이야</Text>
             <Text style={sheetSt.body}>기록이 일주일쯤 지나면 열매에 담겨. 그때 꺼내 줄게.</Text>
           </>
@@ -244,20 +258,27 @@ function DevBtn({ title, onPress }: { title: string; onPress: () => void }) {
   );
 }
 
-function LockedYard({ devPanel }: { devPanel: React.ReactNode }) {
-  const { gardenSize } = useSpaceSize();
+function Kicker() {
+  return (
+    <View style={st.kicker}>
+      <Icon name="fruit" size={16} color={C.muted} />
+      <Text style={st.cardKicker}>추억 열매</Text>
+    </View>
+  );
+}
+
+// 열리기 전: 마당 그림을 흐리게 깔고 안내 카드 1장 (남은 날 수는 보여주지 않음)
+function LockedYard({ devPanel, chrome }: { devPanel: React.ReactNode; chrome: React.ReactNode }) {
   return (
     <View style={st.wrap}>
-      <View style={[st.yard, { width: gardenSize, height: gardenSize }]}>
-        <View style={st.hedge} />
-        <Text style={st.tree}>🌳</Text>
-        <Text style={st.pond}>💧</Text>
-        <View style={st.gate}>
-          <Text style={st.gateIcon}>🚪</Text>
-          <Text style={st.gateTitle}>기록한 날이 7일이 되면 열려</Text>
-          <Text style={st.gateSub}>띄엄띄엄이어도 괜찮아. 문 너머로 연못이 살짝 보여</Text>
-        </View>
+      <Image source={YARD_IMG['yard/bg_1_0.webp']} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={14} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(251,246,236,0.25)' }]} />
+      <View style={st.gate}>
+        <View style={st.gateIcon}><Icon name="lock" size={26} color={C.accentInk} /></View>
+        <Text style={st.gateTitle}>기록한 날이 7일이 되면 열려</Text>
+        <Text style={st.gateSub}>띄엄띄엄이어도 괜찮아. 문 너머로 연못이 살짝 보여</Text>
       </View>
+      {chrome}
       {devPanel}
     </View>
   );
@@ -265,29 +286,26 @@ function LockedYard({ devPanel }: { devPanel: React.ReactNode }) {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg },
-  yard: { alignSelf: 'center', borderRadius: 28, overflow: 'hidden', backgroundColor: '#d7ecd0' },
-  hedge: { position: 'absolute', left: 0, right: 0, top: 0, height: '26%', backgroundColor: '#a9d29b' },
-  tree: { position: 'absolute', right: 24, top: '12%', fontSize: 64, opacity: 0.6 },
-  pond: { position: 'absolute', left: 40, bottom: 40, fontSize: 48, opacity: 0.5 },
-  gate: { position: 'absolute', left: 30, right: 30, top: '34%', backgroundColor: '#fffaf2ee', borderRadius: 22, padding: 18, alignItems: 'center' },
-  gateIcon: { fontSize: 40, marginBottom: 6 },
-  gateTitle: { fontSize: 18, fontWeight: '800', color: C.ink },
-  gateSub: { fontSize: 13, color: C.muted, marginTop: 4, textAlign: 'center' },
-  gear: { position: 'absolute', right: 26, top: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: '#ffffffcc', alignItems: 'center', justifyContent: 'center' },
-  panel: { position: 'absolute', right: 26, top: 50, width: 210, backgroundColor: '#fff', borderRadius: 16, padding: 12, gap: 6, borderWidth: 1, borderColor: C.line },
+  gate: { position: 'absolute', left: 24, right: 24, top: '36%', backgroundColor: C.card, borderRadius: R.cardLg, paddingVertical: 26, paddingHorizontal: 22, alignItems: 'center' },
+  gateIcon: { width: 56, height: 56, borderRadius: R.pill, backgroundColor: C.accentBg, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  gateTitle: { fontSize: 19, fontWeight: '800', color: C.ink },
+  gateSub: { fontSize: 14, color: C.muted, marginTop: 6, textAlign: 'center', lineHeight: 20 },
+  gear: { position: 'absolute', right: 16, width: 36, height: 36, borderRadius: R.pill, backgroundColor: C.chip, alignItems: 'center', justifyContent: 'center', zIndex: 21 },
+  panel: { position: 'absolute', right: 16, width: 220, backgroundColor: C.card, borderRadius: R.card, padding: 14, gap: 6, zIndex: 21 },
   panelTitle: { fontSize: 12, fontWeight: '700', color: C.muted, marginBottom: 2 },
   panelNote: { fontSize: 11, color: C.muted, marginTop: 2 },
-  devBtn: { backgroundColor: C.bg, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10 },
+  devBtn: { backgroundColor: C.soft, borderRadius: R.pill, height: 36, justifyContent: 'center', paddingHorizontal: 14 },
   devBtnText: { fontSize: 13, fontWeight: '600', color: C.ink },
-  feedBtn: { position: 'absolute', left: 30, bottom: 26, backgroundColor: '#fffffff0', borderRadius: 14, paddingVertical: 9, paddingHorizontal: 13 },
+  feedBtn: { position: 'absolute', left: 16, bottom: TAB_SPACE, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.chip, borderRadius: R.pill, height: H.btn - 8, paddingHorizontal: 18 },
   feedText: { fontSize: 14, fontWeight: '700', color: C.ink },
-  toast: { position: 'absolute', left: 40, right: 40, bottom: 80, backgroundColor: '#3a3530e6', borderRadius: 14, padding: 12, alignItems: 'center' },
-  toastText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  bagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  toast: { position: 'absolute', left: 40, right: 40, bottom: TAB_SPACE + 56, backgroundColor: 'rgba(74,50,38,0.9)', borderRadius: R.pill, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center' },
+  toastText: { color: C.white, fontSize: 14, fontWeight: '600' },
+  bagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, backgroundColor: C.card, borderRadius: R.card, padding: 10, paddingLeft: 12 },
   bagName: { flex: 1, fontSize: 15, color: C.ink, fontWeight: '600' },
-  err: { color: '#c0392b', fontSize: 13, marginBottom: 10 },
-  cardKicker: { fontSize: 13, color: C.muted, fontWeight: '700', marginBottom: 4 },
-  memo: { backgroundColor: '#fff', borderRadius: 16, borderLeftWidth: 5, padding: 16, marginBottom: 16 },
+  err: { color: C.danger, fontSize: 13, marginBottom: 10 },
+  kicker: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+  cardKicker: { fontSize: 13, color: C.muted, fontWeight: '700' },
+  memo: { backgroundColor: C.card, borderRadius: R.card, borderLeftWidth: 5, padding: 18, marginBottom: 16 },
   memoText: { fontSize: 18, color: C.ink, fontWeight: '600', lineHeight: 26 },
   memoMeta: { fontSize: 12, color: C.muted, marginTop: 8 },
 });

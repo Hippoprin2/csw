@@ -2,14 +2,15 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Icon } from '@/ui/Icon';
 import { HelpLines } from '@/ui/kit';
-import { C } from '@/ui/theme';
+import { C, R } from '@/ui/theme';
 
 // 설정 › 도움받을 수 있는 곳 (S5 상시 안내)
 export default function Help() {
   return (
     <SafeAreaView style={st.wrap}>
-      <Pressable onPress={() => router.back()} accessibilityRole="button"><Text style={st.back}>닫기</Text></Pressable>
+      <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="닫기" style={st.close} hitSlop={8}><Icon name="close" size={20} color={C.ink} /></Pressable>
       <ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 24 }}>
         <Text style={st.h}>도움받을 수 있는 곳</Text>
         <Text style={st.p}>마음이 많이 힘들 때는 혼자 버티지 않아도 돼요. 아래 번호는 모두 24시간 연결돼요. 번호를 누르면 바로 전화가 걸려요.</Text>
@@ -22,7 +23,7 @@ export default function Help() {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, padding: 20, maxWidth: 480, width: '100%', alignSelf: 'center' },
-  back: { fontSize: 15, color: C.muted, paddingVertical: 8, alignSelf: 'flex-end' },
+  close: { alignSelf: 'flex-end', width: 40, height: 40, borderRadius: R.pill, backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   h: { fontSize: 22, fontWeight: '800', color: C.ink },
   p: { fontSize: 15, color: C.ink, lineHeight: 22 },
   small: { fontSize: 12, color: C.muted, lineHeight: 18 },

@@ -9,9 +9,10 @@ import { CATEGORY_ORDER, CATS } from '@/lib/categories';
 import { addDays, formatDay, kstToday, weekStart } from '@/lib/dates';
 import { jarMarbles, shelfByYear } from '@/lib/jars';
 import { useApp } from '@/state/app';
+import { Icon } from '@/ui/Icon';
 import { Card, H, Sub } from '@/ui/kit';
 import { WinList } from '@/ui/WinList';
-import { C, R } from '@/ui/theme';
+import { C, H as HT, R, TAB_SPACE } from '@/ui/theme';
 
 const RECENT_LIST_DAYS = 14; // 유리병 화면 목록은 최근 2주만. 그 전은 선반의 병을 열거나 찾기 (FEATURES C6 J1-A)
 
@@ -59,7 +60,12 @@ function WeekCard({ start, wins, title }: { start: string; wins: Win[]; title: s
             {ws.length > 40 ? <Text style={st.more}>+{ws.length - 40}</Text> : null}
           </View>
           <View style={st.catRow}>
-            {byCat.map(([c, n]) => <Text key={c} style={st.catPill}>{CATS[c].prop} {CATS[c].name} {n}</Text>)}
+            {byCat.map(([c, n]) => (
+              <View key={c} style={st.catPill}>
+                <View style={[st.catDot, { backgroundColor: CATS[c].color }]} />
+                <Text style={st.catPillText}>{CATS[c].name} {n}</Text>
+              </View>
+            ))}
           </View>
           {memory ? (
             <View style={st.memory}>
@@ -89,12 +95,13 @@ export default function Jar() {
 
   return (
     <SafeAreaView style={st.wrap} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: TAB_SPACE + 16 }}>
         <View style={st.headRow}>
           <H>나의 작은 승리 유리병</H>
           {jars.total > 0 && (
             <Pressable onPress={() => router.push('/jar/search')} style={st.searchBtn} accessibilityRole="button" accessibilityLabel="기록 찾기">
-              <Text style={st.searchTxt}>🔍 찾기</Text>
+              <Icon name="search" size={18} color={C.ink} />
+              <Text style={st.searchTxt}>찾기</Text>
             </Pressable>
           )}
         </View>
@@ -117,8 +124,9 @@ export default function Jar() {
               return (
                 <View key={y.year} style={{ marginBottom: 10 }}>
                   {shelf.length > 1 && (
-                    <Pressable onPress={() => setOpenYears((o) => ({ ...o, [y.year]: !opened }))} disabled={idx === 0}>
-                      <Text style={st.yearH}>{y.year}년 · 병 {y.jars.length}개{idx === 0 ? '' : opened ? '  ▾' : '  ▸'}</Text>
+                    <Pressable onPress={() => setOpenYears((o) => ({ ...o, [y.year]: !opened }))} disabled={idx === 0} style={st.yearRow}>
+                      <Text style={st.yearH}>{y.year}년 · 병 {y.jars.length}개</Text>
+                      {idx === 0 ? null : <Icon name={opened ? 'chevronDown' : 'chevronRight'} size={16} color={C.muted} />}
                     </Pressable>
                   )}
                   {opened && (
@@ -148,7 +156,7 @@ export default function Jar() {
         {jars.total === 0 && <Text style={st.empty}>아직 구슬이 없어. 방에서 오늘 해낸 걸 하나 적어볼래?</Text>}
         {recent.length > 0 && <Text style={st.weekTitle}>최근 2주</Text>}
         <WinList wins={recent} />
-        {hasOlder && <Text style={st.older}>더 지난 기록은 선반의 병을 열거나 🔍 찾기로 볼 수 있어. 하나도 없어지지 않아.</Text>}
+        {hasOlder && <Text style={st.older}>더 지난 기록은 선반의 병을 열거나 찾기로 볼 수 있어. 하나도 없어지지 않아.</Text>}
       </ScrollView>
     </SafeAreaView>
   );
@@ -157,13 +165,15 @@ export default function Jar() {
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, maxWidth: 520, width: '100%', alignSelf: 'center' },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  searchBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: R.pill, backgroundColor: C.room },
-  searchTxt: { fontSize: 13, color: C.ink, fontWeight: '600' },
+  searchBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, height: HT.chip, paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
+  searchTxt: { fontSize: 13, color: C.ink, fontWeight: '700' },
+  // 병 그림 (유리병 자체는 화면 속 소품이라 선을 유지)
   jar: { alignSelf: 'center', width: 150, height: 170, borderWidth: 4, borderTopWidth: 10, borderColor: '#d9c9b1', borderTopLeftRadius: 26, borderTopRightRadius: 26, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: '#fffaf2', flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 9, gap: 3, overflow: 'hidden', marginBottom: 8 },
   // 50개가 다 들어가는 크기 (한 줄 7개 × 8줄)
   jarMarble: { width: 14, height: 14, borderRadius: 7 },
   jarCaption: { textAlign: 'center', fontSize: 13, color: C.muted, marginBottom: 18 },
-  yearH: { fontSize: 13, color: C.ink, fontWeight: '700', marginBottom: 6 },
+  yearRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
+  yearH: { fontSize: 13, color: C.ink, fontWeight: '700' },
   shelf: { gap: 12, paddingHorizontal: 6, alignItems: 'flex-end' },
   shelfBoard: { height: 8, borderRadius: 4, backgroundColor: '#d9c9b1', marginTop: -2 },
   shelfItem: { alignItems: 'center', width: 64 },
@@ -171,18 +181,20 @@ const st = StyleSheet.create({
   miniJar: { width: 54, height: 62, borderWidth: 3, borderColor: '#d9c9b1', borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, backgroundColor: '#fffaf2', flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 3, gap: 1, overflow: 'hidden' },
   miniMarble: { width: 6, height: 6, borderRadius: 3 },
   shelfLabel: { fontSize: 11, color: C.muted, marginTop: 4, marginBottom: 6 },
-  weekTitle: { fontSize: 13, color: C.muted, fontWeight: '700', marginBottom: 6 },
-  weekBig: { fontSize: 18, fontWeight: '800', color: C.ink, marginBottom: 10 },
+  weekTitle: { fontSize: 13, color: C.muted, fontWeight: '700', marginBottom: 8, marginLeft: 4 },
+  weekBig: { fontSize: 19, fontWeight: '800', color: C.ink, marginBottom: 12 },
   weekBody: { fontSize: 15, color: C.ink, lineHeight: 22 },
-  marbles: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 10, alignItems: 'center' },
+  marbles: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 12, alignItems: 'center' },
   marble: { width: 14, height: 14, borderRadius: 7 },
   more: { fontSize: 12, color: C.muted, marginLeft: 4 },
   catRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  catPill: { fontSize: 12, color: C.ink, backgroundColor: C.room, borderRadius: R.pill, paddingVertical: 4, paddingHorizontal: 9, overflow: 'hidden' },
-  memory: { backgroundColor: C.room, borderRadius: 14, padding: 12 },
+  catPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.soft, borderRadius: R.pill, height: 28, paddingHorizontal: 11 },
+  catDot: { width: 8, height: 8, borderRadius: R.pill },
+  catPillText: { fontSize: 12, color: C.ink },
+  memory: { backgroundColor: C.soft, borderRadius: R.card, padding: 16 },
   memoryQ: { fontSize: 12, color: C.muted, marginBottom: 4 },
   memoryT: { fontSize: 14, color: C.ink, fontWeight: '600' },
-  link: { fontSize: 14, color: C.accent, fontWeight: '700' },
+  link: { fontSize: 14, color: C.accentInk, fontWeight: '700', marginLeft: 4 },
   empty: { textAlign: 'center', color: C.muted, paddingVertical: 30, fontSize: 14 },
   older: { textAlign: 'center', color: C.muted, fontSize: 13, lineHeight: 19, paddingVertical: 12 },
 });

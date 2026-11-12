@@ -8,7 +8,7 @@ import { formatDay } from '@/lib/dates';
 import { useApp } from '@/state/app';
 import { Btn } from '@/ui/kit';
 import { Confirm, Sheet, st as sheetSt } from '@/ui/Sheet';
-import { C, R } from '@/ui/theme';
+import { C, H, R } from '@/ui/theme';
 
 const COLLAPSE_OVER = 6; // 하루 기록이 많으면 접어서 표시
 
@@ -98,15 +98,16 @@ export function WinList({ wins, onChange }: { wins: Win[]; onChange?: (w: Win, d
         <TextInput style={st.input} value={editText} onChangeText={setEditText} maxLength={100} accessibilityLabel="기록 내용" />
         <View style={st.catRow}>
           {CATEGORY_ORDER.map((c) => (
-            <Pressable key={c} onPress={() => setEditCat(c)} style={[st.chip, editCat === c && { borderColor: C.accent, backgroundColor: '#fff' }]}>
-              <Text style={{ fontSize: 13, color: C.ink }}>{CATS[c].prop} {CATS[c].name}</Text>
+            <Pressable key={c} onPress={() => setEditCat(c)} style={[st.chip, editCat === c && st.chipOn]} accessibilityState={{ selected: editCat === c }}>
+              <View style={[st.dot, { width: 8, height: 8, backgroundColor: CATS[c].color }]} />
+              <Text style={{ fontSize: 13, color: editCat === c ? C.accentInk : C.ink, fontWeight: editCat === c ? '700' : '400' }}>{CATS[c].name}</Text>
             </Pressable>
           ))}
         </View>
-        {err ? <Text style={{ color: '#c0392b', fontSize: 13, marginBottom: 8 }}>{err}</Text> : null}
-        <View style={sheetSt.row}>
-          <Btn title="지우기" kind="ghost" onPress={() => setConfirmDel(true)} style={{ flex: 1 }} />
-          <Btn title="저장" onPress={saveEdit} disabled={!editText.trim()} style={{ flex: 1 }} />
+        {err ? <Text style={{ color: C.danger, fontSize: 13, marginBottom: 8 }}>{err}</Text> : null}
+        <View style={sheetSt.col}>
+          <Btn title="저장" onPress={saveEdit} disabled={!editText.trim()} />
+          <Btn title="지우기" kind="danger" onPress={() => setConfirmDel(true)} />
         </View>
       </Sheet>
       <Confirm
@@ -118,12 +119,13 @@ export function WinList({ wins, onChange }: { wins: Win[]; onChange?: (w: Win, d
 }
 
 export const st = StyleSheet.create({
-  dayH: { fontSize: 13, color: C.muted, fontWeight: '600', marginBottom: 8 },
-  win: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 6, borderWidth: 1, borderColor: C.line },
-  dot: { width: 10, height: 10, borderRadius: 5 },
+  dayH: { fontSize: 13, color: C.muted, fontWeight: '700', marginBottom: 8, marginLeft: 4 },
+  win: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.card, borderRadius: R.card, paddingVertical: 14, paddingHorizontal: 18, marginBottom: 6 },
+  dot: { width: 10, height: 10, borderRadius: R.pill },
   winText: { flex: 1, fontSize: 15, color: C.ink },
-  tag: { fontSize: 11, color: C.muted, backgroundColor: C.room, paddingVertical: 3, paddingHorizontal: 8, borderRadius: R.pill, overflow: 'hidden' },
-  input: { fontSize: 16, padding: 12, borderRadius: R.input, borderWidth: 1.5, borderColor: C.line, backgroundColor: '#fff', color: C.ink, marginBottom: 12 },
-  catRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: R.pill, borderWidth: 1, borderColor: C.line, backgroundColor: C.room },
+  tag: { fontSize: 11, color: C.muted, backgroundColor: C.soft, paddingVertical: 4, paddingHorizontal: 10, borderRadius: R.pill, overflow: 'hidden' },
+  input: { fontSize: 16, height: H.input, paddingHorizontal: 22, borderRadius: R.pill, backgroundColor: C.card, color: C.ink, marginBottom: 12 },
+  catRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: H.chip, paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
+  chipOn: { backgroundColor: C.accentBg },
 });

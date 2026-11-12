@@ -639,7 +639,7 @@ function moverZFrom(statics: Static[], fx: number, fy: number) {
 }
 
 const st = StyleSheet.create({
-  card: { flex: 1, marginHorizontal: 16, marginBottom: 12, borderRadius: 26, overflow: 'hidden', backgroundColor: '#cde8f5' },
+  card: { flex: 1, overflow: 'hidden', backgroundColor: '#cde8f5' }, // 마당 그림 = 화면 전체 (A 포근한 창, 2026-11-13)
   bubbleWrap: { position: 'absolute', left: 0, top: 0, width: 600, alignItems: 'center', zIndex: 1000 },
-  bubble: { backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 32, paddingHorizontal: 24, paddingVertical: 10, fontSize: 40, fontWeight: '700', color: '#3a3530', overflow: 'hidden' },
+  bubble: { backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 999, paddingHorizontal: 24, paddingVertical: 10, fontSize: 40, fontWeight: '700', color: '#3a3530', overflow: 'hidden' },
 });

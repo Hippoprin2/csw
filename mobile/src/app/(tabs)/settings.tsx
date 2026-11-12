@@ -8,20 +8,36 @@ import { track } from '@/lib/analytics';
 import { CATS } from '@/lib/categories';
 import { askPermission } from '@/lib/notifications';
 import { useApp } from '@/state/app';
+import { Icon } from '@/ui/Icon';
 import { Btn, H } from '@/ui/kit';
 import { Confirm, Sheet, st as sheetSt } from '@/ui/Sheet';
-import { C, R } from '@/ui/theme';
+import { C, H as HT, R, TAB_SPACE } from '@/ui/theme';
 
 const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL;
 const TERMS_URL = process.env.EXPO_PUBLIC_TERMS_URL;
 const CONTACT = process.env.EXPO_PUBLIC_CONTACT_EMAIL;
 const HOURS = Array.from({ length: 17 }, (_, i) => `${String(i + 7).padStart(2, '0')}:00`); // 07~23시
 
+// 묶음별 흰 카드 (테두리 없이 바탕과의 면 색 차이로 구분). 줄 사이는 옅은 면 색 한 줄
+function Group({ children }: { children: React.ReactNode }) {
+  const rows = (Array.isArray(children) ? children : [children]).filter(Boolean);
+  return (
+    <View style={st.group}>
+      {rows.map((r, i) => (
+        <View key={i}>
+          {i > 0 && <View style={st.divider} />}
+          {r}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function Row({ label, onPress, right, danger }: { label: string; onPress?: () => void; right?: React.ReactNode; danger?: boolean }) {
   return (
     <Pressable onPress={onPress} disabled={!onPress} style={st.row} accessibilityRole={onPress ? 'button' : undefined}>
-      <Text style={[st.rowText, danger && { color: '#c0392b' }]}>{label}</Text>
-      {right ?? (onPress ? <Text style={st.chev}>›</Text> : null)}
+      <Text style={[st.rowText, danger && { color: C.danger, fontWeight: '700' }]}>{label}</Text>
+      {right ?? (onPress && !danger ? <Icon name="chevronRight" size={18} color={C.muted} /> : null)}
     </Pressable>
   );
 }
@@ -77,49 +93,49 @@ export default function Settings() {
 
   return (
     <SafeAreaView style={st.wrap} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: TAB_SPACE + 16 }}>
         <H>설정</H>
         {msg ? <Text style={st.msg}>{msg}</Text> : null}
 
         <Text style={st.sec}>단짝</Text>
-        <View style={st.group}>
+        <Group>
           <Row label={`이름: ${profile?.pet_name ?? ''}`} onPress={() => { setName(profile?.pet_name ?? ''); setNameEdit(true); }} />
-        </View>
+        </Group>
 
         <Text style={st.sec}>알림</Text>
-        <View style={st.group}>
-          <Row label="하루 한 번 물어보기" right={<Switch value={!!profile?.notify_enabled} onValueChange={toggleNotify} trackColor={{ true: C.accent }} />} />
+        <Group>
+          <Row label="하루 한 번 물어보기" right={<Switch value={!!profile?.notify_enabled} onValueChange={toggleNotify} trackColor={{ true: C.accent, false: '#E2D6C2' }} thumbColor={C.white} />} />
           {profile?.notify_enabled ? <Row label={`시간: ${time}`} onPress={() => setTimeEdit(true)} /> : null}
-        </View>
+        </Group>
 
         <Text style={st.sec}>내 기록</Text>
-        <View style={st.group}>
+        <Group>
           <Row label="텍스트로 내보내기" onPress={exportAll} />
           <Row label="모든 기록 지우기" onPress={() => setStep('wins1')} danger />
-        </View>
+        </Group>
 
         <Text style={st.sec}>도움 · 정보</Text>
-        <View style={st.group}>
+        <Group>
           <Row label="도움받을 수 있는 곳" onPress={() => router.push('/help')} />
           <Row label="개인정보처리방침" onPress={() => open(PRIVACY_URL)} />
           <Row label="이용약관" onPress={() => open(TERMS_URL)} />
           <Row label="문의하기" onPress={() => open(CONTACT ? `mailto:${CONTACT}` : undefined)} />
-        </View>
+        </Group>
 
         <Text style={st.sec}>계정</Text>
-        <View style={st.group}>
+        <Group>
           <Row label={session?.user.email ?? '로그인됨'} />
           <Row label="로그아웃" onPress={signOut} />
-          <Row label="계정 삭제" onPress={() => setStep('acct1')} danger />
-        </View>
+          <Row label="계정 삭제" onPress={() => setStep('acct1')} />
+        </Group>
       </ScrollView>
 
       <Sheet visible={nameEdit} onClose={() => setNameEdit(false)}>
         <Text style={sheetSt.title}>단짝 이름 바꾸기</Text>
         <TextInput style={st.input} value={name} onChangeText={setName} maxLength={12} accessibilityLabel="단짝 이름" />
-        <View style={sheetSt.row}>
-          <Btn title="취소" kind="ghost" onPress={() => setNameEdit(false)} style={{ flex: 1 }} />
-          <Btn title="저장" disabled={!name.trim()} onPress={async () => { await updateProfile({ pet_name: name.trim() }); setNameEdit(false); }} style={{ flex: 1 }} />
+        <View style={sheetSt.col}>
+          <Btn title="저장" disabled={!name.trim()} onPress={async () => { await updateProfile({ pet_name: name.trim() }); setNameEdit(false); }} />
+          <Btn title="취소" kind="ghost" onPress={() => setNameEdit(false)} />
         </View>
       </Sheet>
 
@@ -128,8 +144,8 @@ export default function Settings() {
         <View style={st.hours}>
           {HOURS.map((h) => (
             <Pressable key={h} onPress={async () => { await updateProfile({ notify_time: `${h}:00` }); setTimeEdit(false); }}
-              style={[st.hour, h === time && { borderColor: C.accent, backgroundColor: '#fff' }]}>
-              <Text style={{ color: C.ink, fontSize: 13 }}>{h}</Text>
+              style={[st.hour, h === time && { backgroundColor: C.accentBg }]} accessibilityState={{ selected: h === time }}>
+              <Text style={{ color: h === time ? C.accentInk : C.ink, fontSize: 13, fontWeight: h === time ? '700' : '400' }}>{h}</Text>
             </Pressable>
           ))}
         </View>
@@ -149,13 +165,13 @@ export default function Settings() {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, maxWidth: 520, width: '100%', alignSelf: 'center' },
-  sec: { fontSize: 12, color: C.muted, fontWeight: '700', marginTop: 18, marginBottom: 6, marginLeft: 4 },
-  group: { backgroundColor: '#fff', borderRadius: R.card, borderWidth: 1, borderColor: C.line, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line, minHeight: 50 },
+  sec: { fontSize: 13, color: C.muted, fontWeight: '700', marginTop: 22, marginBottom: 8, marginLeft: 6 },
+  group: { backgroundColor: C.card, borderRadius: R.card, overflow: 'hidden' },
+  divider: { height: 1, backgroundColor: C.divider, marginHorizontal: 18 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 18, minHeight: 54 },
   rowText: { fontSize: 15, color: C.ink, flex: 1 },
-  chev: { fontSize: 20, color: C.muted },
-  msg: { backgroundColor: '#fff', borderRadius: 12, padding: 12, fontSize: 13, color: C.ink, marginTop: 8, borderWidth: 1, borderColor: C.line },
-  input: { fontSize: 16, padding: 12, borderRadius: R.input, borderWidth: 1.5, borderColor: C.line, backgroundColor: '#fff', color: C.ink, marginBottom: 12 },
-  hours: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  hour: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: R.pill, borderWidth: 1, borderColor: C.line, backgroundColor: C.room },
+  msg: { backgroundColor: C.soft, borderRadius: R.card, paddingVertical: 14, paddingHorizontal: 18, fontSize: 13, color: C.ink, marginTop: 8, overflow: 'hidden' },
+  input: { fontSize: 16, height: HT.input, paddingHorizontal: 22, borderRadius: R.pill, backgroundColor: C.card, color: C.ink, marginBottom: 12 },
+  hours: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  hour: { height: HT.chip, justifyContent: 'center', paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
 });

@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, friendlyError, type Win } from '@/lib/api';
-import { H } from '@/ui/kit';
+import { Icon } from '@/ui/Icon';
+import { Back, H } from '@/ui/kit';
 import { WinList } from '@/ui/WinList';
-import { C, R } from '@/ui/theme';
+import { C, H as HT, R } from '@/ui/theme';
 
 // 지난 기록 글자로 찾기 (최근 것부터 100개). 검색어는 분석 이벤트에 넣지 않음
 export default function JarSearch() {
@@ -26,14 +27,15 @@ export default function JarSearch() {
   return (
     <SafeAreaView style={st.wrap} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-        <Pressable onPress={() => router.back()} accessibilityRole="button" style={{ marginBottom: 10 }}>
-          <Text style={st.back}>‹ 유리병</Text>
-        </Pressable>
+        <Back label="유리병" onPress={() => router.back()} />
         <H>기록 찾기</H>
+        <View style={st.field}>
+        <Icon name="search" size={20} color={C.muted} />
         <TextInput
           style={st.input} value={q} onChangeText={setQ} onSubmitEditing={run} returnKeyType="search" autoFocus
           placeholder="예) 산책, 엄마, 책" placeholderTextColor={C.muted} maxLength={50} accessibilityLabel="찾을 말"
         />
+        </View>
         {busy ? <ActivityIndicator color={C.accent} /> : null}
         {err ? <Text style={st.msg}>{err}</Text> : null}
         {res && !busy && (res.length === 0
@@ -52,7 +54,7 @@ export default function JarSearch() {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, maxWidth: 520, width: '100%', alignSelf: 'center' },
-  back: { fontSize: 15, color: C.accent, fontWeight: '700' },
-  input: { fontSize: 16, padding: 12, borderRadius: R.input, borderWidth: 1.5, borderColor: C.line, backgroundColor: '#fff', color: C.ink, marginVertical: 12 },
+  field: { flexDirection: 'row', alignItems: 'center', gap: 8, height: HT.input, paddingLeft: 20, borderRadius: R.pill, backgroundColor: C.card, marginVertical: 12 },
+  input: { flex: 1, minWidth: 0, height: HT.input, fontSize: 16, paddingRight: 20, color: C.ink },
   msg: { fontSize: 13, color: C.muted, marginBottom: 12 },
 });

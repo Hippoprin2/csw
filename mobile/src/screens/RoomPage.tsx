@@ -2,9 +2,10 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CANVAS, ICONS, ROOM } from '@/data/world';
 import { api, friendlyError } from '@/lib/api';
@@ -15,13 +16,15 @@ import { jarMarbles } from '@/lib/jars';
 import { askPermission } from '@/lib/notifications';
 import { safetyKeywordHit } from '@/lib/safety';
 import { useApp } from '@/state/app';
+import { Icon } from '@/ui/Icon';
 import { Btn, HelpLines } from '@/ui/kit';
 import { Pet, type PetAction } from '@/ui/Pet';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
 import type { Pager } from '@/ui/pager';
 import { SpaceImage } from '@/ui/SpaceImage';
 import { useSpaceSize } from '@/ui/layout';
-import { C, R } from '@/ui/theme';
+import { PANEL_OVERLAP, SpaceChips, SpaceSwitch, useSceneHeight, type SpaceNav } from '@/ui/SpaceChrome';
+import { C, H, R, TAB_SPACE } from '@/ui/theme';
 
 const DAILY_REWARD_CAP = 10;
 const NOTIF_ASKED_KEY = 'csw.notifAsked';
@@ -36,11 +39,17 @@ const store = {
 };
 
 // 방 = 홈. 기록 입력창·축하 8종·곁에 앉기·먹이기/선물하기는 방에서만 (STATUS 2026-11-09 결정)
-export function RoomPage({ pager }: { pager?: Pager } = {}) {
+export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {}) {
   const { jars, profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
-  const { roomSize } = useSpaceSize();
-  const sc = roomSize / CANVAS;
+  // 그림: 화면 위쪽 가로 꽉(약 420). 1080 창을 높이에 맞추고 남는 쪽은 가운데 기준으로 잘라 보여준다
+  const { fullWidth } = useSpaceSize();
+  const sceneH = useSceneHeight();
+  const insets = useSafeAreaInsets();
+  const belowChips = insets.top + 8 + H.chip + 10; // 위쪽 칩 아래
+  const sc = Math.max(fullWidth, sceneH) / CANVAS;
+  const offX = (CANVAS - fullWidth / sc) / 2; // 창(1080) 중 화면 밖으로 잘리는 왼쪽 폭 (캔버스 px)
+  const offY = (CANVAS - sceneH / sc) / 2;
   const [vase, setVase] = useState(() => store.get(VASE_KEY));
   const [text, setText] = useState('');
   const [chosen, setChosen] = useState<Category | null>(null);
@@ -245,7 +254,7 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
     maxDistance: 8, runOnJS: true,
     onDeactivate: (e) => {
       if (e.canceled) return;
-      const x = camX.value + e.x / sc, y = e.y / sc;
+      const x = camX.value + offX + e.x / sc, y = offY + e.y / sc;
       const hit = (r: number[]) => x >= r[0] && x <= r[0] + r[2] && y >= r[1] && y <= r[1] + r[3];
       const si = cab.findIndex((_, i) => hit(JC.slots[i].tap));
       if (si >= 0) { track('jar_viewed', { no: cab[si].no, from: 'cabinet' }); router.push(`/jar/${cab[si].no}`); return; }
@@ -259,7 +268,7 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
     onUpdate: (e) => { 'worklet'; pager?.drag(e.translationX); },
     onDeactivate: (e) => { 'worklet'; pager?.end(e.translationX, e.velocityX, e.canceled); },
   });
-  const worldStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -camX.value * sc }] }));
+  const worldStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -(camX.value + offX) * sc }, { translateY: -offY * sc }] }));
 
   const jarDots = (j: (typeof cab)[number], slot: (typeof JC.slots)[number]) => {
     const [mx, my, mw, mh] = slot.marbles;
@@ -276,9 +285,9 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
     <GestureDetector gesture={pagePan}>
     <View style={st.wrap}>
       <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
-        contentContainerStyle={{ paddingBottom: 32 + kbPad }}>
+        contentContainerStyle={{ paddingBottom: TAB_SPACE + 12 + kbPad }}>
         <GestureDetector gesture={roomGesture}>
-        <View style={[st.room, { width: roomSize, height: roomSize }]} accessibilityHint="좌우로 끌면 방을 둘러볼 수 있어요">
+        <View style={[st.room, { width: fullWidth, height: sceneH }]} accessibilityHint="좌우로 끌면 방을 둘러볼 수 있어요">
           <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: ROOM.width * sc, height: ROOM.height * sc }, worldStyle]}>
             <Image source={ROOM.background} style={StyleSheet.absoluteFill} contentFit="cover" loading="eager" />
             {cab.map((j, i) => {
@@ -299,21 +308,20 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
             {front.map(draw)}
           </Animated.View>
           {shownBubble ? (
-            <View style={st.bubble}>
+            <View style={[st.bubble, { top: belowChips }]}>
               <Text style={st.bubbleText}>{shownBubble}</Text>
             </View>
           ) : null}
           {float && (
-            <Text key={float.key} style={st.float}>+{float.n} 씨앗</Text>
+            <Text key={float.key} style={[st.float, { top: belowChips + 8 }]}>+{float.n} 씨앗</Text>
           )}
+          <SpaceChips space="room" />
         </View>
         </GestureDetector>
 
-        {bagCount > 0 && (
-          <Pressable style={st.basketBtn} onPress={() => setBasket(true)} accessibilityRole="button">
-            <Text style={st.basketText}>🧺 수확 바구니 {bagCount}개 · 먹이기/선물하기</Text>
-          </Pressable>
-        )}
+        <View style={st.panel}>
+        {nav && <SpaceSwitch nav={nav} />}
+        {/* 안전 안내는 기록 직후 맨 위로 올라갔을 때 바로 보이게 전환 바로 아래 */}
         {safety === 'card' && (
           <View style={st.safetyCard}>
             <Text style={st.safetyTitle}>혼자 견디고 있다면, 이야기할 곳이 있어요</Text>
@@ -324,7 +332,8 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
         )}
         {safety === 'banner' && (
           <Pressable style={st.banner} onPress={() => router.push('/help')} accessibilityRole="button">
-            <Text style={st.bannerText}>힘들 땐 109 (24시간) · 도움받을 수 있는 곳 보기 ›</Text>
+            <Text style={st.bannerText}>힘들 땐 109 (24시간) · 도움받을 수 있는 곳 보기</Text>
+            <Icon name="chevronRight" size={18} color={C.muted} />
           </Pressable>
         )}
 
@@ -340,22 +349,25 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
           <View style={st.row}>
             <TextInput
               style={st.input} value={text} onChangeText={(v) => { setText(v); setErr(''); }}
-              placeholder="예) 침대 정리했다" maxLength={100} returnKeyType="done"
+              placeholder="예) 침대 정리했다" placeholderTextColor="#A8968A" maxLength={100} returnKeyType="done"
               onSubmitEditing={() => submit()} accessibilityLabel="오늘 해낸 일" editable={!busy}
             />
-            <Btn title="기록" onPress={() => submit()} disabled={!text.trim()} loading={busy} />
+            <Pressable onPress={() => submit()} disabled={!text.trim() || busy} accessibilityRole="button" accessibilityLabel="기록"
+              style={({ pressed }) => [st.send, (!text.trim() || busy) && { opacity: 0.4 }, pressed && { transform: [{ scale: 0.95 }] }]}>
+              {busy ? <ActivityIndicator color={C.white} /> : <Icon name="send" size={24} color={C.white} stroke={2.2} />}
+            </Pressable>
           </View>
           {text.trim() ? (
             <View style={st.catLine}>
-              <Text style={st.catText}><Text style={{ color: C.ink, fontWeight: '700' }}>{CATS[k].prop} {CATS[k].name}</Text> 동작을 할 거예요 · </Text>
+              <Text style={st.catText}><Text style={{ color: C.ink, fontWeight: '700' }}>{CATS[k].name}</Text> 동작을 할 거예요 · </Text>
               <Pressable onPress={() => setPicking((p) => !p)} accessibilityRole="button"><Text style={st.change}>바꾸기</Text></Pressable>
             </View>
           ) : null}
           {picking && (
             <View style={st.chips}>
               {CATEGORY_ORDER.map((c) => (
-                <Pressable key={c} onPress={() => { setChosen(c); setPicking(false); }} style={[st.chip, k === c && { borderColor: C.accent }]}>
-                  <Text style={st.chipText}>{CATS[c].prop} {CATS[c].name}</Text>
+                <Pressable key={c} onPress={() => { setChosen(c); setPicking(false); }} style={[st.chip, k === c && st.chipOn]}>
+                  <Text style={[st.chipText, k === c && st.chipTextOn]}>{CATS[c].name}</Text>
                 </Pressable>
               ))}
             </View>
@@ -375,6 +387,14 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
           {todayCount > 0 ? `오늘 ${todayCount}가지를 해냈어. ` : ''}
           기록 1개 = 씨앗 3개{todayCount >= DAILY_REWARD_CAP ? ' · 오늘 씨앗은 다 받았어. 기록은 얼마든지 남겨도 돼!' : ` (하루 ${DAILY_REWARD_CAP}개 기록까지)`}
         </Text>
+        {bagCount > 0 && (
+          <Pressable style={st.basketBtn} onPress={() => setBasket(true)} accessibilityRole="button">
+            <Icon name="basket" size={20} color={C.accentInk} />
+            <Text style={st.basketText}>수확 바구니 {bagCount}개 · 먹이기/선물하기</Text>
+          </Pressable>
+        )}
+
+        </View>
       </ScrollView>
 
       <Sheet visible={notifAsk} onClose={() => allowNotif(false)}>
@@ -382,14 +402,14 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
         <Text style={sheetSt.body}>하루 한 번, 오늘 해낸 걸 물어볼게. 이미 적은 날엔 안 보내.</Text>
         <View style={[st.chips, { marginBottom: 14 }]}>
           {['20:00', '21:00', '22:00', '23:00'].map((t) => (
-            <Pressable key={t} onPress={() => setNotifTime(t)} style={[st.chip, notifTime === t && { borderColor: C.accent, backgroundColor: '#fff' }]}>
-              <Text style={st.chipText}>{t}</Text>
+            <Pressable key={t} onPress={() => setNotifTime(t)} style={[st.chip, notifTime === t && st.chipOn]}>
+              <Text style={[st.chipText, notifTime === t && st.chipTextOn]}>{t}</Text>
             </Pressable>
           ))}
         </View>
-        <View style={sheetSt.row}>
-          <Btn title="괜찮아" kind="ghost" onPress={() => allowNotif(false)} style={{ flex: 1 }} />
-          <Btn title="좋아" onPress={() => allowNotif(true)} style={{ flex: 1 }} />
+        <View style={sheetSt.col}>
+          <Btn title="좋아" onPress={() => allowNotif(true)} />
+          <Btn title="괜찮아" kind="ghost" onPress={() => allowNotif(false)} />
         </View>
       </Sheet>
       <Sheet visible={basket} onClose={() => setBasket(false)}>
@@ -410,34 +430,39 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg },
-  room: { alignSelf: 'center', borderRadius: 28, overflow: 'hidden', backgroundColor: C.wall },
-  basketBtn: { marginHorizontal: 16, marginTop: 10, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: C.line },
-  basketText: { fontSize: 14, fontWeight: '700', color: C.ink },
-  bagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  room: { overflow: 'hidden', backgroundColor: '#EADBC4' },
+  // 크림 판: 위 모서리 32, 그림 아래를 살짝 덮으며 올라옴
+  panel: { marginTop: -PANEL_OVERLAP, backgroundColor: C.bg, borderTopLeftRadius: R.sheet, borderTopRightRadius: R.sheet, paddingHorizontal: 20, paddingTop: 18 },
+  basketBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, backgroundColor: C.accentBg, borderRadius: R.pill, height: H.btn, paddingHorizontal: 18 },
+  basketText: { fontSize: 14, fontWeight: '700', color: C.accentInk },
+  bagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, backgroundColor: C.card, borderRadius: R.card, padding: 10, paddingLeft: 12 },
   bagName: { flex: 1, fontSize: 15, color: C.ink, fontWeight: '600' },
-  bubble: { position: 'absolute', alignSelf: 'center', top: 12, maxWidth: '80%', backgroundColor: '#fff', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14, zIndex: 5 },
+  bubble: { position: 'absolute', alignSelf: 'center', top: 96, maxWidth: '80%', backgroundColor: C.card, borderRadius: R.card, paddingVertical: 10, paddingHorizontal: 16, zIndex: 5 },
   bubbleText: { fontSize: 14, fontWeight: '600', color: C.ink, textAlign: 'center', lineHeight: 20 },
-  float: { position: 'absolute', right: 28, top: 80, fontSize: 16, fontWeight: '800', color: C.seed },
-  composer: { marginHorizontal: 16, marginTop: 14, backgroundColor: '#fff', borderRadius: R.card, padding: 16, borderWidth: 1, borderColor: C.line },
-  label: { fontSize: 17, fontWeight: '800', color: C.ink, marginBottom: 10 },
-  dayRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
-  dayBtn: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: R.pill, borderWidth: 1, borderColor: C.line },
-  dayOn: { backgroundColor: C.ink, borderColor: C.ink },
+  float: { position: 'absolute', right: 28, top: 104, fontSize: 16, fontWeight: '800', color: C.seed },
+  composer: { marginTop: 20 },
+  label: { fontSize: 21, fontWeight: '800', color: C.ink, marginBottom: 10, lineHeight: 28 },
+  dayRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  dayBtn: { height: 32, justifyContent: 'center', paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
+  dayOn: { backgroundColor: C.accentBg },
   dayText: { fontSize: 13, color: C.muted, fontWeight: '600' },
-  dayTextOn: { color: '#fff' },
-  row: { flexDirection: 'row', gap: 8 },
-  input: { flex: 1, minWidth: 0, fontSize: 16, paddingVertical: 12, paddingHorizontal: 14, borderRadius: R.input, borderWidth: 1.5, borderColor: C.line, backgroundColor: C.room, color: C.ink },
-  catLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 12 },
+  dayTextOn: { color: C.accentInk, fontWeight: '800' },
+  row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  input: { flex: 1, minWidth: 0, height: H.input, fontSize: 16, paddingHorizontal: 22, borderRadius: R.pill, backgroundColor: C.card, color: C.ink },
+  send: { width: H.input, height: H.input, borderRadius: R.pill, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
+  catLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 12, paddingHorizontal: 6 },
   catText: { fontSize: 13, color: C.muted },
-  change: { fontSize: 13, color: C.accent, textDecorationLine: 'underline' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
-  chip: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: R.pill, borderWidth: 1, borderColor: C.line, backgroundColor: C.room },
-  chipText: { fontSize: 13, color: C.ink },
-  err: { marginTop: 10, color: '#c0392b', fontSize: 13 },
-  cap: { fontSize: 12, color: C.muted, marginHorizontal: 20, marginTop: 10 },
-  safetyCard: { marginHorizontal: 16, marginTop: 14, backgroundColor: '#fff', borderRadius: R.card, padding: 16, borderWidth: 1, borderColor: C.line },
+  change: { fontSize: 13, color: C.accentInk, fontWeight: '700', textDecorationLine: 'underline' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+  chip: { height: H.chip, justifyContent: 'center', paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
+  chipOn: { backgroundColor: C.accentBg },
+  chipText: { fontSize: 14, color: C.ink },
+  chipTextOn: { color: C.accentInk, fontWeight: '700' },
+  err: { marginTop: 10, color: C.danger, fontSize: 13 },
+  cap: { fontSize: 12, color: C.muted, marginHorizontal: 6, marginTop: 12, lineHeight: 18 },
+  safetyCard: { marginTop: 14, backgroundColor: C.card, borderRadius: R.card, padding: 18 },
   safetyTitle: { fontSize: 16, fontWeight: '800', color: C.ink, marginBottom: 4 },
   safetyBody: { fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 19 },
-  banner: { marginHorizontal: 16, marginTop: 12, backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: C.line },
-  bannerText: { fontSize: 13, color: C.ink, fontWeight: '600' },
+  banner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, backgroundColor: C.card, borderRadius: R.card, paddingVertical: 14, paddingHorizontal: 18 },
+  bannerText: { flex: 1, fontSize: 13, color: C.ink, fontWeight: '600' },
 });

@@ -5,8 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { useApp } from '@/state/app';
+import { Icon } from '@/ui/Icon';
 import { Btn } from '@/ui/kit';
-import { C } from '@/ui/theme';
+import { C, R } from '@/ui/theme';
 
 // 한 줄 안내 + 고지·동의 1화면 (FEATURES 3장, D4)
 const ITEMS = [
@@ -43,7 +44,7 @@ export default function Notice() {
           {ITEMS.map((i) => (
             <Pressable key={i.key} accessibilityRole="checkbox" accessibilityState={{ checked: !!ok[i.key] }}
               onPress={() => setOk((o) => ({ ...o, [i.key]: !o[i.key] }))} style={st.row}>
-              <View style={[st.check, ok[i.key] && st.checked]}>{ok[i.key] ? <Text style={st.tick}>✓</Text> : null}</View>
+              <View style={[st.check, ok[i.key] && st.checked]}>{ok[i.key] ? <Icon name="check" size={15} color={C.white} stroke={2.6} /> : null}</View>
               <Text style={st.label}>{i.label}</Text>
             </Pressable>
           ))}
@@ -62,12 +63,11 @@ const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, padding: 24, maxWidth: 480, width: '100%', alignSelf: 'center' },
   big: { fontSize: 26, fontWeight: '800', color: C.ink, lineHeight: 36 },
   sub: { fontSize: 15, color: C.muted, lineHeight: 22 },
-  box: { backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: C.line, gap: 4 },
-  row: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', paddingVertical: 8 },
-  check: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: C.line, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  checked: { backgroundColor: C.accent, borderColor: C.accent },
-  tick: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  label: { flex: 1, fontSize: 14, color: C.ink, lineHeight: 20 },
-  allText: { fontSize: 13, color: C.accent, fontWeight: '700' },
+  box: { backgroundColor: C.card, borderRadius: R.card, paddingVertical: 14, paddingHorizontal: 18, gap: 4 },
+  row: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', paddingVertical: 8 },
+  check: { width: 24, height: 24, borderRadius: R.pill, backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center' },
+  checked: { backgroundColor: C.accent },
+  label: { flex: 1, fontSize: 14, color: C.ink, lineHeight: 22 },
+  allText: { fontSize: 13, color: C.accentInk, fontWeight: '700' },
   small: { fontSize: 12, color: C.muted, lineHeight: 18 },
 });
