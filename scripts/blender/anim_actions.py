@@ -635,7 +635,107 @@ def cook():  # 잘 먹기(요리): chef hat pops on, pan by the handle in ONE ha
         props.key_scale(sp, [(1, 0), (f0 - 1, 0), (f0 + 2, s), (f0 + 4, s * 0.6), (f0 + 6, s * 1.1), (f0 + 10, 0), (F, 0)])
     return F
 
-ACTIONS = {"cook": cook, "drink": drink, "eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
+def _flower(name, col, r=0.026):
+    """5-petal pastel flower, origin at its centre, faces local +Z"""
+    import bmesh
+    parts = []
+    for k in range(5):
+        a = 2 * math.pi * k / 5
+        bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=20, v_segments=10, radius=r)
+        for v in bm.verts: v.co.z *= 0.42; v.co.y *= 0.82
+        for f in bm.faces: f.smooth = True
+        o = props.obj_from_bm(bm, f"{name}_p{k}", [props.mat(f"Petal_{col}", col, 0.7)])
+        o.location = (math.cos(a) * r * 0.95, math.sin(a) * r * 0.95, 0); o.rotation_euler = (0, 0, a + math.pi / 2)
+        parts.append(o)
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=r * 0.5)
+    for v in bm.verts: v.co.z *= 0.6
+    for f in bm.faces: f.smooth = True
+    c = props.obj_from_bm(bm, f"{name}_c", [props.mat("FlowerCentre", (0.98, 0.85, 0.4), 0.6)])
+    c.location = (0, 0, r * 0.25); parts.append(c)
+    bpy.context.view_layer.update()
+    return props.join(parts, name)
+
+def flower_crown():
+    """yellow band around the top of the head + pastel flowers on the front half (대표 sketch 2026-11-12)"""
+    hippo = bpy.data.objects["Hippo"]
+    band = props.headband(hippo, z0=0.372, tilt=-0.08, height=0.034, thick=0.014,
+                          col=(0.98, 0.80, 0.30), stripe=(1.0, 0.88, 0.45))
+    band.name = "CrownBand"
+    bpy.context.view_layer.update()
+    me = band.data; cz = band.location.z
+    ring = [(band.matrix_world @ v.co) for v in me.vertices if v.co.z > 0]     # top edge
+    cols = [(0.99, 0.72, 0.78), (0.99, 0.97, 0.93), (0.60, 0.86, 0.62), (0.82, 0.74, 0.95),
+            (0.99, 0.72, 0.78), (0.99, 0.97, 0.93), (0.98, 0.90, 0.62), (0.60, 0.86, 0.62), (0.82, 0.74, 0.95)]
+    angs = [-90 + d for d in (0, -28, 28, -56, 56, -84, 84, -122, 122)]
+    for i, (a, col) in enumerate(zip(angs, cols)):
+        ar = math.radians(a)
+        wrap = lambda d: abs((d + math.pi) % (2 * math.pi) - math.pi)
+        p = min(ring, key=lambda q: wrap(math.atan2(q.y, q.x) - ar))
+        out = Vector((math.cos(ar), math.sin(ar), 0))
+        n = (out * 0.75 + Vector((0, 0, 0.66))).normalized()
+        fl = _flower(f"CrownFlower{i}", col, r=0.036 if i < 3 else 0.03)
+        fl.location = p + out * 0.006 + Vector((0, 0, 0.006))
+        fl.rotation_euler = n.to_track_quat("Z", "Y").to_euler()
+        fl.rotation_euler.rotate_axis("Z", math.radians(17 * i))
+        bpy.context.view_layer.update(); mw = fl.matrix_world.copy(); fl.parent = band
+        fl.matrix_parent_inverse = band.matrix_world.inverted(); fl.matrix_world = mw
+    return band
+
+def milestone10():  # 누적 10번 축하 (전체 화면): float up underwater w/ flower crown, bubbles, swirl dance x2, "짠"
+    F = 156
+    rest(1)
+    # enter from below, settle with a little overshoot, gentle bob the whole time
+    L(1, "root", -1.7); L(20, "root", 0.06); L(26, "root", -0.02); L(32, "root", 0.0)
+    for f in range(38, 108, 12):
+        L(f, "root", 0.035 if (f // 12) % 2 else -0.01)
+    L(110, "root", 0.06); L(118, "root", 0.0)
+    for f in range(124, F + 1, 14):
+        L(f, "root", 0.03 if (f // 14) % 2 else -0.01)
+    # feet dangle / paddle
+    for i, f in enumerate(range(1, F, 8)):
+        a = 14 if i % 2 else -14
+        R(f, "leg.L", x=a); R(f, "leg.R", x=-a)
+    # float in: arms out paddling, blow bubbles (head slightly up)
+    for i, f in enumerate(range(4, 36, 6)):
+        arms(f, ly=45, lz=20 if i % 2 else -10)
+    R(1, "head", x=6); R(22, "head", x=-6); R(36, "head", x=0)
+    # swirl dance: arms up high, 2 full turns with a body wobble
+    arms(42, ly=84); S(42, "arm.L", (1.12, 1.45, 1.12)); S(42, "arm.R", (1.12, 1.45, 1.12))
+    for i, f in enumerate(range(48, 100, 6)):
+        arms(f, ly=84 if i % 2 else 72, lx=10 if i % 2 else -10)
+    S(36, "body", (1, 1, 1)); S(44, "body", (0.95, 1.08, 0.95)); S(98, "body", (0.95, 1.08, 0.95))
+    rp = P["root"]; rp.rotation_mode = "XYZ"
+    spin = [(1, 0), (40, 0), (48, 70), (56, 190), (64, 330), (72, 460), (80, 590), (88, 680), (96, 715), (102, 720), (F, 720)]
+    for f, deg in spin:
+        rp.rotation_euler = (0, math.radians(deg), 0); rp.keyframe_insert("rotation_euler", frame=f)
+    for i, f in enumerate(range(44, 100, 7)):
+        R(f, "body", z=7 if i % 2 else -7)
+    R(102, "body")
+    # "짠!": face the camera, arms wide up, stretch, happy closed eyes
+    arms(104, ly=60, lz=-10); S(104, "body", (1.05, 0.94, 1.05))
+    arms(110, ly=86, lz=10); S(110, "arm.L", (1.12, 1.5, 1.12)); S(110, "arm.R", (1.12, 1.5, 1.12))
+    S(110, "body", (0.94, 1.09, 0.94)); R(110, "head", x=-8)
+    S(116, "body", (1, 1, 1)); R(116, "head", x=-4)
+    for i, f in enumerate(range(120, F, 9)):           # little happy arm waves while floating
+        arms(f, ly=80 if i % 2 else 70, lz=12 if i % 2 else 2)
+    ears_bounce([(1, 0), (20, -10), (30, 8), (40, 0), (60, -12), (80, -12), (100, 0), (106, 12), (112, -8), (118, 0)])
+    eyes([(1, 0), (16, 1), (18, 0), (60, 0), (61, 1), (64, 1), (65, 0), (108, 0), (109, 1), (F, 1)])
+    wag(20, F - 4, 22, 4)
+    sc.frame_set(32); bpy.context.view_layer.update()     # rest height, facing the camera
+    crown = flower_crown()
+    props.attach(crown, rig, "head", 32)
+    # snout point for the 2D bubble overlay (render_milestone.py projects it per frame)
+    hippo = bpy.data.objects["Hippo"]
+    sc.frame_set(32); bpy.context.view_layer.update()
+    deps = bpy.context.evaluated_depsgraph_get(); ev = hippo.evaluated_get(deps); mwi = hippo.matrix_world.inverted()
+    hit, loc, nor, fi = ev.ray_cast(mwi @ Vector((0, -1.0, 0.12)), (mwi.to_3x3() @ Vector((0, 1, 0))).normalized())
+    sp = hippo.matrix_world @ loc if hit else Vector((0, -0.33, 0.12))
+    print("snout", hit, tuple(round(v, 3) for v in sp))
+    e = bpy.data.objects.new("SnoutPt", None); sc.collection.objects.link(e); e.location = sp
+    props.attach(e, rig, "head", 32)
+    return F
+
+ACTIONS = {"milestone10": milestone10, "cook": cook, "drink": drink, "eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
 F = ACTIONS[ACTION]()
 sc.frame_start, sc.frame_end = 1, F
 for fc in fcurves(rig.animation_data.action):
