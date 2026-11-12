@@ -50,10 +50,41 @@ def smooth_surface():
     (only eyes/brows/nostrils/inner-ear pink keep the texture)"""
     import bmesh                                                  # the scan is split at UV seams -> weld first, or smoothing cracks it open
     bm = bmesh.new(); bm.from_mesh(h.data); n0 = len(bm.verts)
-    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5); bm.to_mesh(h.data); print("welded", n0 - len(bm.verts)); bm.free()
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=float(kv.get("weld", 1e-5)))
+    # the scan has thin ridges/grooves (belly line, leg/arm seams): find verts that stick out of their neighbours' average
+    bm.verts.ensure_lookup_table(); bm.normal_update()
+    lap = {}
+    for v in bm.verts:
+        nb = [e.other_vert(v).co for e in v.link_edges]
+        if not nb: continue
+        avg = sum(nb, v.co * 0) / len(nb)
+        el = sum((c - v.co).length for c in nb) / len(nb) + 1e-9
+        lap[v.index] = abs((v.co - avg).dot(v.normal)) / el          # scale-free bumpiness
+    vals = sorted(lap.values()); thr = vals[int(len(vals) * float(kv.get("pct", 0.9)))]
+    seam = {i for i, x in lap.items() if x > thr}
+    ring = {i: 1.0 for i in seam}; front = set(seam)
+    for wv in (0.8, 0.5, 0.2):
+        nxt = set()
+        for i in front:
+            for e in bm.verts[i].link_edges:
+                j = e.other_vert(bm.verts[i]).index
+                if j not in ring: ring[j] = wv; nxt.add(j)
+        front = nxt
+    bm.to_mesh(h.data); print("welded", n0 - len(bm.verts), "seam verts", len(seam), "smoothed", len(ring)); bm.free()
+    me = h.data                                                   # the GLB import baked split/custom normals: they keep every seam crease
+    for an in ("custom_normal", "sharp_edge", "sharp_face"):      # visible no matter how much the geometry is smoothed
+        if an in me.attributes and kv.get("keepnormals") is None: me.attributes.remove(me.attributes[an])
+    for poly in me.polygons: poly.use_smooth = True
+    print("custom normals now", me.has_custom_normals)
+    if kv.get("seamfix", "1") == "1":
+        vgs = h.vertex_groups.new(name="seam_ridge")
+        for i, wv in ring.items(): vgs.add([i], wv, "REPLACE")
     sm = h.modifiers.new("SurfSmooth", "CORRECTIVE_SMOOTH")       # after the armature: keeps shape, irons ripples
     sm.factor = 1.0; sm.iterations = 25; sm.smooth_type = "LENGTH_WEIGHTED"; sm.use_only_smooth = True
     sm.rest_source = "ORCO"
+    if "seam_ridge" in h.vertex_groups:
+        s2 = h.modifiers.new("SeamSmooth", "CORRECTIVE_SMOOTH"); s2.factor = 1.0; s2.iterations = int(kv.get("seamit", 15))
+        s2.smooth_type = "LENGTH_WEIGHTED"; s2.use_only_smooth = True; s2.vertex_group = "seam_ridge"; s2.rest_source = "ORCO"
     body = (0.891, 0.632, 0.389, 1)   # #F2CFA6 linear (= texture median)
     L = nt.links.new
     dif = nt.nodes.new("ShaderNodeMix"); dif.data_type = "RGBA"; dif.blend_type = "DIFFERENCE"; dif.inputs[0].default_value = 1
@@ -139,6 +170,9 @@ if var in ("smooth", "fur"):
     smooth_surface()
     if kv.get("nocs"): h.modifiers.remove(h.modifiers["SurfSmooth"])
     if kv.get("notex"): nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+    if kv.get("flatall"):
+        for l in list(bsdf.inputs["Base Color"].links): nt.links.remove(l)
+        bsdf.inputs["Base Color"].default_value = (0.891, 0.632, 0.389, 1)
 if var == "fur":
     fur()
 if var == "fur":

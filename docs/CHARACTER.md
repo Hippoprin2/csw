@@ -101,6 +101,8 @@
 
 - 2026-11-13 단짝 표면 비교 시안 (대표 요청: 털 질감 / 지금보다 매끄러운 표면, 대표 확인 대기): scripts/blender/texture_compare.py `current|smooth|fur` → share/surface_compare_closeup_v1.png, surface_compare_phone_v1.png, surface_compare_body_v1.png(몸통: smooth에도 배 가로 이음새 줄이 희미하게 남음). smooth = AI 스캔 메쉬의 UV 이음새 용접(remove_doubles 1e-5, 11220개) 후 Corrective Smooth(용접 없이 하면 이음새가 갈라짐) + 몸 텍스처의 얼룩(구워진 음영)을 #F2CFA6 단색으로 교체(눈·눈썹·콧구멍·귀 안쪽만 텍스처 유지) + sheen 0.2. fur = Geometry Nodes 짧은 털(0.0075, 17만 가닥, 아마추어 뒤라 포즈 따라감; Blender 5는 Curve to Mesh 'Scale' 입력에 반지름 연결 필요). 폰 크기에서 털은 거칠게(모래처럼) 보이고 움직이면 반짝거릴 위험, 용량도 늘어남
 
+- 2026-11-13 표면 비교 v1에 '배 줄 지움' 추가 (share/surface_compare_seamfix_v1.png, _phone_v1.png, 대표 확인 대기). 원인: GLB에서 가져온 custom_normal/sharp_edge 속성이 이음새 주름을 그대로 들고 있었음 → 속성 제거 + 전체 smooth shading + 울퉁불퉁한 정점(이웃 평균에서 법선 방향으로 튀어나온 상위 10%)만 vertex group으로 Corrective Smooth 15회. 배 가로줄·다리·팔 이음새가 사라지고 형태 손실 없음. 목 아래 그늘은 접촉 그림자(조명)라 남음
+
 ## 앱 형식 비교 (2026-11-08, 결정 대기)
 - 측정: 원본 PNG 9클립 약 137MB. 프레임별 WebP(q80): 300px 4.6MB / 450px 7.2MB. 움직이는 WebP 1파일(600px, 원본 해상도): 만세 578KB → 9클립 추정 5~6MB. GLB(애니 포함, 미최적화) 6.3MB → 최적화 시 2~3MB 추정.
 - A. 미리 렌더한 움직이는 WebP(추천, MVP): expo-image로 재생, Pet.tsx만 교체, 1~2일. 렌더와 픽셀 단위로 같음. 단점: 고정 각도, 펫 꾸미기 아이템은 아이템마다 오버레이 시퀀스 추가 렌더 필요. 확인 필요: expo-image 재생 끝 감지/메모리(실기기).
