@@ -444,7 +444,81 @@ def wave():  # 사람·마음: raise the right arm and wave, head tilt
     props.key_scale(lt, [(1, 0), (6, 0), (9, 1.8), (11, 1.65), (42, 1.65), (46, 0), (F, 0)])
     return F
 
-ACTIONS = {"eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
+def make_glass(h=0.24, r0=0.088, r1=0.1):
+    """big pastel tumbler (arms are short -> oversized glass), origin at the bottom centre.
+    returns (glass, water); water origin also at the bottom so scale z lowers the level."""
+    import bmesh
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=48, radius1=r0, radius2=r1, depth=h)
+    bmesh.ops.translate(bm, verts=bm.verts, vec=(0, 0, h / 2))
+    edges = [e for e in bm.edges if all(abs(v.co.z) < 1e-4 or abs(v.co.z - h) < 1e-4 for v in e.verts)
+             and len(e.link_faces) == 2 and any(len(f.verts) > 4 for f in e.link_faces)]
+    bmesh.ops.bevel(bm, geom=edges, offset=0.012, segments=3, profile=0.5, affect="EDGES")
+    for f in bm.faces: f.smooth = True
+    m_glass = props.mat("Glass_Sky", (0.80, 0.92, 0.98), 0.25, alpha=0.38)
+    try: m_glass.surface_render_method = "BLENDED"
+    except Exception: m_glass.blend_method = "BLEND"
+    glass = props.obj_from_bm(bm, "Glass", [m_glass])
+    wh = h * 0.78
+    bm = props.cylinder(r0 * 0.9, wh, 48)
+    bmesh.ops.translate(bm, verts=bm.verts, vec=(0, 0, wh / 2 + 0.012))
+    water = props.obj_from_bm(bm, "Water", [props.mat("Water_Sky", (0.55, 0.80, 0.98), 0.3, emit=0.15)])
+    rim = bmesh.new()
+    bmesh.ops.create_cone(rim, cap_ends=False, segments=48, radius1=r1 * 1.005, radius2=r1 * 1.005, depth=0.01)
+    bmesh.ops.translate(rim, verts=rim.verts, vec=(0, 0, h - 0.008))
+    for f in rim.faces: f.smooth = True
+    rimo = props.obj_from_bm(rim, "GlassRim", [props.mat("Glass_Rim", (0.99, 0.97, 0.93), 0.4)])
+    water.parent = glass; rimo.parent = glass
+    return glass, water
+
+def drink():  # 잘 먹기(물): big glass in both hands, tip head back, three gulps, "캬~" with closed eyes
+    F = 64; rest(1)
+    # hold the glass in front of the chest, then lift it to the mouth and lean back
+    arms(7, ly=55, lz=80); S(7, "arm.L", (1.1, 1.5, 1.1)); S(7, "arm.R", (1.1, 1.5, 1.1))
+    arms(14, ly=62, lz=84); arms(38, ly=62, lz=84)
+    for f in (14, 38):
+        S(f, "arm.L", (1.1, 1.62, 1.1)); S(f, "arm.R", (1.1, 1.62, 1.1))
+    arms(44, ly=50, lz=70); S(44, "arm.L", (1.1, 1.45, 1.1)); S(44, "arm.R", (1.1, 1.45, 1.1))
+    R(7, "head", x=4); R(14, "head", x=-14); R(38, "head", x=-14); R(43, "head", x=-4)
+    R(14, "body", x=-6); R(38, "body", x=-6); R(43, "body")
+    for i, f in enumerate(range(17, 38, 7)):          # three gulps: head dips + body squash
+        R(f + 3, "head", x=-8); R(f + 6, "head", x=-14)
+        S(f + 3, "body", (1.02, 0.97, 1.02)); S(f + 6, "body", (1, 1, 1))
+    # "캬~": stretch tall, little hop, ears flick, glass down
+    S(46, "body", (0.96, 1.07, 0.96)); L(46, "root", 0.035); R(46, "head", x=-8)
+    S(51, "body", (1.04, 0.95, 1.04)); L(51, "root", 0.0); R(51, "head", x=2)
+    ears_bounce([(1, 0), (14, -4), (38, -4), (46, 12), (50, -6), (54, 0)])
+    rest(56); rest(F); eyes([(1, 0), (13, 1), (39, 1), (40, 0), (43, 0), (44, 1), (54, 1), (55, 0), (F, 0)])
+    wag(42, 58, 20, 3)
+    # --- glass between the hands, follows the body bone ---
+    sc.frame_set(20); bpy.context.view_layer.update()
+    tl = rig.matrix_world @ P["arm.L"].tail; tr = rig.matrix_world @ P["arm.R"].tail
+    hands = (tl + tr) / 2
+    print("hands at", tuple(round(v, 3) for v in hands))
+    gl, wa = make_glass()
+    gl.location = Vector((0, hands.y - 0.08, hands.z - 0.075))
+    body_m = rig.matrix_world @ P["body"].matrix
+    gl.parent = rig; gl.parent_type = "BONE"; gl.parent_bone = "body"
+    gl.matrix_parent_inverse = (body_m @ Matrix.Translation((0, P["body"].length, 0))).inverted()
+    sc.frame_set(1)
+    props.key_scale(gl, [(1, 0), (4, 0), (8, 1.08), (10, 1.0), (44, 1.0), (49, 0), (F, 0)])
+    for f, a in ((1, 0), (10, 0), (15, -28), (38, -28), (43, 0), (F, 0)):   # tip the top toward the mouth
+        gl.rotation_euler = (math.radians(a), 0, 0); gl.keyframe_insert("rotation_euler", frame=f)
+    for f, s in ((1, 1), (16, 1), (21, 0.72), (28, 0.45), (35, 0.18), (F, 0.18)):  # level drops per gulp
+        wa.scale = (1, 1, max(s, 0.001)); wa.keyframe_insert("scale", frame=f)
+    # one happy droplet + sparkles on "캬~"
+    face = math.radians(19)
+    dp = props.sweat_drop("DrinkDrop"); dp.location = (0.3, -0.3, 0.16); dp.rotation_euler = (0, math.radians(-25), face)
+    props.key_scale(dp, [(1, 0), (44, 0), (47, 0.028), (53, 0.026), (57, 0), (F, 0)])
+    for f, x, z in ((44, 0.3, 0.16), (57, 0.42, 0.24)):   # flies outward, outside the face silhouette
+        dp.location = (x, -0.3, z); dp.keyframe_insert("location", frame=f)
+    for i, (x, z, f0, s) in enumerate(((-0.34, 0.42, 45, 0.11), (0.36, 0.5, 47, 0.1), (-0.26, 0.6, 49, 0.08))):
+        sp = props.sparkle(f"DrinkSparkle{i}", col=[(1.0, 0.86, 0.35), (0.75, 0.9, 1.0), (1.0, 0.75, 0.82)][i])
+        sp.location = (x, -0.25, z); sp.rotation_euler = (0, 0, face)
+        props.key_scale(sp, [(1, 0), (f0 - 1, 0), (f0 + 2, s), (f0 + 4, s * 0.6), (f0 + 6, s * 1.1), (f0 + 10, 0), (F, 0)])
+    return F
+
+ACTIONS = {"drink": drink, "eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
 F = ACTIONS[ACTION]()
 sc.frame_start, sc.frame_end = 1, F
 for fc in fcurves(rig.animation_data.action):
