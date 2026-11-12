@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
@@ -207,6 +207,14 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
   const V = ROOM.view;
   const camX = useSharedValue(keptCamX);
   const drag = useRef({ start: keptCamX, over: 0, on: false });
+  // 앱을 켤 때마다 방 가운데부터 (대표 요청 2026-11-11): 처음 켤 때는 start_x(= 넓은 방 가운데),
+  // 앱을 내렸다 다시 열 때도 가운데로. 내려갈 때 바꿔 둬서 다시 열면 화면이 움직이는 게 안 보임
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'background') { keptCamX = V.start_x; camX.set(V.start_x); }
+    });
+    return () => sub.remove();
+  }, [camX, V.start_x]);
   const pan = usePanGesture({
     activeOffsetX: [-10, 10], failOffsetY: [-12, 12], maxPointers: 1, runOnJS: true,
     onActivate: () => { drag.current = { start: camX.value, over: 0, on: true }; },
@@ -214,7 +222,7 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
       if (!drag.current.on || !Number.isFinite(e.translationX)) return;
       const want = drag.current.start - e.translationX / sc;
       const x = Math.min(V.max_x, Math.max(V.min_x, want));
-      camX.value = x; keptCamX = x;
+      camX.set(x); keptCamX = x;
       // 방 끝을 넘겨 끈 만큼 페이지가 손가락을 따라 옴 (텃밭/마당)
       const over = (x - want) * sc;
       if (pager && (over !== 0 || drag.current.over !== 0)) { drag.current.over = over; pager.drag(over); }
