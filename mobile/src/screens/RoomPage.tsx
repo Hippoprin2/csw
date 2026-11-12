@@ -98,6 +98,8 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
   async function submit(raw?: string) {
     const t = (raw ?? text).trim();
     if (!t || busy) return;
+    // 기록하면 맨 위로: 예시 버튼처럼 키보드 없이 기록할 땐 키보드 내려감 이벤트가 없어서 직접 올림 (대표 피드백 2026-11-11)
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
     Keyboard.dismiss();
     setBusy(true); setErr('');
     say('듣고 있어…', 8000);
@@ -116,6 +118,7 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
       reloadJars().catch(() => {});
       setBalance(r.balance);
       setText(''); setChosen(null); setPicking(false); setDay('today');
+      setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 50); // 말풍선이 보이게 (위 스크롤이 중간에 끊겨도 다시)
       track('win_recorded', { category, source, first: r.first, yesterday: day === 'yesterday', earned: r.earned });
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
