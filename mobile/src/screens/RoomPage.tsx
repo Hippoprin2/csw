@@ -70,7 +70,11 @@ export function RoomPage({ pager }: { pager?: Pager } = {}) {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
       });
     });
-    const hide = Keyboard.addListener(hideEv, () => setKbPad(0));
+    // 키보드가 내려가면 맨 위로 되돌림: 안 그러면 내려간 채로 남아 방 위쪽과 단짝 말풍선(멘트)이 잘림 (대표 피드백 2026-11-11)
+    const hide = Keyboard.addListener(hideEv, () => {
+      setKbPad(0);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    });
     return () => { show.remove(); hide.remove(); };
   }, []);
 
