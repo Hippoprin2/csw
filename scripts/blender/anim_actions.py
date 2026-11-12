@@ -539,8 +539,8 @@ def chef_hat(head_top):
     hat.rotation_euler = (math.radians(-8), math.radians(6), 0)
     return hat
 
-def frying_pan(hs=1):
-    """pan (origin = pan centre, cooking surface at z=0, handle toward hs*x) + fried egg child"""
+def frying_pan():
+    """pan (origin = pan centre, cooking surface at z=0, handle toward +y = back to the hand) + fried egg child"""
     import bmesh
     dark = props.mat("Pan_Body", (0.93, 0.36, 0.38), 0.6)   # coral (ART_BIBLE accent), no black
     bm = bmesh.new()
@@ -551,7 +551,7 @@ def frying_pan(hs=1):
     bev = pan.modifiers.new("round", "BEVEL"); bev.width = 0.008; bev.segments = 3
     bm = props.cylinder(0.014, 0.17, 24)
     handle = props.obj_from_bm(bm, "PanHandle", [props.mat("Pan_Handle", (0.86, 0.69, 0.50), 0.7)])
-    handle.rotation_euler = (0, math.radians(90), 0); handle.location = (0.2 * hs, 0, 0.0)
+    handle.rotation_euler = (math.radians(90), 0, 0); handle.location = (0, 0.2, 0.0)
     handle.parent = pan
     # fried egg: wobbly white + yolk dome
     bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=16, radius=1.0)
@@ -571,7 +571,7 @@ def frying_pan(hs=1):
 
 def cook():  # 잘 먹기(요리): chef hat pops on, pan by the handle in ONE hand (대표 11-12), other hand on the hip, flip the egg, proud
     F = 76; rest(1)
-    ARM = (0, -42, -62)                                  # right arm forward, a bit raised (holds the handle)
+    ARM = (0, -50, -88)                                  # right arm forward, a bit raised (holds the handle)
     def rarm(f, dy=0, st=1.35):
         R(f, "arm.R", ARM[0], ARM[1] + dy, ARM[2]); S(f, "arm.R", (1.1, st, 1.1))
     for f in (7, 25, 34, 44, 49, 62): rarm(f)
@@ -607,11 +607,14 @@ def cook():  # 잘 먹기(요리): chef hat pops on, pan by the handle in ONE ha
     props.key_scale(hat, [(1, 0), (3, 0), (7, 1.1), (9, 1.0), (64, 1.0), (68, 0), (F, 0)])
     # --- pan held by the handle in the right hand (follows arm.R) ---
     hand = props.hand_pos(rig, "arm.R", 20)
-    hs = 1 if hand.x > 0 else -1                          # handle points from the pan back to the hand
-    print("right hand", tuple(round(v, 3) for v in hand), "hs", hs)
-    pan, egg = frying_pan(hs)
-    pan.location = Vector((hand.x - hs * 0.27, hand.y - 0.05, hand.z))
-    pan.rotation_euler = (math.radians(38), 0, 0)       # +X tips the cooking surface toward the camera (-Y)
+    # pan points FORWARD (toward the camera, 대표 11-12): handle runs back/up to the hand, pan sits in front of the belly
+    GRIP, TILT = 0.27, math.radians(30)                  # +X tilt shows the cooking surface to the camera
+    d = GRIP * math.cos(TILT); vx = hand.x * 0.25; vy = math.sqrt(max(d * d - vx * vx, 1e-6))
+    yaw = math.atan2(-vx, vy)
+    print("right hand", tuple(round(v, 3) for v in hand), "yaw", round(math.degrees(yaw), 1))
+    pan, egg = frying_pan()
+    pan.location = Vector((hand.x - vx, hand.y - vy, hand.z - GRIP * math.sin(TILT)))
+    pan.rotation_euler = (TILT, 0, yaw)
     props.attach(pan, rig, "arm.R", 20)
     sc.frame_set(1)
     props.key_scale(pan, [(1, 0), (4, 0), (8, 1.08), (10, 1.0), (62, 1.0), (66, 0), (F, 0)])
