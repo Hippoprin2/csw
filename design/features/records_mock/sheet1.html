@@ -1,0 +1,116 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="common.css">
+<style>
+.room { height: 330px; border-radius: 28px; background: url(../../world/export/v1/_app_preview.jpg) 0 60% / 200% auto no-repeat; position: relative; margin: -20px -4px 12px; }
+.seedpill { position: absolute; top: 12px; right: 12px; background: rgba(251,246,236,.94); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; color: #1F5F50; }
+.bubble { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); background: #fff; border-radius: 18px; padding: 8px 14px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.seg { display: inline-flex; background: #F1E8D8; border-radius: 999px; padding: 3px; margin-bottom: 8px; }
+.seg span { padding: 6px 14px; border-radius: 999px; font-size: 13px; }
+.seg .on { background: #fff; font-weight: 700; }
+.input { height: 52px; border-radius: 999px; background: #fff; display: flex; align-items: center; padding: 0 8px 0 20px; color: #A8988A; font-size: 15px; margin-bottom: 14px; }
+.send { margin-left: auto; width: 38px; height: 38px; border-radius: 99px; background: #2F7D6B; color: #fff; display: grid; place-items: center; font-size: 18px; }
+.notes { background: #F1E8D8; border-radius: 22px; padding: 12px 12px 6px; }
+.notes .top { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin: 0 4px 8px; }
+.note { display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 16px; padding: 9px 12px; margin-bottom: 6px; font-size: 14px; }
+.note .tm { margin-left: auto; font-size: 11px; color: #A8988A; }
+.jar { margin: 6px auto 4px; width: 170px; height: 190px; border: 4px solid #d9c9b1; border-top-width: 10px; border-radius: 26px 26px 40px 40px; background: #fffaf2; display: flex; flex-wrap: wrap-reverse; align-content: flex-start; padding: 10px; gap: 4px; position: relative; }
+.jar i { width: 16px; height: 16px; border-radius: 9px; display: block; }
+.jar i.sel { outline: 3px solid #2F7D6B; outline-offset: 1px; }
+.tip { position: absolute; left: 200px; top: 190px; width: 176px; background: #fff; border-radius: 18px; padding: 10px 12px; font-size: 13px; box-shadow: 0 4px 14px rgba(74,50,38,.15); z-index: 5; }
+.tip:before { content: ""; position: absolute; left: -8px; top: 60px; border: 8px solid transparent; border-right-color: #fff; border-left: 0; }
+.tip b { display: block; font-size: 14px; margin: 3px 0 2px; }
+.big { font-size: 22px; font-weight: 800; line-height: 1.4; margin: 10px 0 14px; }
+.meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.posterbox { background: #F1E8D8; border-radius: 22px; display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 14px; }
+.posterbox img { width: 64px; height: 84px; object-fit: cover; object-position: center 30%; }
+.btnrow { display: flex; gap: 8px; }
+.btn { flex: 1; height: 50px; border-radius: 999px; display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+.catbig { font-size: 26px; font-weight: 800; margin: 2px 4px 2px; }
+</style></head><body>
+<div class="row">
+
+<!-- 1 방: 오늘의 쪽지 -->
+<div class="col"><div class="cap">M1 · 방에 '오늘의 쪽지'</div>
+<div class="phone">
+  <div class="room"><div class="seedpill">🌱 42</div><div class="bubble">물 마신 것도 승리야!</div></div>
+  <div class="lbl" style="margin-left:4px">오늘 해낸 거, 아무리 작아도 좋아</div>
+  <div class="seg"><span class="on">오늘</span><span>어제</span></div>
+  <div class="input">예) 침대 정리했다<div class="send">↑</div></div>
+  <div class="notes">
+    <div class="top"><span>오늘의 쪽지 · 3가지</span><span class="muted" style="font-weight:400">유리병에서 다 보기 ›</span></div>
+    <div class="note"><span class="dot" style="background:#f9cb9c"></span>물 2잔 마셨다<span class="tm">방금</span></div>
+    <div class="note"><span class="dot" style="background:#f6b26b"></span>퇴근길에 한 정거장 걸었다<span class="tm">오후 7:12</span></div>
+    <div class="note"><span class="dot" style="background:#9ccfd8"></span>책상 위 정리<span class="tm">오전 9:40</span></div>
+  </div>
+  <div class="new" style="left:178px;top:597px">NEW</div>
+  <div class="tabbar"><span class="on">방</span><span>유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">기록하면 바로 쪽지가 한 장 붙어. 지금은 "오늘 3가지를 해냈어" 숫자만 보여.</div></div>
+
+<!-- 2 유리병: 구슬 누르기 + 분류 칩 -->
+<div class="col"><div class="cap">M2-A · 구슬을 누르면 그 기록</div>
+<div class="phone">
+  <div class="h">나의 작은 승리 유리병</div>
+  <div class="sub">지금까지 구슬 37개. 구슬은 줄어들지 않아.</div>
+  <div class="jar" id="jar"></div>
+  <div class="tip"><span class="muted" style="font-size:11px">11월 10일 (월) · 몸 움직이기</span><b>퇴근길에 한 정거장 걸었다</b><span style="color:#1F5F50;font-size:12px;font-weight:700">크게 보기 ›</span></div>
+  <div class="new" style="left:300px;top:150px">NEW</div>
+  <div class="lbl" style="margin-top:18px">분류별로 보기</div>
+  <div class="chips">
+    <div class="chip on">전체</div>
+    <div class="chip"><span class="dot" style="background:#f6b26b;width:8px;height:8px"></span>몸 움직이기 9</div>
+    <div class="chip"><span class="dot" style="background:#d5a6bd;width:8px;height:8px"></span>나 돌보기 7</div>
+    <div class="chip"><span class="dot" style="background:#9ccfd8;width:8px;height:8px"></span>정리 6</div>
+  </div>
+  <div class="lbl">최근 2주 · 11월 13일 (금)</div>
+  <div class="win"><span class="dot" style="background:#f9cb9c"></span><span class="t">물 2잔 마셨다</span><span class="tag">잘 먹기</span></div>
+  <div class="win"><span class="dot" style="background:#9ccfd8"></span><span class="t">책상 위 정리</span><span class="tag">정리·청소</span></div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">병 속 구슬 하나 = 기록 하나. 분류 칩을 누르면 그 분류만 모여.</div></div>
+
+<!-- 3 크게 보기 -->
+<div class="col"><div class="cap">M2-A · 누르면 '크게 보기'</div>
+<div class="phone">
+  <div class="h">나의 작은 승리 유리병</div>
+  <div class="lbl" style="margin-top:20px">11월 10일 (월)</div>
+  <div class="win"><span class="dot" style="background:#f6b26b"></span><span class="t">퇴근길에 한 정거장 걸었다</span><span class="tag">몸 움직이기</span></div>
+  <div class="win"><span class="dot" style="background:#d5a6bd"></span><span class="t">일찍 잤다</span><span class="tag">나 돌보기</span></div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grab"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="muted" style="font-size:13px">11월 10일 (월) 오후 7:12</span><span style="font-size:22px;color:#6E5848">···</span></div>
+    <div class="big">퇴근길에 한 정거장<br>걸었다</div>
+    <div class="meta"><span class="chip"><span class="dot" style="background:#f6b26b;width:8px;height:8px"></span>몸 움직이기</span><span class="chip">☆ 다시 보고 싶은 기록</span></div>
+    <div class="posterbox"><img src="../../character/export/v1/hippo_move_poster.png"><div style="font-size:14px;line-height:1.5"><b>단짝이 땀 뻘뻘 응원했어</b><br><span class="muted" style="font-size:13px">눌러서 그때 동작 다시 보기</span></div></div>
+    <div class="btnrow"><div class="btn" style="background:#F1E8D8">닫기</div></div>
+    <div class="muted" style="font-size:12px;text-align:center;margin-top:10px">고치기·지우기는 ··· 안에</div>
+  </div>
+  <div class="new" style="left:300px;top:520px">NEW</div>
+</div>
+<div class="capsub">지금은 누르면 바로 '기록 고치기'가 떠. 읽기용 화면을 먼저 보여주고 고치기는 ··· 안으로.</div></div>
+
+<!-- 4 분류별 모아보기 -->
+<div class="col"><div class="cap">M2-A · 분류별 모아 보기</div>
+<div class="phone">
+  <div class="muted" style="font-size:15px;margin:0 4px 8px">‹ 유리병</div>
+  <div class="catbig"><span class="dot" style="background:#f6b26b;width:14px;height:14px"></span> 몸 움직이기</div>
+  <div class="sub" style="font-size:15px">지금까지 9번 움직였어</div>
+  <div class="lbl">11월</div>
+  <div class="win"><span class="t">퇴근길에 한 정거장 걸었다</span><span class="muted" style="font-size:12px">11/10</span></div>
+  <div class="win"><span class="t">스트레칭 10분</span><span class="muted" style="font-size:12px">11/7</span></div>
+  <div class="win"><span class="t">계단으로 올라갔다 ×2</span><span class="muted" style="font-size:12px">11/5</span></div>
+  <div class="win"><span class="t">요가 영상 따라 했다</span><span class="muted" style="font-size:12px">11/2</span></div>
+  <div class="lbl" style="margin-top:12px">10월</div>
+  <div class="win"><span class="t">처음으로 헬스장 등록</span><span class="muted" style="font-size:12px">10/28</span></div>
+  <div class="win"><span class="t">산책 30분</span><span class="muted" style="font-size:12px">10/25</span></div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">"내가 운동을 이만큼 했구나"를 한 화면에서. 숫자는 늘기만 해.</div></div>
+
+</div>
+<script>
+const cols=['#9ccfd8','#f6b26b','#a4c2f4','#b4a7d6','#f9cb9c','#d5a6bd','#ea9999','#b6d7a8','#c3c8d6'];
+const j=document.getElementById('jar');let s=7;
+for(let i=0;i<37;i++){s=(s*37+11)%101;const e=document.createElement('i');e.style.background=cols[s%9];if(i===24){e.className='sel';e.style.background='#f6b26b';}j.appendChild(e);}
+</script>
+</body></html>

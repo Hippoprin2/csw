@@ -1,0 +1,27 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #E9E2D4; font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; color: #4A3226; padding: 28px; }
+.row { display: flex; gap: 28px; align-items: flex-start; }
+.col { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.cap { font-size: 20px; font-weight: 800; color: #4A3226; background: #fff; padding: 8px 18px; border-radius: 999px; }
+.capsub { font-size: 14px; color: #6E5848; width: 390px; text-align: center; line-height: 1.45; }
+.phone { width: 390px; height: 844px; background: #FBF6EC; border-radius: 44px; overflow: hidden; position: relative; box-shadow: 0 8px 30px rgba(74,50,38,.18); padding: 54px 18px 0; }
+.h { font-size: 22px; font-weight: 800; margin: 4px 4px 4px; }
+.sub { font-size: 13px; color: #6E5848; margin: 0 4px 14px; }
+.card { background: #fff; border-radius: 22px; padding: 16px; margin-bottom: 12px; }
+.muted { color: #6E5848; }
+.lbl { font-size: 13px; color: #6E5848; font-weight: 700; margin: 0 4px 8px; }
+.dot { width: 10px; height: 10px; border-radius: 99px; display: inline-block; flex: none; }
+.win { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 22px; padding: 13px 16px; margin-bottom: 6px; font-size: 15px; }
+.win .t { flex: 1; }
+.tag { font-size: 11px; color: #6E5848; background: #F1E8D8; padding: 4px 10px; border-radius: 999px; }
+.star { font-size: 17px; color: #D9C9B1; }
+.star.on { color: #E8A93B; }
+.chips { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; margin-bottom: 14px; }
+.chip { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: 999px; background: #F1E8D8; font-size: 13px; white-space: nowrap; }
+.chip.on { background: #E3F1EC; color: #1F5F50; font-weight: 700; }
+.tabbar { position: absolute; left: 18px; right: 18px; bottom: 22px; height: 64px; background: #fff; border-radius: 999px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 4px 16px rgba(74,50,38,.12); font-size: 12px; color: #6E5848; }
+.tabbar .on { background: #E3F1EC; color: #1F5F50; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
+.new { position: absolute; background: #2F7D6B; color: #fff; font-size: 12px; font-weight: 800; padding: 5px 11px; border-radius: 999px; z-index: 9; }
+.scrim { position: absolute; inset: 0; background: rgba(74,50,38,.32); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #FBF6EC; border-radius: 32px 32px 0 0; padding: 14px 22px 34px; }
+.grab { width: 40px; height: 5px; border-radius: 9px; background: #D9C9B1; margin: 0 auto 16px; }

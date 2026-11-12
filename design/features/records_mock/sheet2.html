@@ -1,0 +1,84 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="common.css">
+<style>
+.page { background: #fff; border-radius: 28px; padding: 22px 22px 18px; margin-top: 8px; height: 600px; position: relative;
+   }
+.page .date { font-size: 24px; font-weight: 800; }
+.page .dsub { font-size: 13px; color: #6E5848; margin: 4px 0 22px; height: 44px; }
+.line { height: 50px; border-bottom: 1px solid #F1E8D8; display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.line img { width: 30px; height: 38px; object-fit: cover; object-position: center 25%; margin-left: auto; }
+.nav { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 14px; color: #6E5848; }
+.dots { display: flex; gap: 5px; } .dots i { width: 6px; height: 6px; border-radius: 9px; background: #D9C9B1; display: block; } .dots i.on { background: #2F7D6B; width: 16px; }
+.peek { position: absolute; top: 120px; width: 22px; height: 560px; background: #fff; opacity: .55; border-radius: 22px; }
+.mem { background: #E3F1EC; border-radius: 22px; padding: 14px 16px; margin-bottom: 12px; }
+.mem .q { font-size: 12px; color: #1F5F50; font-weight: 700; margin-bottom: 4px; }
+.mem .t { font-size: 16px; font-weight: 700; }
+.month { background: #fff; border-radius: 28px; padding: 20px; margin-bottom: 12px; }
+.month .title { font-size: 13px; color: #6E5848; font-weight: 700; }
+.month .bigt { font-size: 21px; font-weight: 800; margin: 6px 0 14px; line-height: 1.35; }
+.sec { background: #FBF6EC; border-radius: 18px; padding: 12px 14px; margin-bottom: 8px; }
+.sec .k { font-size: 12px; color: #6E5848; margin-bottom: 3px; }
+.sec .v { font-size: 15px; font-weight: 700; }
+.marbles { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; } .marbles i { width: 13px; height: 13px; border-radius: 9px; display: block; }
+.share { height: 46px; border-radius: 999px; background: #2F7D6B; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 15px; margin-top: 8px; }
+</style></head><body>
+<div class="row">
+
+<!-- 5 하루 한 장 -->
+<div class="col"><div class="cap">M2-B · 하루 한 장</div>
+<div class="phone">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:0 4px"><span class="muted" style="font-size:15px">‹ 유리병</span><span class="chip">목록으로</span></div>
+  <div class="peek" style="left:-10px"></div><div class="peek" style="right:-10px"></div>
+  <div class="page">
+    <div class="date">11월 10일 월요일</div>
+    <div class="dsub">이날 너는 4가지를 해냈어</div>
+    <div class="line"><span class="dot" style="background:#9ccfd8"></span>아침에 이불 갰다<img src="../../character/export/v1/hippo_idle_poster.png" style="visibility:hidden"></div>
+    <div class="line"><span class="dot" style="background:#b4a7d6"></span>보고서 초안 보냈다</div>
+    <div class="line"><span class="dot" style="background:#f6b26b"></span>퇴근길에 한 정거장 걸었다 <span class="star on" style="margin-left:auto">★</span></div>
+    <div class="line"><span class="dot" style="background:#d5a6bd"></span>일찍 잤다</div>
+    <div style="position:absolute;right:16px;bottom:16px;width:110px;text-align:center">
+      <img src="../../character/export/v1/hippo_cheer_poster.png" style="width:110px;height:140px;object-fit:cover;object-position:center 30%">
+    </div>
+  </div>
+  <div class="nav"><span>‹ 11월 7일</span><div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i></div><span>11월 12일 ›</span></div>
+</div>
+<div class="capsub">좌우로 넘기면 기록한 날만 한 장씩. 8·9·11일은 기록이 없어서 건너뛰어 (빈칸 없음).</div></div>
+
+<!-- 6 다시 보고 싶은 기록 -->
+<div class="col"><div class="cap">M3 · ☆ 다시 보고 싶은 기록</div>
+<div class="phone">
+  <div class="muted" style="font-size:15px;margin:0 4px 8px">‹ 유리병</div>
+  <div class="h">☆ 다시 보고 싶은 기록</div>
+  <div class="sub">크기랑 상관없이, 다시 읽고 싶은 것만 모았어.</div>
+  <div class="card"><div class="muted" style="font-size:12px;margin-bottom:4px">11월 10일 (월)</div><div style="font-size:16px;font-weight:700">퇴근길에 한 정거장 걸었다</div></div>
+  <div class="card"><div class="muted" style="font-size:12px;margin-bottom:4px">11월 3일 (월)</div><div style="font-size:16px;font-weight:700">엄마한테 먼저 전화했다</div></div>
+  <div class="card"><div class="muted" style="font-size:12px;margin-bottom:4px">10월 28일 (화)</div><div style="font-size:16px;font-weight:700">처음으로 헬스장 등록</div></div>
+  <div class="card"><div class="muted" style="font-size:12px;margin-bottom:4px">10월 21일 (화)</div><div style="font-size:16px;font-weight:700">물 한 잔 마셨다</div></div>
+  <div class="card"><div class="muted" style="font-size:12px;margin-bottom:4px">10월 19일 (일)</div><div style="font-size:16px;font-weight:700">무서웠지만 발표 끝냈다</div></div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">'크게 보기'에서 ☆을 누르면 여기 모여. 씨앗·구슬은 똑같아. "물 한 잔"도 별 받을 수 있어.</div></div>
+
+<!-- 7 한 달 카드 + 한 달 전 오늘 -->
+<div class="col"><div class="cap">M4 · 한 달 전 오늘 + 한 달 카드</div>
+<div class="phone">
+  <div class="h">나의 작은 승리 유리병</div>
+  <div class="sub">지금까지 구슬 37개. 구슬은 줄어들지 않아.</div>
+  <div class="mem"><div class="q">한 달 전 오늘</div><div class="t">"처음으로 혼자 김치찌개 끓였다"</div><div class="muted" style="font-size:12px;margin-top:4px">10월 13일 (월) · 단짝이 아직 기억하고 있어</div></div>
+  <div class="month">
+    <div class="title">10월의 나</div>
+    <div class="bigt">10월에 너는 31가지를<br>해냈어</div>
+    <div class="marbles" id="mb"></div>
+    <div class="sec"><div class="k">제일 자주 한 일</div><div class="v">물 마시기 · 정리하기</div></div>
+    <div class="sec"><div class="k">10월에 처음 적은 일</div><div class="v">"처음으로 헬스장 등록"</div></div>
+    <div class="sec"><div class="k">다시 해낸 일</div><div class="v">"산책 30분" 4번</div></div>
+    <div class="share">카드로 저장하기</div>
+  </div>
+</div>
+<div class="capsub">원문은 그대로 두고 위에 카드만 덧붙여. 지난달과 비교하는 숫자는 없어. 12월엔 같은 방식으로 '올해의 유리병'.</div></div>
+
+</div>
+<script>
+const cols=['#9ccfd8','#f6b26b','#a4c2f4','#b4a7d6','#f9cb9c','#d5a6bd','#ea9999','#b6d7a8'];
+const m=document.getElementById('mb');let s=3;for(let i=0;i<31;i++){s=(s*29+7)%97;const e=document.createElement('i');e.style.background=cols[s%8];m.appendChild(e);}
+</script>
+</body></html>
