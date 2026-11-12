@@ -36,7 +36,7 @@
 
 ## 5. 보안·운영
 - [ ] 열쇠 교체: service role 키, OpenAI 키, 카카오·구글 시크릿, DB 비밀번호 → 교체 후 `scripts/test_backend.py`
-- [ ] (점검) `yard_zones`에 `revoke all … from authenticated` 추가 (지금은 RLS가 막아 악용 불가, 규칙 맞추기)
+- [x] (점검) `yard_zones` 권한 회수 — `20261112000001_yard_zones_grants.sql` 원격 적용, `scripts/test_yard.py` FAILS 0 (2026-11-12)
 - [ ] Supabase Pro 전환 또는 매일 DB 덤프 — 무료 플랜은 7일 요청 없으면 일시정지, 자동 백업 없음
 - [ ] 처음 보는 문장으로 자해 감지 재평가
 - [x] (추가) 원격 Supabase 실제 설정 확인: OTP 10분, 허용 목록 (2026-11-12 Management API로 확인: OTP 600초 ✓, 허용 목록 = `csw://**, exp://**, http://localhost:8081/**` → 개발용 2개 제거는 3장 항목에서)
