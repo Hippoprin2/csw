@@ -518,7 +518,119 @@ def drink():  # 잘 먹기(물): big glass in both hands, tip head back, three g
         props.key_scale(sp, [(1, 0), (f0 - 1, 0), (f0 + 2, s), (f0 + 4, s * 0.6), (f0 + 6, s * 1.1), (f0 + 10, 0), (F, 0)])
     return F
 
-ACTIONS = {"drink": drink, "eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
+def chef_hat(head_top):
+    """small puffy toque sitting between the ears; origin at its band bottom (pops onto the head)"""
+    import bmesh
+    white = props.mat("Chef_White", (0.99, 0.97, 0.93), 0.85)
+    parts = []
+    bm = props.cylinder(0.085, 0.055, 48)
+    bmesh.ops.translate(bm, verts=bm.verts, vec=(0, 0, 0.0275))
+    band = props.obj_from_bm(bm, "HatBand", [white])
+    bev = band.modifiers.new("round", "BEVEL"); bev.width = 0.01; bev.segments = 3
+    parts.append(band)
+    for i, (x, y, z, r) in enumerate(((0, 0, 0.1, 0.075), (-0.055, 0.0, 0.085, 0.055), (0.055, 0.0, 0.085, 0.055),
+                                       (0, -0.05, 0.085, 0.055), (0, 0.05, 0.085, 0.055))):
+        bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=r)
+        for f in bm.faces: f.smooth = True
+        o = props.obj_from_bm(bm, f"HatPuff{i}", [white]); o.location = (x, y, z); parts.append(o)
+    hat = props.join(parts, "ChefHat")
+    bpy.context.view_layer.update()
+    hat.location = head_top + Vector((0, 0.0, -0.035))
+    hat.rotation_euler = (math.radians(-8), math.radians(6), 0)
+    return hat
+
+def frying_pan():
+    """pan (origin = pan centre, cooking surface at z=0, handle toward +x) + fried egg child"""
+    import bmesh
+    dark = props.mat("Pan_Body", (0.93, 0.36, 0.38), 0.6)   # coral (ART_BIBLE accent), no black
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=48, radius1=0.1, radius2=0.125, depth=0.032)
+    bmesh.ops.translate(bm, verts=bm.verts, vec=(0, 0, -0.012))
+    for f in bm.faces: f.smooth = True
+    pan = props.obj_from_bm(bm, "Pan", [dark])
+    bev = pan.modifiers.new("round", "BEVEL"); bev.width = 0.008; bev.segments = 3
+    bm = props.cylinder(0.014, 0.17, 24)
+    handle = props.obj_from_bm(bm, "PanHandle", [props.mat("Pan_Handle", (0.86, 0.69, 0.50), 0.7)])
+    handle.rotation_euler = (0, math.radians(90), 0); handle.location = (0.2, 0, 0.0)
+    handle.parent = pan
+    # fried egg: wobbly white + yolk dome
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=16, radius=1.0)
+    for v in bm.verts:
+        a = math.atan2(v.co.y, v.co.x)
+        r = 0.074 * (1 + 0.08 * math.sin(3 * a) + 0.05 * math.sin(5 * a + 1))
+        v.co = Vector((v.co.x * r, v.co.y * r, v.co.z * 0.009))
+    for f in bm.faces: f.smooth = True
+    egg = props.obj_from_bm(bm, "EggWhite", [props.mat("Egg_White", (0.99, 0.97, 0.93), 0.5)])
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=0.03)
+    for v in bm.verts: v.co.z *= 0.7
+    for f in bm.faces: f.smooth = True
+    yolk = props.obj_from_bm(bm, "EggYolk", [props.mat("Egg_Yolk", (0.98, 0.78, 0.25), 0.4)])
+    yolk.location = (0.008, -0.006, 0.008); yolk.parent = egg
+    egg.parent = pan; egg.location = (-0.005, 0, 0.012)
+    return pan, egg
+
+def cook():  # 잘 먹기(요리): chef hat pops on, pan in both hands, sizzle-shake, flip the fried egg, proud
+    F = 76; rest(1)
+    arms(7, ly=55, lz=80); arms(62, ly=55, lz=80)
+    for f in (7, 62):
+        S(f, "arm.L", (1.1, 1.5, 1.1)); S(f, "arm.R", (1.1, 1.5, 1.1))
+    R(8, "head", x=12); R(24, "head", x=12)
+    for i, f in enumerate(range(10, 25, 3)):            # sizzle: little side shakes
+        R(f, "body", z=4 if i % 2 else -4)
+    R(25, "body")
+    S(27, "body", (1.04, 0.95, 1.04)); L(27, "root", 0.0)                 # dip
+    S(31, "body", (0.97, 1.05, 0.97)); L(31, "root", 0.02); R(31, "head", x=-6)   # toss
+    R(37, "head", x=-18); R(43, "head", x=6)                               # watch the egg go up and land
+    S(36, "body", (1, 1, 1)); L(36, "root", 0.0)
+    S(45, "body", (1.03, 0.96, 1.03)); S(48, "body", (1, 1, 1))           # catch
+    # proud: little hops with closed eyes
+    L(51, "root", 0.04); L(55, "root", 0.0); L(58, "root", 0.03); L(61, "root", 0.0)
+    R(51, "head", x=-4); R(60, "head", x=0)
+    ears_bounce([(1, 0), (27, 4), (33, -10), (40, 6), (46, 8), (51, -8), (56, 6), (62, 0)])
+    rest(68); rest(F)
+    eyes([(1, 0), (20, 0), (21, 1), (23, 1), (24, 0), (48, 0), (49, 1), (63, 1), (64, 0), (F, 0)])
+    wag(48, 64, 20, 3)
+    # --- chef hat on the head ---
+    hippo = bpy.data.objects["Hippo"]
+    bpy.context.view_layer.update()
+    deps = bpy.context.evaluated_depsgraph_get(); ev = hippo.evaluated_get(deps); mwi = hippo.matrix_world.inverted()
+    sc.frame_set(1); bpy.context.view_layer.update()
+    hit, loc, nor, fi = ev.ray_cast(mwi @ Vector((0, 0.02, 1.0)), (mwi.to_3x3() @ Vector((0, 0, -1))).normalized())
+    top = hippo.matrix_world @ loc if hit else Vector((0, 0, 0.42))
+    print("head top", tuple(round(v, 3) for v in top))
+    hat = chef_hat(top)
+    props.attach(hat, rig, "head", 1)
+    props.key_scale(hat, [(1, 0), (3, 0), (7, 1.1), (9, 1.0), (64, 1.0), (68, 0), (F, 0)])
+    # --- pan between the hands (follows the body) ---
+    sc.frame_set(20); bpy.context.view_layer.update()
+    tl = rig.matrix_world @ P["arm.L"].tail; tr = rig.matrix_world @ P["arm.R"].tail
+    hands = (tl + tr) / 2
+    pan, egg = frying_pan()
+    pan.location = Vector((0, hands.y - 0.09, hands.z + 0.01))
+    pan.rotation_euler = (math.radians(38), 0, 0)       # +X tips the cooking surface toward the camera (-Y)
+    body_m = rig.matrix_world @ P["body"].matrix
+    pan.parent = rig; pan.parent_type = "BONE"; pan.parent_bone = "body"
+    pan.matrix_parent_inverse = (body_m @ Matrix.Translation((0, P["body"].length, 0))).inverted()
+    sc.frame_set(1)
+    props.key_scale(pan, [(1, 0), (4, 0), (8, 1.08), (10, 1.0), (62, 1.0), (66, 0), (F, 0)])
+    for f, dz, tilt in ((1, 0, 0), (25, 0, 0), (28, -0.025, 6), (31, 0.03, -14), (34, 0.0, 0), (44, 0.0, 0),
+                        (46, -0.02, 4), (49, 0, 0), (F, 0, 0)):
+        pan.delta_location = (0, 0, dz); pan.keyframe_insert("delta_location", frame=f)
+        pan.delta_rotation_euler = (math.radians(tilt), 0, 0); pan.keyframe_insert("delta_rotation_euler", frame=f)
+    for i, f in enumerate(range(10, 25, 3)):            # egg slides a little with the shakes
+        egg.delta_location = (0.008 if i % 2 else -0.008, 0, 0); egg.keyframe_insert("delta_location", frame=f)
+    for f, z, rx in ((25, 0, 0), (31, 0.02, 0), (34, 0.36, 120), (37, 0.5, 220), (40, 0.36, 300), (44, 0.0, 360), (F, 0.0, 360)):
+        egg.delta_location = (0, 0, z); egg.keyframe_insert("delta_location", frame=f)
+        egg.delta_rotation_euler = (math.radians(rx), 0, 0); egg.keyframe_insert("delta_rotation_euler", frame=f)
+    # sparkles when it lands
+    face = math.radians(19)
+    for i, (x, z, f0, s) in enumerate(((-0.34, 0.3, 46, 0.11), (0.36, 0.42, 48, 0.1), (-0.28, 0.55, 51, 0.09), (0.3, 0.6, 54, 0.08))):
+        sp = props.sparkle(f"CookSparkle{i}", col=[(1.0, 0.86, 0.35), (1.0, 0.75, 0.82), (0.75, 0.9, 1.0), (1.0, 0.86, 0.35)][i])
+        sp.location = (x, -0.25, z); sp.rotation_euler = (0, 0, face)
+        props.key_scale(sp, [(1, 0), (f0 - 1, 0), (f0 + 2, s), (f0 + 4, s * 0.6), (f0 + 6, s * 1.1), (f0 + 10, 0), (F, 0)])
+    return F
+
+ACTIONS = {"cook": cook, "drink": drink, "eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
 F = ACTIONS[ACTION]()
 sc.frame_start, sc.frame_end = 1, F
 for fc in fcurves(rig.animation_data.action):

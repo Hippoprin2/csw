@@ -118,6 +118,14 @@
       "loop": false,
       "source_clip": "drink"
     },
+    "cook": {
+      "file": "hippo_cook.webp",
+      "poster": "hippo_cook_poster.png",
+      "frames": 76,
+      "duration_ms": 3167,
+      "loop": false,
+      "source_clip": "cook"
+    },
     "garden_idle": {
       "file": "hippo_garden_idle.webp",
       "poster": "hippo_garden_idle_poster.png",

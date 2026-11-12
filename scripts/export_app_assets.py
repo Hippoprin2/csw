@@ -22,6 +22,7 @@ CLIPS = {
     "sit_out":  ("sit_out", False),
     "eat_strawberry": ("eat_strawberry", False),   # 방에서 '먹이기'(딸기)
     "drink": ("drink", False),   # 잘 먹기 > 물 마시기 (2026-11-12, 기록에 '물')
+    "cook": ("cook", False),     # 잘 먹기 > 요리 (2026-11-12, 요리/만들/끓/볶)
     "garden_idle":    ("idle25", True),            # 텃밭 25도 (WORLD.md W2)
     "garden_cheer":   ("cheer25", False),          # 텃밭 수확 만세, 25도
     # 마당·텃밭 걷기 25도 (anim_yard.py). 제자리 걷기 루프, 앱이 위치를 옮김. 왼쪽 = walk_side 좌우 뒤집기
