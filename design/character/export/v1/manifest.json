@@ -110,6 +110,14 @@
       "loop": false,
       "source_clip": "eat_strawberry"
     },
+    "drink": {
+      "file": "hippo_drink.webp",
+      "poster": "hippo_drink_poster.png",
+      "frames": 64,
+      "duration_ms": 2667,
+      "loop": false,
+      "source_clip": "drink"
+    },
     "garden_idle": {
       "file": "hippo_garden_idle.webp",
       "poster": "hippo_garden_idle_poster.png",
