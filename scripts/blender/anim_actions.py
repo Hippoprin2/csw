@@ -539,8 +539,8 @@ def chef_hat(head_top):
     hat.rotation_euler = (math.radians(-8), math.radians(6), 0)
     return hat
 
-def frying_pan():
-    """pan (origin = pan centre, cooking surface at z=0, handle toward +x) + fried egg child"""
+def frying_pan(hs=1):
+    """pan (origin = pan centre, cooking surface at z=0, handle toward hs*x) + fried egg child"""
     import bmesh
     dark = props.mat("Pan_Body", (0.93, 0.36, 0.38), 0.6)   # coral (ART_BIBLE accent), no black
     bm = bmesh.new()
@@ -551,7 +551,7 @@ def frying_pan():
     bev = pan.modifiers.new("round", "BEVEL"); bev.width = 0.008; bev.segments = 3
     bm = props.cylinder(0.014, 0.17, 24)
     handle = props.obj_from_bm(bm, "PanHandle", [props.mat("Pan_Handle", (0.86, 0.69, 0.50), 0.7)])
-    handle.rotation_euler = (0, math.radians(90), 0); handle.location = (0.2, 0, 0.0)
+    handle.rotation_euler = (0, math.radians(90), 0); handle.location = (0.2 * hs, 0, 0.0)
     handle.parent = pan
     # fried egg: wobbly white + yolk dome
     bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=16, radius=1.0)
@@ -569,11 +569,15 @@ def frying_pan():
     egg.parent = pan; egg.location = (-0.005, 0, 0.012)
     return pan, egg
 
-def cook():  # 잘 먹기(요리): chef hat pops on, pan in both hands, sizzle-shake, flip the fried egg, proud
+def cook():  # 잘 먹기(요리): chef hat pops on, pan by the handle in ONE hand (대표 11-12), other hand on the hip, flip the egg, proud
     F = 76; rest(1)
-    arms(7, ly=55, lz=80); arms(62, ly=55, lz=80)
-    for f in (7, 62):
-        S(f, "arm.L", (1.1, 1.5, 1.1)); S(f, "arm.R", (1.1, 1.5, 1.1))
+    ARM = (0, -42, -62)                                  # right arm forward, a bit raised (holds the handle)
+    def rarm(f, dy=0, st=1.35):
+        R(f, "arm.R", ARM[0], ARM[1] + dy, ARM[2]); S(f, "arm.R", (1.1, st, 1.1))
+    for f in (7, 25, 34, 44, 49, 62): rarm(f)
+    rarm(28, 10); rarm(31, -22, 1.45); rarm(46, 8)           # dip -> flick up (toss), catch dip
+    for f in (7, 62):                                     # left hand rests on the hip
+        R(f, "arm.L", 0, -28, -18); S(f, "arm.L", (1, 1, 1))
     R(8, "head", x=12); R(24, "head", x=12)
     for i, f in enumerate(range(10, 25, 3)):            # sizzle: little side shakes
         R(f, "body", z=4 if i % 2 else -4)
@@ -601,16 +605,14 @@ def cook():  # 잘 먹기(요리): chef hat pops on, pan in both hands, sizzle-s
     hat = chef_hat(top)
     props.attach(hat, rig, "head", 1)
     props.key_scale(hat, [(1, 0), (3, 0), (7, 1.1), (9, 1.0), (64, 1.0), (68, 0), (F, 0)])
-    # --- pan between the hands (follows the body) ---
-    sc.frame_set(20); bpy.context.view_layer.update()
-    tl = rig.matrix_world @ P["arm.L"].tail; tr = rig.matrix_world @ P["arm.R"].tail
-    hands = (tl + tr) / 2
-    pan, egg = frying_pan()
-    pan.location = Vector((0, hands.y - 0.09, hands.z + 0.01))
+    # --- pan held by the handle in the right hand (follows arm.R) ---
+    hand = props.hand_pos(rig, "arm.R", 20)
+    hs = 1 if hand.x > 0 else -1                          # handle points from the pan back to the hand
+    print("right hand", tuple(round(v, 3) for v in hand), "hs", hs)
+    pan, egg = frying_pan(hs)
+    pan.location = Vector((hand.x - hs * 0.27, hand.y - 0.05, hand.z))
     pan.rotation_euler = (math.radians(38), 0, 0)       # +X tips the cooking surface toward the camera (-Y)
-    body_m = rig.matrix_world @ P["body"].matrix
-    pan.parent = rig; pan.parent_type = "BONE"; pan.parent_bone = "body"
-    pan.matrix_parent_inverse = (body_m @ Matrix.Translation((0, P["body"].length, 0))).inverted()
+    props.attach(pan, rig, "arm.R", 20)
     sc.frame_set(1)
     props.key_scale(pan, [(1, 0), (4, 0), (8, 1.08), (10, 1.0), (62, 1.0), (66, 0), (F, 0)])
     for f, dz, tilt in ((1, 0, 0), (25, 0, 0), (28, -0.025, 6), (31, 0.03, -14), (34, 0.0, 0), (44, 0.0, 0),
