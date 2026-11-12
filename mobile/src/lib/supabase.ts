@@ -44,6 +44,7 @@ export const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
   {
-    auth: { storage: encryptedStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
+    // PKCE: 로그인을 시작한 기기만 세션을 받을 수 있다 (링크에 토큰이 직접 실리지 않음)
+    auth: { storage: encryptedStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false, flowType: 'pkce' },
   },
 );

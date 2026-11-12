@@ -10,6 +10,7 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: typeof window !== 'undefined',
       detectSessionInUrl: false,
+      flowType: 'pkce',
     },
   },
 );

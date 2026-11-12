@@ -22,13 +22,10 @@ export async function sessionFromUrl(url: string) {
     if (part) new URLSearchParams(part).forEach((v, k) => { params[k] = v; });
   }
   if (params.error) throw new Error(params.error_description || params.error);
-  if (params.code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(params.code);
-    if (error) throw error;
-    return true;
-  }
-  if (!params.access_token) return false;
-  const { error } = await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+  // code만 받는다(PKCE). 이 기기가 로그인을 시작할 때 만든 검증값이 있어야 교환되므로,
+  // 남이 만든 링크로는 세션이 바뀌지 않는다. 링크에 실린 access_token은 일부러 무시한다.
+  if (!params.code) return false;
+  const { error } = await supabase.auth.exchangeCodeForSession(params.code);
   if (error) throw error;
   return true;
 }

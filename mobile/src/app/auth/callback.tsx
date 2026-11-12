@@ -15,7 +15,8 @@ export default function AuthCallback() {
 
   useEffect(() => {
     if (!url) return;
-    sessionFromUrl(url).catch(() => setErr('링크가 만료됐거나 이미 쓰였어. 다시 시도해줘.'));
+    const fail = () => setErr('링크가 만료됐거나 이미 쓰였어. 다시 시도해줘.');
+    sessionFromUrl(url).then((ok) => { if (!ok) fail(); }).catch(fail);
   }, [url, params]);
 
   return (
