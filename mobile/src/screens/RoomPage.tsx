@@ -23,7 +23,7 @@ import { Sheet, st as sheetSt } from '@/ui/Sheet';
 import type { Pager } from '@/ui/pager';
 import { SpaceImage } from '@/ui/SpaceImage';
 import { useSpaceSize } from '@/ui/layout';
-import { PANEL_OVERLAP, SpaceChips, SpaceSwitch, useSceneHeight, type SpaceNav } from '@/ui/SpaceChrome';
+import { PANEL_OVERLAP, SpaceChips, SpaceSwitch, useSceneLayout, type SpaceNav } from '@/ui/SpaceChrome';
 import { C, H, R, TAB_SPACE } from '@/ui/theme';
 
 const DAILY_REWARD_CAP = 10;
@@ -44,12 +44,14 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
   const [basket, setBasket] = useState(false);
   // 그림: 화면 위쪽 가로 꽉(약 420). 1080 창을 높이에 맞추고 남는 쪽은 가운데 기준으로 잘라 보여준다
   const { fullWidth } = useSpaceSize();
-  const sceneH = useSceneHeight();
+  const { canvasH, sceneH } = useSceneLayout();
   const insets = useSafeAreaInsets();
   const belowChips = insets.top + 8 + H.chip + 10; // 위쪽 칩 아래
-  const sc = Math.max(fullWidth, sceneH) / CANVAS;
-  const offX = (CANVAS - fullWidth / sc) / 2; // 창(1080) 중 화면 밖으로 잘리는 왼쪽 폭 (캔버스 px)
-  const offY = (CANVAS - sceneH / sc) / 2;
+  // 1080 창의 세로 전체를 canvasH에 맞춘다 (단짝 발까지 보이게). 가로는 가운데 기준으로 자르거나 넓게 보여줌
+  const sc = canvasH / CANVAS;
+  const offX = (CANVAS - fullWidth / sc) / 2; // 창(1080) 중 화면 밖으로 잘리는 왼쪽 폭 (캔버스 px, 넓은 화면이면 음수)
+  const maxWorldX = Math.max(0, ROOM.width - fullWidth / sc);
+  const offY = 0;
   const [vase, setVase] = useState(() => store.get(VASE_KEY));
   const [text, setText] = useState('');
   const [chosen, setChosen] = useState<Category | null>(null);
@@ -254,7 +256,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     maxDistance: 8, runOnJS: true,
     onDeactivate: (e) => {
       if (e.canceled) return;
-      const x = camX.value + offX + e.x / sc, y = offY + e.y / sc;
+      const x = Math.min(maxWorldX, Math.max(0, camX.value + offX)) + e.x / sc, y = offY + e.y / sc;
       const hit = (r: number[]) => x >= r[0] && x <= r[0] + r[2] && y >= r[1] && y <= r[1] + r[3];
       const si = cab.findIndex((_, i) => hit(JC.slots[i].tap));
       if (si >= 0) { track('jar_viewed', { no: cab[si].no, from: 'cabinet' }); router.push(`/jar/${cab[si].no}`); return; }
@@ -268,7 +270,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     onUpdate: (e) => { 'worklet'; pager?.drag(e.translationX); },
     onDeactivate: (e) => { 'worklet'; pager?.end(e.translationX, e.velocityX, e.canceled); },
   });
-  const worldStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -(camX.value + offX) * sc }, { translateY: -offY * sc }] }));
+  const worldStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -Math.min(maxWorldX, Math.max(0, camX.value + offX)) * sc }, { translateY: -offY * sc }] }));
 
   const jarDots = (j: (typeof cab)[number], slot: (typeof JC.slots)[number]) => {
     const [mx, my, mw, mh] = slot.marbles;

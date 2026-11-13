@@ -9,7 +9,7 @@ import { Btn, Price } from '@/ui/kit';
 import { Pet, type PetAction } from '@/ui/Pet';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
 import { useSpaceSize } from '@/ui/layout';
-import { PANEL_OVERLAP, SpaceChips, SpaceSwitch, useSceneHeight, type SpaceNav } from '@/ui/SpaceChrome';
+import { PANEL_OVERLAP, SpaceChips, SpaceSwitch, useSceneLayout, type SpaceNav } from '@/ui/SpaceChrome';
 import { CANVAS, GARDEN, ICONS } from '@/data/world';
 import { Image } from 'expo-image';
 import { C, R, TAB_SPACE } from '@/ui/theme';
@@ -63,9 +63,9 @@ export function GardenPage({ nav }: { nav?: SpaceNav } = {}) {
   const seq = useRef(0);
   // 그림: 화면 위쪽 가로 꽉(약 420). 정사각 캔버스를 넉넉한 쪽에 맞추고 가운데 기준으로 잘라 보여준다
   const { fullWidth } = useSpaceSize();
-  const sceneH = useSceneHeight();
-  const sc = Math.max(fullWidth, sceneH) / CANVAS;
-  const ox = (CANVAS * sc - fullWidth) / 2, oy = (CANVAS * sc - sceneH) / 2;
+  const { canvasH, sceneH } = useSceneLayout();
+  const sc = Math.max(fullWidth, canvasH) / CANVAS;
+  const ox = (CANVAS * sc - fullWidth) / 2, oy = (CANVAS * sc - canvasH) / 2; // 판이 덮는 부분 위(canvasH) 안에서 가운데 맞춤
 
   const firstFree = !profile?.first_crop_used;
   const bySlot = Object.fromEntries(plots.map((p) => [p.slot, p]));

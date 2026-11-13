@@ -18,11 +18,17 @@ const LABEL: Record<SpaceKey, string> = { garden: '텃밭', room: '방', yard: '
 
 export type SpaceNav = { page: number; go: (p: number) => void };
 
-// 그림 높이: 화면 위쪽 가로 꽉, 약 420 (작은 폰은 화면 높이의 절반, 최소 300)
+// 그림 자리: 화면 맨 위(상태 표시줄 밑까지)부터 가로 꽉.
+// - canvasH: 그림이 온전히 보이는 높이 = 상태 표시줄 + 보이는 높이(화면 너비 이하, 화면 높이의 46%, 최소 300)
+// - sceneH: canvasH + 판이 덮는 부분(PANEL_OVERLAP). 판이 덮는 곳엔 그림 바닥이 오지 않게 한다
+//   (2026-11-13 아이폰 실기기: 상태 표시줄·판이 그림 위아래를 가려 방이 작아 보이고 단짝 발이 잘렸음)
 export const PANEL_OVERLAP = 28;
-export function useSceneHeight() {
-  const { height } = useWindowDimensions();
-  return Math.round(Math.min(420, Math.max(300, height * 0.5)));
+export function useSceneLayout() {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const view = Math.round(Math.min(Math.min(width, 520), Math.max(300, height * 0.46)));
+  const canvasH = insets.top + view;
+  return { canvasH, sceneH: canvasH + PANEL_OVERLAP };
 }
 
 export function SpaceChips({ space }: { space: SpaceKey }) {
