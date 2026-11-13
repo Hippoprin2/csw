@@ -1,16 +1,18 @@
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 
 import type { Win } from '@/lib/api';
 import { track } from '@/lib/analytics';
-import { CATS } from '@/lib/categories';
+import { CATS, type Category } from '@/lib/categories';
 import { formatDay } from '@/lib/dates';
 import { store } from '@/lib/store';
+import { useReduceMotion } from '@/lib/useReduceMotion';
 import { useWinSheet } from '@/ui/WinSheet';
-import { ART, C, R } from '@/ui/theme';
+import { C, R } from '@/ui/theme';
 
 // 유리병 + 구슬 쓸어 보기 (C9 N5, 시안 records_mock/sheet4.png)
 // - 0.3초 꾹 누르면 시작(톡 진동). 그 전에 손가락이 움직이면 실패 → 화면 스크롤 그대로
@@ -21,19 +23,51 @@ import { ART, C, R } from '@/ui/theme';
 // wins: 넣은 순서(오래된 것 먼저). 병은 아래 줄부터 채움
 const HINT_KEY = 'csw.marbleSwipeHintDone';
 const LONG_PRESS_MS = 300;
-const HIT_R = 18; // 손가락 대비 구슬(14)이 작아서 가장 가까운 구슬을 이 거리 안에서 고름
+const HIT_R = 22; // 구슬 지름 31 — 가장 가까운 구슬을 이 거리 안에서 고름 (빈틈에서도 이어지게 반지름보다 조금 크게)
 const BUBBLE_W = 236;
 const GAP = 8;
 
 type Rect = { x: number; y: number; w: number; h: number };
 
-// 병 안 구슬 자리는 계산으로 (onLayout은 웹에서 wrap-reverse 자식 좌표가 어긋남). 병 테두리 바깥 기준
-const JAR_W = 150, JAR_H = 170, BORDER = 4, BORDER_TOP = 10, PAD = 9, M = 14, M_GAP = 3;
-const PER_ROW = Math.floor((JAR_W - BORDER * 2 - PAD * 2 + M_GAP) / (M + M_GAP)); // 7
+// J1 병 그림 = (A) 둥근 방 유리장 병 (2026-11-13 대표 결정, 시안 design/features/jar_redesign/sheet3_roundA.png)
+// 병 껍데기만 3D 렌더 2장(뒤 유리 jar_back + 앞 뚜껑·반사 jar_front, 800×1000) 사이에 앱이 3D 구슬 그림을 한 겹으로.
+// 숨는 구슬 없음 → 쓸어 보기. 자리는 계산으로 (onLayout은 웹에서 GestureDetector 안 좌표가 어긋남) — 시안 sheet2.html과 같은 식
+const JAR_W = 290, K = JAR_W / 800, JAR_H = Math.round(1000 * K);
+const IN_X0 = 96 * K, IN_X1 = 704 * K, IN_YB = 918 * K; // 앞 유리면 안쪽 (렌더 좌표 → pt)
+const M = 31, ROW_H = M * 0.88, PER_ROW = 7; // 가로 7 × 8줄 = 50 (병 1개 분량)
+const START = IN_X0 + (IN_X1 - IN_X0 - PER_ROW * M) / 2;
 const marbleRect = (i: number): Rect => {
   const row = Math.floor(i / PER_ROW), col = i % PER_ROW;
-  return { x: BORDER + PAD + col * (M + M_GAP), y: JAR_H - BORDER - PAD - M - row * (M + M_GAP), w: M, h: M };
+  return { x: START + col * M + (row % 2 ? M * 0.12 : -M * 0.12), y: IN_YB - M - row * ROW_H, w: M, h: M };
 };
+const JAR_BACK = require('@/assets/world/jar/jar_back.webp');
+const JAR_FRONT = require('@/assets/world/jar/jar_front.webp');
+const MARBLE: Record<Category, number> = {
+  tidy: require('@/assets/world/jar/marble_tidy.webp'), move: require('@/assets/world/jar/marble_move.webp'),
+  study: require('@/assets/world/jar/marble_study.webp'), work: require('@/assets/world/jar/marble_work.webp'),
+  eat: require('@/assets/world/jar/marble_eat.webp'), care: require('@/assets/world/jar/marble_care.webp'),
+  people: require('@/assets/world/jar/marble_people.webp'), cheer: require('@/assets/world/jar/marble_cheer.webp'),
+  endure: require('@/assets/world/jar/marble_endure.webp'),
+};
+
+// 새로 들어온 구슬: 위에서 톡 떨어져 살짝 튀기 (방 팝과 같은 느낌). 처음 그릴 때 있던 구슬은 가만히
+function Marble({ cat, r, on, drop }: { cat: Category; r: Rect; on: boolean; drop: boolean }) {
+  const [y] = useState(() => new Animated.Value(drop ? -70 : 0));
+  useEffect(() => {
+    if (!drop) return;
+    Animated.sequence([
+      Animated.timing(y, { toValue: 0, duration: 320, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      Animated.timing(y, { toValue: -7, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(y, { toValue: 0, duration: 120, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+    ]).start();
+  }, [drop, y]);
+  return (
+    <Animated.View style={[st.marble, { left: r.x, top: r.y, transform: [{ translateY: y }, { scale: on ? 1.3 : 1 }] }, on && st.marbleOnBox]}>
+      <Image source={MARBLE[cat]} style={st.marbleImg} />
+      {on && <View style={st.marbleRing} />}
+    </Animated.View>
+  );
+}
 
 function haptic(kind: 'start' | 'tick') {
   if (Platform.OS === 'web') return; // 웹은 진동 없음
@@ -51,6 +85,9 @@ export function MarbleJar({ wins, label, listHref, onScrollLock, onChange, empty
   const [boxW, setBoxW] = useState(0); // 병은 감싸는 칸 맨 위 가운데 (웹 onLayout 좌표가 GestureDetector 때문에 어긋나 계산으로)
   const [bubbleH, setBubbleH] = useState(74);
   const live = useRef({ sel: null as number | null, swiped: false });
+  const reduce = useReduceMotion();
+  // 처음 그릴 때 있던 구슬 id (이후 새로 생긴 것만 떨어지는 움직임)
+  const [seen] = useState(() => new Set(wins.map((w) => w.id)));
 
   const sig = wins.map((w) => w.id).join(',');
   const sel = picked && picked.sig === sig ? picked.i : null;
@@ -116,16 +153,12 @@ export function MarbleJar({ wins, label, listHref, onScrollLock, onChange, empty
       {/* 말풍선이 떠 있을 때 병 밖 빈 곳을 누르면 닫힘 */}
       {sel !== null && <Pressable style={StyleSheet.absoluteFill} onPress={close} accessible={false} />}
       <GestureDetector gesture={gesture}>
-        <View
-          style={st.jar}
-          accessible accessibilityLabel={label}
-        >
+        <View style={st.jar} accessible accessibilityLabel={label}>
+          <Image source={JAR_BACK} style={StyleSheet.absoluteFill} contentFit="contain" />
           {wins.map((m, i) => (
-            <View
-              key={m.id}
-              style={[st.marble, { backgroundColor: CATS[m.category].color }, sel === i && st.marbleOn]}
-            />
+            <Marble key={m.id} cat={m.category} r={marbleRect(i)} on={sel === i} drop={!reduce && !seen.has(m.id)} />
           ))}
+          <Image source={JAR_FRONT} style={[StyleSheet.absoluteFill, st.front]} contentFit="contain" pointerEvents="none" />
         </View>
       </GestureDetector>
 
@@ -155,11 +188,12 @@ export function MarbleJar({ wins, label, listHref, onScrollLock, onChange, empty
 
 const st = StyleSheet.create({
   wrap: { alignSelf: 'stretch', alignItems: 'center', marginBottom: 8, zIndex: 2 },
-  // 병 그림 (유리병 자체는 화면 속 소품이라 선을 유지)
-  jar: { width: JAR_W, height: JAR_H, borderWidth: BORDER, borderTopWidth: BORDER_TOP, borderColor: ART.jarLine, borderTopLeftRadius: 26, borderTopRightRadius: 26, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: ART.jarGlass, flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: PAD, gap: M_GAP, overflow: 'hidden' },
-  // 50개가 다 들어가는 크기 (한 줄 7개 × 8줄)
-  marble: { width: M, height: M, borderRadius: M / 2 },
-  marbleOn: { transform: [{ scale: 1.5 }], borderWidth: 2, borderColor: C.ink }, // 유리병 바탕이 밝아 흰 테는 안 보임
+  jar: { width: JAR_W, height: JAR_H },
+  front: { zIndex: 4 },
+  marble: { position: 'absolute', width: M, height: M },
+  marbleImg: { width: M, height: M },
+  marbleOnBox: { zIndex: 3 },
+  marbleRing: { position: 'absolute', left: -2, top: -2, right: -2, bottom: -2, borderRadius: M, borderWidth: 2, borderColor: C.accentInk }, // 고른 구슬: 1.3배 + 초록 테 (시안 sheet2)
   bubble: { position: 'absolute', zIndex: 5, backgroundColor: C.bg, borderRadius: R.card, paddingVertical: 11, paddingHorizontal: 15, shadowColor: C.shadow, shadowOpacity: 0.16, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   bMeta: { fontSize: 11, color: C.muted, marginBottom: 3 },
   bText: { fontSize: 14, fontWeight: '800', color: C.ink, lineHeight: 19 },

@@ -10,7 +10,7 @@ from room import M, P, rbox, sph, cyl, lathe
 from props import mat
 
 OUT = sys.argv[sys.argv.index("--") + 1]
-CAT = ["#9ccfd8", "#f6b26b", "#a4c2f4", "#b4a7d6", "#f9cb9c", "#d5a6bd", "#ea9999", "#b6d7a8"]
+CAT = ["#9ccfd8", "#f6b26b", "#a4c2f4", "#b4a7d6", "#f9cb9c", "#d5a6bd", "#ea9999", "#b6d7a8", "#c3c8d6"]  # 9번째 = 버틴 하루(endure), 2026-11-13 앱 스레드 추가
 for i, h in enumerate(CAT):
     P[f"cat{i}"] = tuple(int(h[k:k + 2], 16) / 255 for k in (1, 3, 5))
 P.update({"glass": (0.80, 0.91, 0.93), "jar_rim": (0.85, 0.79, 0.69), "lid": (0.80, 0.62, 0.45),
