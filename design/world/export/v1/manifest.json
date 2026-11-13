@@ -256,13 +256,13 @@
    "jar_cabinet": {
     "jar_back": {
      "file": "room/jar_back.webp",
-     "w": 57,
-     "h": 59
+     "w": 58,
+     "h": 62
     },
     "jar_front": {
      "file": "room/jar_front.webp",
-     "w": 51,
-     "h": 65
+     "w": 50,
+     "h": 20
     },
     "glass": {
      "file": "room/cabinet_glass.webp",
@@ -276,280 +276,280 @@
       "i": 0,
       "back": [
        1797,
-       483
+       480
       ],
       "front": [
-       1799,
-       462
+       1801,
+       469
       ],
       "marbles": [
-       1800,
-       500,
-       35,
-       36
+       1796,
+       493,
+       42,
+       45
       ],
       "tap": [
        1780,
-       448,
+       455,
        57,
-       100
+       93
       ]
      },
      {
       "i": 1,
       "back": [
        1854,
-       485
+       482
       ],
       "front": [
-       1856,
-       464
+       1858,
+       471
       ],
       "marbles": [
-       1856,
-       502,
-       35,
-       36
+       1853,
+       496,
+       42,
+       45
       ],
       "tap": [
        1836,
-       451,
+       458,
        57,
-       100
+       93
       ]
      },
      {
       "i": 2,
       "back": [
        1910,
-       487
+       484
       ],
       "front": [
-       1912,
-       466
+       1914,
+       473
       ],
       "marbles": [
-       1913,
-       504,
-       35,
-       36
+       1909,
+       498,
+       42,
+       45
       ],
       "tap": [
        1893,
-       453,
+       460,
        57,
-       100
+       93
       ]
      },
      {
       "i": 3,
       "back": [
        1967,
-       490
+       487
       ],
       "front": [
-       1969,
-       469
+       1971,
+       476
       ],
       "marbles": [
-       1969,
-       506,
-       35,
-       36
+       1966,
+       500,
+       42,
+       45
       ],
       "tap": [
        1950,
-       455,
+       462,
        57,
-       100
+       93
       ]
      },
      {
       "i": 4,
       "back": [
        1797,
-       622
+       619
       ],
       "front": [
-       1799,
-       601
+       1801,
+       608
       ],
       "marbles": [
-       1800,
-       639,
-       35,
-       36
+       1796,
+       632,
+       42,
+       45
       ],
       "tap": [
        1780,
-       588,
+       594,
        57,
-       100
+       93
       ]
      },
      {
       "i": 5,
       "back": [
        1854,
-       624
+       621
       ],
       "front": [
-       1856,
-       603
+       1858,
+       610
       ],
       "marbles": [
-       1856,
-       641,
-       35,
-       36
+       1853,
+       635,
+       42,
+       45
       ],
       "tap": [
        1836,
-       590,
+       597,
        57,
-       100
+       93
       ]
      },
      {
       "i": 6,
       "back": [
        1910,
-       626
+       624
       ],
       "front": [
-       1912,
-       606
+       1914,
+       612
       ],
       "marbles": [
-       1913,
-       643,
-       35,
-       36
+       1909,
+       637,
+       42,
+       45
       ],
       "tap": [
        1893,
-       592,
+       599,
        57,
-       100
+       93
       ]
      },
      {
       "i": 7,
       "back": [
        1967,
-       629
+       626
       ],
       "front": [
-       1969,
-       608
+       1971,
+       615
       ],
       "marbles": [
-       1969,
-       645,
-       35,
-       36
+       1966,
+       639,
+       42,
+       45
       ],
       "tap": [
        1950,
-       594,
+       601,
        57,
-       100
+       93
       ]
      },
      {
       "i": 8,
       "back": [
        1797,
-       761
+       758
       ],
       "front": [
-       1799,
-       740
+       1801,
+       747
       ],
       "marbles": [
-       1800,
-       778,
-       35,
-       36
+       1796,
+       772,
+       42,
+       45
       ],
       "tap": [
        1780,
-       727,
+       734,
        57,
-       100
+       93
       ]
      },
      {
       "i": 9,
       "back": [
        1854,
-       763
+       760
       ],
       "front": [
-       1856,
-       742
+       1858,
+       749
       ],
       "marbles": [
-       1856,
-       780,
-       35,
-       36
+       1853,
+       774,
+       42,
+       45
       ],
       "tap": [
        1836,
-       729,
+       736,
        57,
-       100
+       93
       ]
      },
      {
       "i": 10,
       "back": [
        1910,
-       766
+       763
       ],
       "front": [
-       1912,
-       745
+       1914,
+       752
       ],
       "marbles": [
-       1913,
-       782,
-       35,
-       36
+       1909,
+       776,
+       42,
+       45
       ],
       "tap": [
        1893,
-       731,
+       738,
        57,
-       100
+       93
       ]
      },
      {
       "i": 11,
       "back": [
        1967,
-       768
+       765
       ],
       "front": [
-       1969,
-       747
+       1971,
+       754
       ],
       "marbles": [
-       1969,
-       784,
-       35,
-       36
+       1966,
+       778,
+       42,
+       45
       ],
       "tap": [
        1950,
-       733,
+       740,
        57,
-       100
+       93
       ]
      }
     ],
-    "rules": "12 slots, row-major from top-left. Show the most recent closed jars (max 12, jar no ascending from slot 0); every jar stays on the jar tab shelf (R3, nothing is removed). Per filled slot draw jar_back at `back`, then marbles inside the `marbles` rect (category colours in the jar's proportions, e.g. jarMarbles(), small dots filling bottom-up), then jar_front at `front`. After all slots draw `glass`. Tap a slot's `tap` rect -> /jar/<no>. Cabinet is free base art (in the background) and shows empty with 0 jars."
+    "rules": "12 slots, row-major from top-left. Show the most recent closed jars (max 12, jar no ascending from slot 0); every jar stays on the jar tab shelf (R3, nothing is removed). Per filled slot draw jar_back at `back`, then marbles inside the `marbles` rect: the same 7x8 one-layer grid as the jar tab (alternate rows offset, filled bottom-up in order, a closed jar = 50 = full), marble_N sprites scaled down or plain dots in category colours, then jar_front at `front`. After all slots draw `glass`. Tap a slot's `tap` rect -> /jar/<no>. Cabinet is free base art (in the background) and shows empty with 0 jars."
    },
    "draw_order": [
     "background",

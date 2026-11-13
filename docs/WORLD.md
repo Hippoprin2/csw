@@ -276,10 +276,11 @@
 - (결정됨) Y1~Y5 → 위 확정 규칙. 소품·가격은 2장, 계산은 3장
 
 
-### 기능 스레드 요청: 방 유리장 병을 둥근 모양으로 (2026-11-13 대표 결정 J1)
-- 유리병 탭의 큰 병을 '둥근 방 유리장 병'(design/features/jar_redesign/A_back.png·A_front.png, jar_layers.py `jar_A`)으로 바꾸기로 함. 방 유리장의 닫힌 병과 같은 물건이어야 하므로 room_wide.py `jar()` 프로필도 같게: 바닥 모서리 원호(병 반지름의 약 1/3), 어깨 원호(뚜껑 목 r*0.74까지), 뚜껑·받침·띠 bevel 0.45, 둘레 분할 64.
-- 다시 렌더할 것: room/jar_back.webp, room/jar_front.webp (+ manifest jar_cabinet 크기·좌표가 바뀌면 갱신). 구슬 칸(slots.marbles) 위치가 바뀌면 앱 개발 스레드에 알리기.
-- 앱이 할 일(개발 스레드): 새 export가 오면 그대로 읽음. 공간 스레드 렌더 전까지 방은 지금 병 그대로.
+### 기능 스레드 요청: 방 유리장 병을 둥근 모양으로 (2026-11-13 대표 결정 J1) — **완료 2026-11-13 (공간 스레드)**
+- room_wide.py `jar()` = jar_layers.py `jar_A` 프로필을 그대로 축소(병 폭 0.13, s = r/0.62): 바닥 모서리·어깨 원호, 목 r*.74, 받침·코르크 뚜껑·코랄 띠 bevel .45, 둘레 64, 유리 알파 .32(탭과 같음). 반짝 줄 없앰. 코랄 띠만 1.5배 두께(방 크기에서 안 보여서)
+- 다시 뽑음: room/jar_back.webp(58×62), room/jar_front.webp(50×20, 뚜껑만) + manifest `jar_cabinet` slots 좌표 갱신 (back·front·marbles·tap 모두 바뀜 — 앱은 manifest 값만 읽으면 됨). 비교 그림 design/world/room/wide/jar_room_vs_tab.jpg
+- 방 병 속 구슬도 유리병 탭과 같은 배치: 한 겹 7×8(홀짝 줄 엇갈림, 아래부터), 닫은 병 = 50개 = 꽉 참. `marbles` 사각형 42×45px(캔버스 기준)이라 구슬 하나 약 6px — marble_N 그림을 줄여 쓰거나 분류 색 점
+
 
 ## 열린 질문
 - 낮/밤 배경: 마당은 Y4로 실제 시간 반영(7장). 방·텃밭 밤 버전은 출시 후 검토(마당과 같은 방식: 밤 배경 1장 + 덮개)

@@ -47,14 +47,14 @@ jb, jf = load(os.path.join(D, jc["jar_back"]["file"])), load(os.path.join(D, jc[
 for k, s in enumerate(jc["slots"][:N]):
     over(canvas, jb, *s["back"])
     rnd = random.Random(k + 3); w = [rnd.random() ** 5 for _ in CATS]
-    mx, my, mw, mh = s["marbles"]; rad = 3.2
-    cols_n = max(1, int(mw // (rad * 2.1)))
-    rows_n = max(1, int(mh // (rad * 1.9)))
-    for row in range(rows_n):            # fill bottom-up (a full jar = 50 marbles -> all cells)
-        for col in range(cols_n):
-            cx = mx + rad + col * (mw - 2 * rad) / max(1, cols_n - 1) + (rad * 0.5 if row % 2 else 0)
-            cy = my + mh - rad - row * (mh - 2 * rad) / max(1, rows_n - 1)
-            disc(canvas, min(cx, mx + mw - rad), cy, rad, srgb_lin(rnd.choices(CATS, w)[0]))
+    mx, my, mw, mh = s["marbles"]; cols, rows = 7, 8          # same grid as the jar tab (50 = full closed jar)
+    rad = mw / cols / 2 * 0.92
+    for row in range(rows):              # bottom-up, alternate rows offset by half
+        n = cols - 1 if row % 2 else cols
+        for col in range(n):
+            cx = mx + rad + (col + (0.5 if row % 2 else 0)) * (mw - 2 * rad) / (cols - 1)
+            cy = my + mh - rad - row * (mh - 2 * rad) / (rows - 1)
+            disc(canvas, cx, cy, rad, srgb_lin(rnd.choices(CATS, w)[0]))
     over(canvas, jf, *s["front"])
 g = jc["glass"]; over(canvas, load(os.path.join(D, g["file"])), g["x"], g["y"])
 owned = set() if EMPTY else {"bed", "bookshelf", "squirrel", "lamp", "frame", "wall_clock", "garland", "mobile", "curtain", "rug",

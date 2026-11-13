@@ -41,46 +41,49 @@ def glass_mat(name, rgb, alpha):
 
 
 # ------------------------------------------------------------------ jar (닫은 유리병)
-JAR_W, JAR_H = 0.13, 0.175      # outer width, height incl. lid
-
-
-JAR_BODY_H = JAR_H - 0.045
-JAR_INNER = dict(r=JAR_W / 2 * 0.72, z0=0.012, z1=JAR_BODY_H - 0.03)   # where marbles sit (app draws them, R4)
+# 2026-11-13 J1: 유리병 탭 큰 병과 같은 물건 — design/features/jar_redesign/jar_layers.py jar_A 프로필을 축소
+# (r 0.62 / h 1.3 → s = r / 0.62): 바닥 모서리 원호 0.2, 어깨 원호 r*.26 → 목 r*.74, 받침·뚜껑·띠 bevel .45, 둘레 64.
+# 유리 알파 .32(탭과 같게). 코랄 띠만 1.5배 두께 — 방 크기(병 폭 약 50px)에서 띠가 안 보여서
+JAR_W = 0.13
+JAR_S = (JAR_W / 2) / 0.62
+JAR_BODY_H = 1.3 * JAR_S
+JAR_H = 1.505 * JAR_S             # incl. lid (lid top = h + .13 + .075)
+JAR_INNER = dict(r=JAR_W / 2 * 0.86, z0=0.06 * JAR_S, z1=(1.3 - 0.2) * JAR_S)   # marble grid area (jar_A inner), app draws marbles
+MARBLE_GRID = (7, 8)              # same as the jar tab: 50 marbles = 7 x 8 (alternate rows offset), one layer in front
 
 
 def jar(name, loc, seed=0, marbles=True, part="all"):
-    """closed jar. part: all | back (see-through glass body) | front (rim + cork lid + coral band + shine).
-    marbles = category colours (preview only; the app draws real per-jar colours between back and front)"""
+    """closed jar. part: all | back (see-through glass body) | front (rim + cork lid + coral band).
+    marbles = preview only: one front layer 7x8 like the jar tab (the app draws real per-jar colours between back and front)"""
     x, y, z = loc
-    r = JAR_W / 2
-    body_h = JAR_BODY_H
+    r = JAR_W / 2; s = JAR_S; h = JAR_BODY_H
     parts = []
     if part in ("all", "back"):
-        prof = [(0.0, 0.0), (r * 0.82, 0.0), (r, 0.03), (r, body_h - 0.035), (r * 0.78, body_h - 0.01), (r * 0.72, body_h)]
-        g = lathe(name + "Glass", prof, glass_mat("R_jarglass", P["glass"], 0.14))
+        cb, cs = 0.2 * s, r * .26
+        prof = [(0, 0)]
+        prof += [(r - cb + cb * math.sin(math.radians(a)), cb - cb * math.cos(math.radians(a))) for a in range(0, 91, 6)]
+        prof += [(r - cs + cs * math.cos(math.radians(a)), h - .04 * s - cs + cs * math.sin(math.radians(a))) for a in range(0, 91, 6)]
+        prof += [(r * .74, h)]
+        g = lathe(name + "Glass", prof, glass_mat("R_jarglass", P["glass"], 0.32), seg=64)   # same alpha as the jar tab
         g.location = (x, y, z); parts.append(g)
     if part in ("all", "front"):
-        parts += [cyl(name + "Rim", r * 0.78, 0.022, (x, y, z + body_h + 0.004), M("jar_rim", 0.6), bevel=0.35),
-                  cyl(name + "Lid", r * 0.8, 0.035, (x, y, z + body_h + 0.03), M("lid", 0.8), bevel=0.35),
-                  cyl(name + "Band", r * 0.83, 0.014, (x, y, z + body_h + 0.022), M("coral", 0.8), bevel=0.3)]
-        sh = rbox(name + "Shine", (0.008, 0.003, body_h * 0.5), (x - r * 0.55, y - r - 0.004, z + body_h * 0.55), glass_mat("R_jarshine", P["off"], 0.45), r=0.45)
-        parts.append(sh)
+        parts += [cyl(name + "Rim", r * .78, .09 * s, (x, y, z + h + .02 * s), M("jar_rim", .6), bevel=.45, seg=64),
+                  cyl(name + "Lid", r * .82, .15 * s, (x, y, z + h + .13 * s), M("lid", .8), bevel=.45, seg=64),
+                  cyl(name + "Band", r * .85, .09 * s, (x, y, z + h + .09 * s), M("coral", .8), bevel=.45, seg=64)]
     if marbles and part == "all":
         rnd = random.Random(seed)
         w = [rnd.random() ** 5 for _ in CAT_COLS]
-        mr = 0.015
-        k = 0
-        for layer in range(5):
-            zz = z + 0.012 + mr + layer * mr * 1.7
-            ring = r * 0.78 - mr
-            n = 9
+        ir = JAR_INNER; cols, rows = MARBLE_GRID
+        mr = ir["r"] * 2 / cols / 2 * 0.92
+        yf = y - r * 0.9
+        for row in range(rows):
+            off = 0.5 if row % 2 else 0
+            n = cols - 1 if row % 2 else cols
+            zz = z + ir["z0"] + mr + row * (ir["z1"] - ir["z0"] - 2 * mr) / (rows - 1)
             for j in range(n):
-                a = 2 * math.pi * j / n + layer * 0.35
+                xx = x - ir["r"] + mr + (j + off) * (ir["r"] * 2 - 2 * mr) / (cols - 1)
                 c = rnd.choices(range(len(CAT_COLS)), w)[0]
-                parts.append(sph(f"{name}M{k}", mr, (x + ring * math.cos(a), y + ring * math.sin(a), zz), M(f"cat{c}", 0.45), seg=12))
-                k += 1
-            c = rnd.choices(range(len(CAT_COLS)), w)[0]
-            parts.append(sph(f"{name}M{k}", mr, (x, y, zz), M(f"cat{c}", 0.45), seg=12)); k += 1
+                parts.append(sph(f"{name}M{row}_{j}", mr, (xx, yf, zz), M(f"cat{c}", 0.35), seg=12))
     return parts
 
 
