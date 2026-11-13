@@ -32,11 +32,16 @@ def clear():
 
 def jar_A():
     r, h = 0.62, 1.3
-    prof = [(0, 0), (r * .85, 0), (r, .1), (r, h - .14), (r * .8, h - .04), (r * .74, h)]
-    back = [lathe("G", prof, glass("gA", .32))]
-    front = [cyl("Rim", r * .78, .09, (0, 0, h + .02), M("jar_rim", .6), bevel=.35),
-             cyl("Lid", r * .82, .15, (0, 0, h + .13), M("lid", .8), bevel=.35),
-             cyl("Band", r * .85, .06, (0, 0, h + .09), M("coral", .8), bevel=.3),
+    # 2026-11-13 대표 요청: 각진 곳(바닥 모서리·어깨)을 둥글게 — 직선 꺾임 대신 원호 프로필
+    cb, cs = 0.2, r * .26                # bottom corner radius / shoulder radius (shoulder ends at neck r*.74)
+    prof = [(0, 0)]
+    prof += [(r - cb + cb * math.sin(math.radians(a)), cb - cb * math.cos(math.radians(a))) for a in range(0, 91, 6)]
+    prof += [(r - cs + cs * math.cos(math.radians(a)), h - .04 - cs + cs * math.sin(math.radians(a))) for a in range(0, 91, 6)]
+    prof += [(r * .74, h)]
+    back = [lathe("G", prof, glass("gA", .32), seg=64)]
+    front = [cyl("Rim", r * .78, .09, (0, 0, h + .02), M("jar_rim", .6), bevel=.45, seg=64),
+             cyl("Lid", r * .82, .15, (0, 0, h + .13), M("lid", .8), bevel=.45, seg=64),
+             cyl("Band", r * .85, .06, (0, 0, h + .09), M("coral", .8), bevel=.45, seg=64),
 ]
     inner = (-r * .86, r * .86, .06, h - .2)
     return back, front, inner
