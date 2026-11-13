@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../records_mock/common.css">
+<style>
+.phone{background:#fff}
+.top{display:flex;justify-content:space-between;align-items:flex-start}
+.find{background:#F7F6F3;border-radius:99px;padding:8px 14px;font-weight:700;font-size:14px}
+.jarbox{position:relative;width:290px;height:362px;margin:0 auto}
+.jarbox img.l{position:absolute;left:0;top:0;width:290px}
+.jarbox img.m{position:absolute;width:31px;height:31px}
+.jarbox img.m.sel{transform:scale(1.3);filter:drop-shadow(0 0 0 #fff) drop-shadow(0 0 3px #2F7D6B);z-index:3}
+.jarbox img.m.dim{opacity:.55}
+.finger{position:absolute;width:52px;height:52px;border-radius:99px;background:rgba(47,125,107,.22);border:2px solid #2F7D6B;z-index:6}
+.bub{position:absolute;width:220px;background:#fff;border-radius:18px;padding:10px 14px;font-size:13px;box-shadow:0 6px 18px rgba(74,50,38,.22);z-index:8}
+.bub:after{content:"";position:absolute;left:var(--ax,100px);bottom:-9px;border:9px solid transparent;border-top-color:#fff;border-bottom:0}
+.bub b{display:block;font-size:15px;margin:3px 0 2px}
+.link{text-align:center;font-size:13px;color:#1F5F50;font-weight:700;margin:2px 0 8px}
+</style></head><body>
+<div class="row" id="row"></div>
+<script>
+const V=[
+ {jar:'A',n:19,sel:12,title:'A · 방 유리장 병 (쓸어 보는 중)',cap:'병 껍데기만 3D 그림이고, 구슬은 앱이 앞에서 한 겹으로 그려. 뒤에 숨는 구슬이 없어서 모두 손가락으로 지나갈 수 있어. 구슬 지름 약 31pt.'},
+ {jar:'A',n:50,sel:41,title:'A · 꽉 찬 병 50개',cap:'50개가 한 겹으로 다 들어가는 크기로 병을 키웠어 (가로 7 × 8줄). 꽉 차도 구슬 하나하나를 짚을 수 있어.'},
+ {jar:'B',n:19,sel:9,title:'B · 둥근 사탕병 (쓸어 보는 중)',cap:'같은 방식. 아래 모서리가 둥글어서 맨 아랫줄은 6개만 들어가. 방 유리장 병도 이 모양으로 다시 그려야 해.'},
+];
+// inner glass rect in the 800px render, then scaled to 290px
+const IN={A:{x0:96,x1:704,yb:918},B:{x0:80,x1:720,yb:900}};
+const recs=['영어 단어 20개 외웠다','퇴근길에 한 정거장 걸었다','엄마한테 먼저 전화했다','책상 위 정리','일찍 잤다','보고서 초안 보냈다'];
+const row=document.getElementById('row');
+V.forEach((v,vi)=>{
+  row.insertAdjacentHTML('beforeend',`<div class="col"><div class="cap">${v.title}</div><div class="phone" id="ph${vi}">
+  <div class="top"><div><div class="h">나의 작은 승리 유리병</div><div class="sub">지금까지 구슬 ${v.n}개. 구슬은 줄어들지 않아.</div></div><span class="find">찾기</span></div>
+  <div class="jarbox" id="j${vi}"><img class="l" src="${v.jar}_back.png"></div>
+  <div class="link">목록으로 보기 ›</div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div></div><div class="capsub">${v.cap}</div></div>`);
+  const box=document.getElementById('j'+vi), k=290/800, I=IN[v.jar], D=31, rowH=D*0.88;
+  const x0=I.x0*k,x1=I.x1*k,yb=I.yb*k; let seed=vi*7+3; let selEl=null;
+  for(let i=0;i<v.n;i++){
+    const r=Math.floor(i/7), c=i%7, off=(r%2)?D/2:0;
+    let cols=7, start=x0+((x1-x0)-7*D)/2;
+    if(v.jar==='B'&&r===0){ if(c===6) continue; start+=D/2; }
+    if(r%2){ if(c===6) {} }
+    let x=start+c*D+(r%2&&!(v.jar==='B'&&r===0)?D*0.25:0)-(r%2?D*0.25:0)*0;
+    x=start+c*D+((r%2)?D*0.12:-D*0.12);
+    const y=yb-D-r*rowH;
+    seed=(seed*37+11)%101;
+    const m=document.createElement('img');m.className='m';m.src=`marble_${seed%8}.png`;
+    m.style.left=x+'px';m.style.top=y+'px';
+    if(v.n<50&&i===v.sel){m.classList.add('sel');selEl=m;}
+    if(v.n>=50&&i===v.sel){m.classList.add('sel');selEl=m;}
+    box.appendChild(m);
+  }
+  const f=document.createElement('img');f.className='l';f.src=`${v.jar}_front.png`;f.style.zIndex=4;box.appendChild(f);
+  // finger + bubble
+  const ph=document.getElementById('ph'+vi), pr=ph.getBoundingClientRect(), mr=selEl.getBoundingClientRect();
+  const cx=mr.left+mr.width/2-pr.left, cy=mr.top+mr.height/2-pr.top;
+  const fg=document.createElement('div');fg.className='finger';fg.style.left=(cx-26)+'px';fg.style.top=(cy-20)+'px';ph.appendChild(fg);
+  const b=document.createElement('div');b.className='bub';b.innerHTML=`<span class="muted" style="font-size:11px">11월 ${3+vi*3}일 · 몸 움직이기</span><b>${recs[vi+1]}</b>`;
+  ph.appendChild(b);const bw=220,bh=b.offsetHeight;const left=Math.max(14,Math.min(390-14-bw,cx-bw/2));
+  b.style.left=left+'px';b.style.top=(cy-34-bh)+'px';b.style.setProperty('--ax',(cx-left-9)+'px');
+});
+</script></body></html>
