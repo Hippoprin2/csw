@@ -1,0 +1,105 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="common.css">
+<style>
+.jar { margin: 6px auto 4px; width: 210px; height: 236px; border: 4px solid #d9c9b1; border-top-width: 12px; border-radius: 30px 30px 46px 46px; background: #fffaf2; display: flex; flex-wrap: wrap-reverse; align-content: flex-start; padding: 12px; gap: 5px; position: relative; }
+.jar i { width: 20px; height: 20px; border-radius: 99px; display: block; transition: none; }
+.jar i.sel { transform: scale(1.35); box-shadow: 0 0 0 3px #fff, 0 0 0 5px #2F7D6B; position: relative; z-index: 2; }
+.jar i.trail { box-shadow: 0 0 0 2px rgba(47,125,107,.35); }
+.hint { text-align: center; font-size: 13px; color: #6E5848; margin: 8px 0 12px; }
+.finger { position: absolute; width: 54px; height: 54px; border-radius: 99px; background: rgba(47,125,107,.22); border: 2px solid #2F7D6B; z-index: 6; }
+.ghost { position: absolute; width: 54px; height: 54px; border-radius: 99px; border: 2px dashed #2F7D6B; opacity: .5; z-index: 6; }
+.bub { position: absolute; width: 224px; background: #fff; border-radius: 18px; padding: 10px 14px; font-size: 13px; box-shadow: 0 6px 18px rgba(74,50,38,.2); z-index: 8; }
+.bub:after { content: ""; position: absolute; left: var(--ax, 100px); bottom: -9px; border: 9px solid transparent; border-top-color: #fff; border-bottom: 0; }
+.bub b { display: block; font-size: 15px; margin: 3px 0 4px; }
+.bub .go { color: #1F5F50; font-size: 12px; font-weight: 800; }
+.buzz { position: absolute; font-size: 12px; font-weight: 800; color: #2F7D6B; z-index: 7; }
+.buzz:before { content: "((( "; } .buzz:after { content: " )))"; }
+.note { background: #E3F1EC; color: #1F5F50; border-radius: 18px; padding: 12px 14px; font-size: 13px; line-height: 1.5; margin-top: 4px; }
+.posterbox { background: #F1E8D8; border-radius: 22px; display: flex; align-items: center; justify-content: center; padding: 6px; margin-bottom: 12px; height: 170px; position: relative; }
+.posterbox img { height: 160px; }
+.play { position: absolute; right: 12px; bottom: 10px; font-size: 11px; background: #fff; border-radius: 99px; padding: 3px 9px; color: #1F5F50; font-weight: 700; }
+.big { font-size: 22px; font-weight: 800; line-height: 1.4; margin: 8px 0 12px; }
+.memo { height: 46px; border-radius: 999px; background: #fff; display: flex; align-items: center; padding: 0 18px; color: #A8988A; font-size: 14px; margin-bottom: 12px; }
+</style></head><body>
+<div class="row">
+
+<div class="col"><div class="cap">① 꾹 누르면 시작</div>
+<div class="phone" id="p1">
+  <div class="h">나의 작은 승리 유리병</div>
+  <div class="sub">지금까지 구슬 37개. 구슬은 줄어들지 않아.</div>
+  <div class="jar" data-sel="18"></div>
+  <div class="hint">구슬을 꾹 누른 채로 쓸어 봐</div>
+  <div class="note">0.3초 꾹 누르면 '쓸어 보기' 시작 + 톡 진동.<br>그냥 위아래로 밀면 지금처럼 화면 스크롤.</div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">구슬 하나를 짧게 톡 눌러도 같은 말풍선이 떠.</div></div>
+
+<div class="col"><div class="cap">② 쓸어 가는 중 · 구슬마다 톡</div>
+<div class="phone" id="p2">
+  <div class="h">나의 작은 승리 유리병</div>
+  <div class="sub">지금까지 구슬 37개. 구슬은 줄어들지 않아.</div>
+  <div class="jar" data-sel="20" data-trail="16,17,18,19"></div>
+  <div class="hint">손가락 아래 구슬이 바뀔 때마다 아주 약한 진동</div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">말풍선은 손가락에 가리지 않게 구슬 위쪽에 뜨고, 구슬을 따라 바로바로 바뀌어.</div></div>
+
+<div class="col"><div class="cap">③ 손을 떼면 말풍선이 남음</div>
+<div class="phone" id="p3">
+  <div class="h">나의 작은 승리 유리병</div>
+  <div class="sub">지금까지 구슬 37개. 구슬은 줄어들지 않아.</div>
+  <div class="jar" data-sel="20"></div>
+  <div class="hint">말풍선을 누르면 크게 보기 · 빈 곳을 누르면 닫힘</div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">마지막으로 지나간 구슬에 말풍선이 그대로 떠 있어.</div></div>
+
+<div class="col"><div class="cap">④ 말풍선 누르면 크게 보기</div>
+<div class="phone">
+  <div class="h">나의 작은 승리 유리병</div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grab"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="muted" style="font-size:13px">11월 10일 (월) 오후 7:12</span><span style="font-size:22px;color:#6E5848">···</span></div>
+    <div class="big">퇴근길에 한 정거장 걸었다</div>
+    <div class="posterbox"><img src="../../character/export/v1/hippo_move_poster.png"><span class="play">그때 동작 자동 재생 중</span></div>
+    <div class="memo">+ 한 줄 더 남기기</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip"><span class="dot" style="background:#f6b26b;width:8px;height:8px"></span>몸 움직이기</span><span class="chip">☆ 다시 보고 싶은 기록</span></div>
+  </div>
+</div>
+<div class="capsub">N1(동작 자동 재생)·N2(메모 한 줄)·☆ 가 들어간 시트. 고치기·지우기는 ··· 안.</div></div>
+
+</div>
+<script>
+const cols=['#9ccfd8','#f6b26b','#a4c2f4','#b4a7d6','#f9cb9c','#d5a6bd','#ea9999','#b6d7a8'];
+const recs={18:['11월 7일 (금) · 공부','영어 단어 20개 외웠다','#a4c2f4'],20:['11월 10일 (월) · 몸 움직이기','퇴근길에 한 정거장 걸었다','#f6b26b']};
+document.querySelectorAll('.jar').forEach(j=>{
+  const sel=+j.dataset.sel, tr=(j.dataset.trail||'').split(',').filter(Boolean).map(Number);
+  let s=7;
+  for(let i=0;i<37;i++){s=(s*37+11)%101;const e=document.createElement('i');e.style.background=cols[s%8];
+    if(recs[i])e.style.background=recs[i][2];
+    if(i===sel&&j.closest('#p2,#p3'))e.className='sel';
+    if(tr.includes(i))e.className='trail';
+    j.appendChild(e);}
+});
+function place(pid, opts){
+  const ph=document.getElementById(pid), pr=ph.getBoundingClientRect();
+  const j=ph.querySelector('.jar'), m=j.children[+j.dataset.sel].getBoundingClientRect();
+  const cx=m.left+m.width/2-pr.left, cy=m.top+m.height/2-pr.top;
+  if(opts.finger){const f=document.createElement('div');f.className='finger';f.style.left=(cx-27)+'px';f.style.top=(cy-27+6)+'px';ph.appendChild(f);}
+  if(opts.ghost){const tr=j.dataset.trail.split(',').map(Number);
+    const a=j.children[tr[0]].getBoundingClientRect();const g=document.createElement('div');g.className='ghost';g.style.left=(a.left+a.width/2-pr.left-27)+'px';g.style.top=(a.top+a.height/2-pr.top-27+6)+'px';ph.appendChild(g);
+    const z=document.createElement('div');z.className='buzz';z.textContent='톡';z.style.left=(cx+26)+'px';z.style.top=(cy+16)+'px';ph.appendChild(z);}
+  if(opts.bubble){const r=recs[+j.dataset.sel];const b=document.createElement('div');b.className='bub';
+    b.innerHTML=`<span class="muted" style="font-size:11px">${r[0]}</span><b>${r[1]}</b>`+(opts.go?'<span class="go">눌러서 크게 보기 ›</span>':'');
+    ph.appendChild(b);const bw=224,bh=b.offsetHeight;let left=Math.max(14,Math.min(390-14-bw,cx-bw/2));
+    b.style.left=left+'px';b.style.top=(cy-14-bh-(opts.finger?14:4))+'px';b.style.setProperty('--ax',(cx-left-9)+'px');}
+}
+place('p1',{finger:false});
+place('p2',{finger:true,ghost:true,bubble:true});
+place('p3',{bubble:true,go:true});
+// p1: finger on marble 18 with press ring
+(()=>{const ph=document.getElementById('p1'),pr=ph.getBoundingClientRect(),j=ph.querySelector('.jar'),m=j.children[18].getBoundingClientRect();
+ const f=document.createElement('div');f.className='finger';f.style.left=(m.left+m.width/2-pr.left-27)+'px';f.style.top=(m.top+m.height/2-pr.top-21)+'px';f.style.boxShadow='0 0 0 8px rgba(47,125,107,.15)';ph.appendChild(f);
+ const z=document.createElement('div');z.className='buzz';z.textContent='톡';z.style.left=(m.left-pr.left+40)+'px';z.style.top=(m.top-pr.top+30)+'px';ph.appendChild(z);})();
+</script>
+</body></html>
