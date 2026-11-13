@@ -1,0 +1,44 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#E9E2D4;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#4A3226;padding:30px;width:1300px}
+h1{font-size:26px;margin-bottom:6px}
+.sub{font-size:15px;color:#6E5848;margin-bottom:24px}
+.wrap{position:relative;height:640px}
+.box{position:absolute;background:#fff;border-radius:24px;padding:16px 18px;width:260px;box-shadow:0 4px 14px rgba(74,50,38,.1)}
+.box h3{font-size:18px;margin-bottom:8px}
+.box ul{list-style:none;font-size:14px;line-height:1.7;color:#4A3226}
+.box li:before{content:"· ";color:#2F7D6B;font-weight:800}
+.tag{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;margin-bottom:8px}
+.t1{background:#F1E8D8}.t2{background:#E3F1EC;color:#1F5F50}.t3{background:#2F7D6B;color:#fff}
+.sheet{border:3px dashed #2F7D6B;background:#FBF6EC}
+svg{position:absolute;inset:0}
+.lab{position:absolute;font-size:13px;font-weight:700;color:#1F5F50;background:#E9E2D4;padding:2px 6px;border-radius:8px}
+.legend{margin-top:10px;font-size:14px;color:#6E5848}
+</style></head><body>
+<h1>기록 다시 보기 · 들어가는 길</h1>
+<div class="sub">화면은 3종류(유리병 탭 · 목록 화면 1개 · 하루 한 장) + 어디서든 열리는 '크게 보기' 시트. 깊어도 2단계 + 시트.</div>
+<div class="wrap">
+<svg width="1240" height="640">
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2F7D6B"/></marker></defs>
+<g stroke="#2F7D6B" stroke-width="3" fill="none" marker-end="url(#a)">
+<path d="M280,90 L478,90"/>
+<path d="M280,130 C420,200 420,420 478,440"/>
+<path d="M740,80 L938,80"/>
+<path d="M740,110 C840,200 900,300 938,330"/>
+<path d="M740,470 C840,470 900,400 938,370"/>
+<path d="M1100,198 L1100,282"/>
+<path d="M610,250 L610,388"/>
+</g></svg>
+<div class="box" style="left:0;top:20px"><span class="tag t1">탭 1</span><h3>방</h3><ul><li>입력창 (그대로 1줄)</li><li>오늘의 쪽지 → 쪽지 누르면 시트</li><li>"다 보기" → 하루 한 장(오늘)</li></ul></div>
+<div class="box" style="left:480px;top:0;width:260px"><span class="tag t1">탭 2</span><h3>유리병 탭</h3><ul><li>맨 위 카드 1자리 (한 달 카드 / 주간 카드 / 한 달 전 오늘)</li><li>지금 병 + 선반</li><li>칩 줄: ☆ · 분류들</li><li>최근 2주 목록 (날짜 제목)</li></ul></div>
+<div class="box" style="left:480px;top:390px"><span class="tag t2">화면</span><h3>하루 한 장</h3><ul><li>목록 날짜 제목 · 쪽지 "다 보기"</li><li>좌우로 기록한 날만 넘김</li><li>줄 누르면 → 시트</li></ul></div>
+<div class="box" style="left:940px;top:10px"><span class="tag t2">화면</span><h3>목록 화면 (하나)</h3><ul><li>☆ 칩 → 다시 보고 싶은 기록</li><li>분류 칩 → 그 분류만</li><li>찾기 결과도 같은 모양</li><li>줄 누르면 → 시트</li></ul></div>
+<div class="box sheet" style="left:940px;top:290px;height:300px"><span class="tag t3">시트</span><h3>크게 보기</h3><ul><li>기록 글 크게 + 적은 시각</li><li>단짝 동작 자동 재생</li><li>+ 한 줄 더 남기기 (메모)</li><li>☆ 다시 보고 싶은 기록</li><li>분류 칩 → 목록 화면</li><li>··· 안에 고치기 · 지우기</li></ul></div>
+<div class="lab" style="left:350px;top:66px">탭 바</div>
+<div class="lab" style="left:790px;top:56px">☆ · 분류 칩</div>
+<div class="lab" style="left:620px;top:310px">날짜 제목</div><div class="lab" style="left:330px;top:300px">쪽지 "다 보기"</div><div class="lab" style="left:1110px;top:228px">줄 누르기</div>
+<div class="lab" style="left:770px;top:190px">기록 · 구슬 · 카드</div>
+</div>
+<div class="legend">점선 = 아래에서 올라오는 시트(화면이 바뀌지 않음). 구슬로 보는 방법은 N5에서 결정.</div>
+</body></html>

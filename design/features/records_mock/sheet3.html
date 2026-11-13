@@ -1,0 +1,72 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="common.css">
+<style>
+.jar { margin: 6px auto 4px; width: 170px; height: 190px; border: 4px solid #d9c9b1; border-top-width: 10px; border-radius: 26px 26px 40px 40px; background: #fffaf2; display: flex; flex-wrap: wrap-reverse; align-content: flex-start; padding: 10px; gap: 4px; position: relative; }
+.jar i { width: 16px; height: 16px; border-radius: 9px; display: block; }
+.jar i.sel { outline: 3px solid #2F7D6B; outline-offset: 1px; }
+.jar.dim i { opacity: .45; } .jar.dim i.sel { opacity: 1; }
+.hint { text-align: center; font-size: 13px; color: #6E5848; margin: 6px 0 12px; }
+.mrow { display: flex; align-items: center; gap: 10px; background: #fff; border-bottom: 1px solid #F1E8D8; padding: 11px 14px; font-size: 15px; }
+.mrow:first-of-type { border-radius: 22px 22px 0 0; }
+.mrow i { width: 16px; height: 16px; border-radius: 9px; flex: none; display: block; }
+.mrow .d { margin-left: auto; font-size: 12px; color: #A8988A; }
+.cap2 { background: #fff; border-radius: 22px; padding: 14px 16px; margin: 0 0 12px; min-height: 76px; }
+.finger { position: absolute; width: 46px; height: 46px; border-radius: 99px; background: rgba(47,125,107,.25); border: 2px solid #2F7D6B; }
+.trail { position: absolute; height: 0; border-top: 3px dashed #2F7D6B; opacity: .6; }
+.popm { position: absolute; width: 30px; height: 30px; border-radius: 99px; }
+.btn2 { height: 46px; border-radius: 999px; display: grid; place-items: center; font-weight: 700; font-size: 15px; background: #E3F1EC; color: #1F5F50; margin: 0 30px 12px; }
+.pull { background: #fff; border-radius: 28px; padding: 18px; text-align: center; box-shadow: 0 6px 20px rgba(74,50,38,.14); margin: 0 6px 12px; }
+.pull .t { font-size: 19px; font-weight: 800; margin: 10px 0 6px; }
+</style></head><body>
+<div class="row">
+
+<!-- A 병 누르면 이 병 열기 -->
+<div class="col"><div class="cap">N5-A · 병을 누르면 구슬 목록</div>
+<div class="phone">
+  <div class="muted" style="font-size:15px;margin:0 4px 8px">‹ 유리병</div>
+  <div class="h">지금 병 · 구슬 37개</div>
+  <div class="sub">넣은 순서대로, 구슬 하나 = 기록 하나</div>
+  <div id="list"></div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">병 그림을 한 번 누르면 이 병 구슬이 전부 줄로 펼쳐져. 구슬 색 = 목록 앞 점. 선반의 닫힌 병 열기와 같은 화면이라 새로 만들 게 적어.</div></div>
+
+<!-- B 문지르기 -->
+<div class="col"><div class="cap">N5-B · 손가락으로 쓸어 보기</div>
+<div class="phone">
+  <div class="h">나의 작은 승리 유리병</div>
+  <div class="sub">지금까지 구슬 37개. 구슬은 줄어들지 않아.</div>
+  <div class="jar dim" id="jarB"></div>
+  <div class="trail" style="left:118px;top:226px;width:72px"></div>
+  <div class="finger" style="left:168px;top:204px"></div>
+  <div class="hint">꾹 누른 채로 구슬 위를 쓸어 봐</div>
+  <div class="cap2"><div class="muted" style="font-size:12px">11월 10일 (월) · 몸 움직이기</div><div style="font-size:16px;font-weight:700;margin-top:4px">퇴근길에 한 정거장 걸었다</div></div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">손가락이 지나가는 구슬의 기록이 아래 칸에 바로바로 바뀌어 보여. 재미있지만 화면 위아래 스크롤과 겹쳐서 '꾹 누르고' 시작해야 해.</div></div>
+
+<!-- C 하나 꺼내보기 -->
+<div class="col"><div class="cap">N5-C · 구슬 하나 꺼내 보기</div>
+<div class="phone">
+  <div class="h">나의 작은 승리 유리병</div>
+  <div class="sub">지금까지 구슬 37개. 구슬은 줄어들지 않아.</div>
+  <div class="jar" id="jarC"></div>
+  <div class="popm" style="left:262px;top:150px;background:#ea9999;box-shadow:0 0 0 6px rgba(234,153,153,.25)"></div>
+  <div class="pull">
+    <div class="popm" style="position:static;margin:0 auto;background:#ea9999"></div>
+    <div class="t">"엄마한테 먼저 전화했다"</div>
+    <div class="muted" style="font-size:13px">11월 3일 (월) · 사람·마음</div>
+  </div>
+  <div class="btn2">하나 더 꺼내기</div>
+  <div class="tabbar"><span>방</span><span class="on">유리병</span><span>꾸미기</span><span>설정</span></div>
+</div>
+<div class="capsub">병을 누르면 구슬 하나가 굴러 나와 그 기록을 보여줘. 다 보는 용도는 아니고 '뽑기처럼' 다시 만나는 재미. A와 같이 쓰려면 버튼으로.</div></div>
+
+</div>
+<script>
+const cols=['#9ccfd8','#f6b26b','#a4c2f4','#b4a7d6','#f9cb9c','#d5a6bd','#ea9999','#b6d7a8'];
+function fill(id,sel){const j=document.getElementById(id);let s=7;for(let i=0;i<37;i++){s=(s*37+11)%101;const e=document.createElement('i');e.style.background=cols[s%8];if(i===sel){e.className='sel';e.style.background='#f6b26b';}j.appendChild(e);}}
+fill('jarB',24);fill('jarC',-1);
+const items=[['#f9cb9c','물 2잔 마셨다','11/13'],['#9ccfd8','책상 위 정리','11/13'],['#f6b26b','퇴근길에 한 정거장 걸었다','11/10'],['#d5a6bd','일찍 잤다','11/10'],['#b4a7d6','보고서 초안 보냈다','11/10'],['#9ccfd8','아침에 이불 갰다','11/10'],['#f6b26b','스트레칭 10분','11/7'],['#a4c2f4','영어 단어 20개','11/7'],['#f6b26b','계단으로 올라갔다 ×2','11/5'],['#ea9999','엄마한테 먼저 전화했다','11/3'],['#b6d7a8','택배 반품 처리','11/3'],['#f9cb9c','아침 챙겨 먹었다','11/2']];
+const L=document.getElementById('list');items.forEach(([c,t,d])=>{L.insertAdjacentHTML('beforeend',`<div class="mrow"><i style="background:${c}"></i>${t}<span class="d">${d}</span></div>`)});
+</script>
+</body></html>
