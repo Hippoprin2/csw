@@ -201,7 +201,7 @@ export function YardPage({ active = true, pager, nav }: { active?: boolean; page
           <Text style={sheetSt.body}>텃밭에서 수확한 채소·열매가 있으면 여기서 같이 먹을 수 있어.</Text>
         ) : (
           <>
-            <Text style={sheetSt.body}>매트로 가서 같이 먹어. 창턱 장식은 그대로 남아.</Text>
+            <Text style={sheetSt.body}>매트로 가서 같이 먹어. 바구니에서 하나 줄어.</Text>
             {edibles.map((c) => (
               <View key={c.id} style={st.bagRow}>
                 <Image source={ICONS[`produce_${c.id}`]} style={{ width: 40, height: 40 }} contentFit="contain" />

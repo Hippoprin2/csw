@@ -90,7 +90,7 @@ export function GardenPage({ nav }: { nav?: SpaceNav } = {}) {
       const r = await api.harvest(slot);
       const c = cropOf(r.crop_id);
       setAction({ kind: 'cheer', key: ++seq.current });
-      setMsg(r.first_unlock ? `${c?.name} 수확! 방 창턱에 ${c?.deco_name}이 생겼어` : `${c?.name} 수확! 방에서 바구니를 열어봐`);
+      setMsg(`${c?.name} 수확! 방 창턱에 놓아 뒀어 (${c?.deco_name})`);
       track('harvested', { crop: r.crop_id, first: r.first_unlock });
       await reloadGarden();
     } catch (e) {
@@ -172,7 +172,7 @@ export function GardenPage({ nav }: { nav?: SpaceNav } = {}) {
               <Image source={ICONS[`packet_${c.id}`]} style={{ width: 44, height: 44 }} contentFit="contain" />
               <View style={{ flex: 1 }}>
                 <Text style={st.choiceName}>{c.name}</Text>
-                <Text style={st.choiceSub}>{c.kind === 'edible' ? '수확하면 방에서 먹이기' : '수확하면 방에서 선물하기'} · 처음 수확하면 {c.deco_name}</Text>
+                <Text style={st.choiceSub}>{c.kind === 'edible' ? '수확하면 방에서 먹이기' : '수확하면 방에서 선물하기'} · 수확하면 창턱에 {c.deco_name}</Text>
               </View>
               {cost ? (
                 <Pressable onPress={() => plant(c.id)} disabled={busy || balance < cost} accessibilityRole="button" accessibilityLabel={`씨앗 ${cost}개로 심기`}

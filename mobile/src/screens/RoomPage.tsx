@@ -42,7 +42,7 @@ const store = {
 
 // 방 = 홈. 기록 입력창·축하 8종·곁에 앉기·먹이기/선물하기는 방에서만 (STATUS 2026-11-09 결정)
 export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {}) {
-  const { jars, profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, unlocks, reloadGarden } = useApp();
+  const { jars, profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
   // 그림: 화면 위쪽 가로 꽉(약 420). 1080 창을 높이에 맞추고 남는 쪽은 가운데 기준으로 잘라 보여준다
   const { fullWidth } = useSpaceSize();
@@ -195,7 +195,8 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
 
   // 공간 스레드 export(design/world/export/v1) 그대로: 배경 → (놓인 소품 + 창턱 수확 장식 + 단짝)을 z 순서로
   const placedIds = new Set(owned.filter((o) => o.placed).map((o) => o.item_id));
-  const unlocked = (c: string) => unlocks.includes(c);
+  // 창턱 수확 장식은 바구니에 남아 있는 동안만 (대표 결정 2026-11-13: 먹거나 선물해서 다 쓰면 사라짐 — 예전 '처음 수확하면 영구' 규칙 폐기)
+  const unlocked = (c: string) => (bag[c] ?? 0) > 0;
   const vaseCrop = unlocked('tulip') && unlocked('sunflower') ? (vase === 'sunflower' ? 'sunflower' : 'tulip')
     : unlocked('tulip') ? 'tulip' : unlocked('sunflower') ? 'sunflower' : null;
   const shown = ROOM.items.filter((it) => {
@@ -457,7 +458,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
       </Sheet>
       <Sheet visible={basket} onClose={() => setBasket(false)}>
         <Text style={sheetSt.title}>수확 바구니</Text>
-        <Text style={sheetSt.body}>먹이거나 선물해도 창턱 장식은 그대로 남아.</Text>
+        <Text style={sheetSt.body}>먹이거나 선물하면 하나씩 줄고, 다 쓰면 창턱 장식도 사라져. 텃밭에서 또 수확하면 다시 생겨.</Text>
         {bagItems.map((c) => (
           <View key={c.id} style={st.bagRow}>
             <Image source={ICONS[`produce_${c.id}`]} style={{ width: 40, height: 40 }} contentFit="contain" />
