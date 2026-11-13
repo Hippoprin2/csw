@@ -23,6 +23,8 @@ for o in [o for o in bpy.data.objects if o.type in ("LIGHT", "CAMERA")]:
 for n, rot, en in (("key", (50, 0, 30), 3.0), ("fill", (60, 0, -120), 1.2), ("rim", (110, 0, 180), 2.0), ("bounce", (150, 0, 0), 0.7)):
     d = bpy.data.lights.new(n, "SUN"); d.energy = en
     o = bpy.data.objects.new(n, d); s.collection.objects.link(o); o.rotation_euler = [math.radians(x) for x in rot]
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import surface; surface.apply(s)          # 단짝 표면 v2 (2026-11-13); HIPPO_SURFACE=0 = old look
 cd = bpy.data.cameras.new("cam"); cd.type = "ORTHO"; cd.ortho_scale = float(kv.get("scale", 2.6))
 c = bpy.data.objects.new("cam", cd); s.collection.objects.link(c); s.camera = c
 t = Vector((0, 0, float(kv.get("tz", 0.12))))

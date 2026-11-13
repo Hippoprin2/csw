@@ -103,6 +103,8 @@
 
 - 2026-11-13 표면 비교 v1에 '배 줄 지움' 추가 (share/surface_compare_seamfix_v1.png, _phone_v1.png, 대표 확인 대기). 원인: GLB에서 가져온 custom_normal/sharp_edge 속성이 이음새 주름을 그대로 들고 있었음 → 속성 제거 + 전체 smooth shading + 울퉁불퉁한 정점(이웃 평균에서 법선 방향으로 튀어나온 상위 10%)만 vertex group으로 Corrective Smooth 15회. 배 가로줄·다리·팔 이음새가 사라지고 형태 손실 없음. 목 아래 그늘은 접촉 그림자(조명)라 남음
 
+- 2026-11-13 **표면 v2 확정 (대표: '매끈하게 + 줄 지움')** → scripts/blender/surface.py를 render_clip.py·render_milestone.py가 렌더할 때 자동 적용(HIPPO_SURFACE=0이면 예전 모습). 용접 → custom normal 제거 → Corrective Smooth 2단(전체 25회 + 울퉁불퉁한 정점 15회) → 몸 단색 #F2CFA6 + sheen 0.2 → 부드러운 그림자(sun angle 18°/30°) + AO. 몸 색 샘플 (233,200,162) → (232,198,159)로 거의 같음. 덤으로 돌아선 각도에서 목에 생기던 진한 고리 그림자도 거의 사라짐. export v1 36클립 전부 다시 렌더·export(scripts/blender/rerender_surface_v2.sh). 10번 축하 영상 v1은 다시 만들 때(Higgsfield 여부 결정 후) 적용
+
 ## 앱 형식 비교 (2026-11-08, 결정 대기)
 - 측정: 원본 PNG 9클립 약 137MB. 프레임별 WebP(q80): 300px 4.6MB / 450px 7.2MB. 움직이는 WebP 1파일(600px, 원본 해상도): 만세 578KB → 9클립 추정 5~6MB. GLB(애니 포함, 미최적화) 6.3MB → 최적화 시 2~3MB 추정.
 - A. 미리 렌더한 움직이는 WebP(추천, MVP): expo-image로 재생, Pet.tsx만 교체, 1~2일. 렌더와 픽셀 단위로 같음. 단점: 고정 각도, 펫 꾸미기 아이템은 아이템마다 오버레이 시퀀스 추가 렌더 필요. 확인 필요: expo-image 재생 끝 감지/메모리(실기기).

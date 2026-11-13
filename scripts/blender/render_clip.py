@@ -43,6 +43,8 @@ for o in [o for o in bpy.data.objects if o.type in ("LIGHT", "CAMERA") or o.name
 for n, rot, en in (("key", (50, 0, 30), 3.0), ("fill", (60, 0, -120), 1.2), ("rim", (110, 0, 180), 2.0), ("bounce", (150, 0, 0), 0.7)):
     d = bpy.data.lights.new(n, "SUN"); d.energy = en
     o = bpy.data.objects.new(n, d); s.collection.objects.link(o); o.rotation_euler = [math.radians(x) for x in rot]
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import surface; surface.apply(s)          # 단짝 표면 v2 (매끈하게 + 줄 지움, 2026-11-13); HIPPO_SURFACE=0 = old look
 # yard item reference geometry (anim_yard.py): holdouts cut the pet where the item is in front of it; the rest is hidden
 for o in bpy.data.objects:
     if o.get("yard_ref") and not os.environ.get("YARD_SHOW"):   # YARD_SHOW=1: preview with the item visible
