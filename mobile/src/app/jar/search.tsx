@@ -6,10 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, friendlyError, type Win } from '@/lib/api';
 import { Icon } from '@/ui/Icon';
 import { Back, H } from '@/ui/kit';
-import { WinList } from '@/ui/WinList';
+import { patchList, RecordList } from '@/ui/RecordList';
 import { C, H as HT, R } from '@/ui/theme';
 
-// 지난 기록 글자로 찾기 (최근 것부터 100개). 검색어는 분석 이벤트에 넣지 않음
+// 지난 기록 글자로 찾기 (최근 것부터 100개, 덧붙인 한 줄도 찾음). 결과는 분류별 목록과 같은 모양 (C9 N3). 검색어는 분석 이벤트에 넣지 않음
 export default function JarSearch() {
   const [q, setQ] = useState('');
   const [res, setRes] = useState<Win[] | null>(null);
@@ -42,10 +42,7 @@ export default function JarSearch() {
           ? <Text style={st.msg}>‘{q.trim()}’이 들어간 기록은 아직 없어.</Text>
           : <Text style={st.msg}>{res.length >= 100 ? '최근 100개' : `${res.length}개`}를 찾았어</Text>)}
         {res && (
-          <WinList
-            wins={res}
-            onChange={(w, deleted) => setRes((ws) => (ws ?? []).flatMap((x) => (x.id !== w.id ? [x] : deleted ? [] : [w])))}
-          />
+          <RecordList wins={res} onChange={(w, deleted) => setRes(patchList(w, deleted))} />
         )}
       </ScrollView>
     </SafeAreaView>

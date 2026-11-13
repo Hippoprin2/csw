@@ -64,7 +64,8 @@ export default function Settings() {
   async function exportAll() {
     try {
       const all = await api.allWins();
-      const lines = all.map((w) => `${w.win_date} · ${w.text} · ${CATS[w.category].name}`);
+      // 덧붙인 한 줄(C9 N2)은 다음 줄에 '  └ ', ☆는 끝에
+      const lines = all.map((w) => `${w.win_date} · ${w.text} · ${CATS[w.category].name}${w.starred ? ' · ☆' : ''}${w.note ? `\n  └ ${w.note}` : ''}`);
       const message = `나의 작은 승리 기록 (${all.length}개)\n\n${lines.join('\n')}`;
       await Share.share({ message });
       track('export_done', { count: all.length });

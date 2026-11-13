@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AppProvider, useApp } from '@/state/app';
 import { C } from '@/ui/theme';
+import { WinSheetProvider } from '@/ui/WinSheet';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -38,6 +39,8 @@ function Gate() {
         <Stack.Screen name="help" options={{ presentation: 'modal' }} />
         <Stack.Screen name="jar/[no]" />
         <Stack.Screen name="jar/search" />
+        <Stack.Screen name="jar/list/[f]" />
+        <Stack.Screen name="jar/day/[d]" />
       </Stack.Protected>
     </Stack>
   );
@@ -48,7 +51,10 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppProvider>
         <StatusBar style="dark" />
-        <Gate />
+        {/* 기록 '크게 보기' 시트: 방·유리병·목록 어디서든 같은 시트 (C9) */}
+        <WinSheetProvider>
+          <Gate />
+        </WinSheetProvider>
       </AppProvider>
     </GestureHandlerRootView>
   );

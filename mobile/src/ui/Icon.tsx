@@ -6,7 +6,7 @@ import { C } from './theme';
 export type IconName =
   | 'home' | 'jar' | 'plant' | 'gear' | 'search' | 'basket' | 'leaf' | 'lock' | 'send'
   | 'chevronLeft' | 'chevronRight' | 'chevronDown' | 'check' | 'plus' | 'sparkle' | 'zzz'
-  | 'fruit' | 'sliders' | 'close';
+  | 'fruit' | 'sliders' | 'close' | 'star' | 'more';
 
 export function Icon({ name, size = 22, color = C.ink, stroke = 1.8, fill }: {
   name: IconName; size?: number; color?: string; stroke?: number; fill?: string;
@@ -66,6 +66,12 @@ export function Icon({ name, size = 22, color = C.ink, stroke = 1.8, fill }: {
       {name === 'fruit' && <>
         <Circle {...p} cx="12" cy="14" r="6" />
         <Path {...p} d="M12 8c0-2 1-3.3 2.5-4M12 8c-1.8-1.6-4-1.6-5.5-.6 1.3 1.6 3.5 1.8 5.5.6Z" />
+      </>}
+      {name === 'star' && <Path {...p} fill={fill ?? 'none'} d="m12 4.2 2.3 4.8 5.2.7-3.8 3.6.9 5.2L12 16l-4.6 2.5.9-5.2-3.8-3.6 5.2-.7L12 4.2Z" />}
+      {name === 'more' && <>
+        <Circle cx="6" cy="12" r="1.6" fill={color} />
+        <Circle cx="12" cy="12" r="1.6" fill={color} />
+        <Circle cx="18" cy="12" r="1.6" fill={color} />
       </>}
       {name === 'sliders' && <>
         <Path {...p} d="M5 7h8M17 7h2M5 17h2M11 17h8" />

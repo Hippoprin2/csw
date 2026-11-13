@@ -11,7 +11,7 @@ import { CANVAS, ICONS, ROOM } from '@/data/world';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { CATEGORY_ORDER, CATS, CHIPS, SAFETY_LINE, classifyByKeyword, pickLine, type Category } from '@/lib/categories';
-import { kstToday, kstYesterday } from '@/lib/dates';
+import { formatTime, kstToday, kstYesterday } from '@/lib/dates';
 import { jarMarbles } from '@/lib/jars';
 import { askPermission } from '@/lib/notifications';
 import { safetyKeywordHit } from '@/lib/safety';
@@ -25,11 +25,13 @@ import { SpaceImage } from '@/ui/SpaceImage';
 import { useSpaceSize } from '@/ui/layout';
 import { PANEL_OVERLAP, SpaceChips, SpaceSwitch, useSceneLayout, type SpaceNav } from '@/ui/SpaceChrome';
 import { ART, C, H, R, TAB_SPACE } from '@/ui/theme';
+import { useWinSheet } from '@/ui/WinSheet';
 
 const DAILY_REWARD_CAP = 10;
 const NOTIF_ASKED_KEY = 'csw.notifAsked';
 const SAFETY_DAY_KEY = 'csw.safetyShownDay';
 const VASE_KEY = 'csw.sillVase'; // 창턱 꽃병 자리: 튤립/해바라기 둘 다 있으면 탭해서 바꿈 (기기에만 저장)
+const NOTES_SHOWN = 5; // 오늘의 쪽지는 최근 5개까지, 나머지는 하루 한 장에서
 const DOT = 7; // 유리장 병 속 구슬 한 칸 (캔버스 px)
 let keptCamX: number = ROOM.view.start_x; // 둘러본 위치 유지 (앱을 켜 둔 동안). 처음엔 단짝 가운데(= 예전 방)
 
@@ -90,7 +92,9 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
   }, []);
 
   const today = kstToday();
-  const todayCount = wins.filter((w) => w.win_date === today).length;
+  const todayWins = wins.filter((w) => w.win_date === today).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  const todayCount = todayWins.length;
+  const { openWin } = useWinSheet();
   const auto = classifyByKeyword(text.trim());
   const k = chosen ?? auto;
 
@@ -385,6 +389,30 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
           )}
           {err ? <Text style={st.err}>{err}</Text> : null}
         </View>
+        {/* 오늘의 쪽지 (C9 M1): 오늘 적은 기록이 쪽지로 쌓임 (최근 것 위). 누르면 크게 보기, 다 보기 → 하루 한 장 */}
+        {todayWins.length > 0 && (
+          <View style={st.notes}>
+            <View style={st.notesHead}>
+              <Text style={st.notesTitle}>오늘의 쪽지 · {todayWins.length}가지</Text>
+              <Pressable onPress={() => router.push(`/jar/day/${today}`)} hitSlop={8} accessibilityRole="button" accessibilityLabel="오늘 기록 다 보기">
+                <Text style={st.notesMore}>다 보기 ›</Text>
+              </Pressable>
+            </View>
+            {todayWins.slice(0, NOTES_SHOWN).map((w) => (
+              <Pressable key={w.id} onPress={() => openWin(w)} style={st.note} accessibilityRole="button" accessibilityHint="눌러서 크게 보기">
+                <View style={[st.noteDot, { backgroundColor: CATS[w.category].color }]} />
+                <Text style={st.noteText} numberOfLines={1}>{w.text}</Text>
+                {w.starred ? <Icon name="star" size={13} color={C.accentInk} fill={C.accentInk} /> : null}
+                <Text style={st.noteTime}>{formatTime(w.created_at)}</Text>
+              </Pressable>
+            ))}
+            {todayWins.length > NOTES_SHOWN && (
+              <Pressable onPress={() => router.push(`/jar/day/${today}`)} accessibilityRole="button">
+                <Text style={st.notesRest}>+ {todayWins.length - NOTES_SHOWN}가지 더</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
         <Text style={st.cap}>
           {todayCount > 0 ? `오늘 ${todayCount}가지를 해냈어. ` : ''}
           기록 1개 = 씨앗 3개{todayCount >= DAILY_REWARD_CAP ? ' · 오늘 씨앗은 다 받았어. 기록은 얼마든지 남겨도 돼!' : ` (하루 ${DAILY_REWARD_CAP}개 기록까지)`}
@@ -461,6 +489,15 @@ const st = StyleSheet.create({
   chipText: { fontSize: 14, color: C.ink },
   chipTextOn: { color: C.accentInk, fontWeight: '700' },
   err: { marginTop: 10, color: C.danger, fontSize: 13 },
+  notes: { marginTop: 16, backgroundColor: C.card, borderRadius: R.card, padding: 12, paddingTop: 14 },
+  notesHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 6, marginBottom: 8 },
+  notesTitle: { fontSize: 13, fontWeight: '800', color: C.ink },
+  notesMore: { fontSize: 13, color: C.accentInk, fontWeight: '700' },
+  note: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.bg, borderRadius: R.pill, paddingVertical: 11, paddingHorizontal: 16, marginBottom: 6 },
+  noteDot: { width: 9, height: 9, borderRadius: R.pill },
+  noteText: { flex: 1, fontSize: 14, color: C.ink },
+  noteTime: { fontSize: 11, color: C.muted },
+  notesRest: { fontSize: 13, color: C.muted, textAlign: 'center', paddingVertical: 6 },
   cap: { fontSize: 12, color: C.muted, marginHorizontal: 6, marginTop: 12, lineHeight: 18 },
   safetyCard: { marginTop: 14, backgroundColor: C.card, borderRadius: R.card, padding: 18 },
   safetyTitle: { fontSize: 16, fontWeight: '800', color: C.ink, marginBottom: 4 },

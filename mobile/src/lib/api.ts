@@ -9,7 +9,13 @@ export type Win = {
   win_date: string;
   created_at: string;
   jar_no: number; // 들어간 유리병 번호 (넣는 순간 고정)
+  note: string | null; // 크게 보기에서 덧붙인 한 줄 (C9 N2, 원문은 그대로)
+  starred: boolean; // ☆ 다시 보고 싶은 기록 (C9 M3, 보상 차등 없음)
 };
+export type WinCounts = { cats: Partial<Record<Category, number>>; starred: number };
+// 목록 화면 하나가 쓰는 필터: 분류 하나 또는 ☆ (C9 N3)
+export type ListFilter = Category | 'star';
+export const LIST_PAGE = 100;
 export type JarInfo = { no: number; count: number; from: string; to: string; cats: Partial<Record<Category, number>> };
 export type JarSummary = { current_jar: number; total: number; jars: JarInfo[] };
 export type Profile = {
@@ -52,12 +58,16 @@ const ERR_KO: Record<string, string> = {
   invalid_date: '오늘이나 어제 일만 적을 수 있어.',
   yard_locked: '마당이 열리면 살 수 있어.',
   forbidden: '테스트 계정에서만 쓸 수 있어.',
+  too_long: '한 줄은 200자까지 남길 수 있어.',
 };
 export function friendlyError(e: unknown) {
   const msg = (e as { message?: string })?.message ?? String(e);
   const key = Object.keys(ERR_KO).find((k) => msg.includes(k));
   return key ? ERR_KO[key] : '잠깐 연결이 안 됐어. 다시 해볼래?';
 }
+
+export const newestFirst = (a: Win, b: Win) =>
+  a.win_date !== b.win_date ? (a.win_date < b.win_date ? 1 : -1) : a.created_at < b.created_at ? 1 : -1;
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args);
@@ -82,14 +92,45 @@ export const api = {
     if (error) throw error;
     return data as Win[];
   },
-  // 글자로 찾기 (최근 것부터 100개)
+  // 글자로 찾기 (최근 것부터 100개). 기록 글 + 덧붙인 메모 둘 다 (C9 N2: 메모도 찾기에 포함)
+  // or() 필터는 쉼표·괄호가 든 검색어에서 깨지므로 두 번 찾아서 합친다
   searchWins: async (q: string) => {
     const pat = `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
-    const { data, error } = await supabase.from('wins').select('*').ilike('text', pat)
+    const one = (col: 'text' | 'note') => supabase.from('wins').select('*').ilike(col, pat)
       .order('win_date', { ascending: false }).order('created_at', { ascending: false }).limit(100);
+    const [a, b] = await Promise.all([one('text'), one('note')]);
+    if (a.error) throw a.error;
+    if (b.error) throw b.error;
+    const m = new Map<string, Win>();
+    [...(a.data as Win[]), ...(b.data as Win[])].forEach((w) => m.set(w.id, w));
+    return [...m.values()].sort(newestFirst).slice(0, 100);
+  },
+  // 목록 화면 (분류 하나 / ☆): 최근 것부터 LIST_PAGE개씩
+  listWins: async (f: ListFilter, page: number) => {
+    let qy = supabase.from('wins').select('*');
+    qy = f === 'star' ? qy.eq('starred', true) : qy.eq('category', f);
+    const { data, error } = await qy.order('win_date', { ascending: false }).order('created_at', { ascending: false })
+      .range(page * LIST_PAGE, page * LIST_PAGE + LIST_PAGE - 1);
     if (error) throw error;
     return data as Win[];
   },
+  // 하루 한 장: 그날 기록 + 기록이 있는 바로 앞·뒤 날 (빈 날은 건너뜀)
+  dayWins: async (d: string) => {
+    const [w, prev, next] = await Promise.all([
+      supabase.from('wins').select('*').eq('win_date', d).order('created_at'),
+      supabase.from('wins').select('win_date').lt('win_date', d).order('win_date', { ascending: false }).limit(1),
+      supabase.from('wins').select('win_date').gt('win_date', d).order('win_date').limit(1),
+    ]);
+    if (w.error) throw w.error;
+    return {
+      wins: w.data as Win[],
+      prev: (prev.data?.[0]?.win_date as string | undefined) ?? null,
+      next: (next.data?.[0]?.win_date as string | undefined) ?? null,
+    };
+  },
+  winCounts: () => rpc<WinCounts>('win_counts'),
+  setNote: (id: string, note: string) => rpc<Win>('set_win_note', { p_id: id, p_note: note }),
+  setStar: (id: string, on: boolean) => rpc<Win>('set_win_star', { p_id: id, p_on: on }),
   // 내보내기용 전체 기록 (1,000개씩 나눠 받기)
   allWins: async () => {
     const out: Win[] = [];

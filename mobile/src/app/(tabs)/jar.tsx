@@ -1,17 +1,19 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { JarInfo, Win } from '@/lib/api';
+import { api, type JarInfo, type Win, type WinCounts } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { CATEGORY_ORDER, CATS } from '@/lib/categories';
 import { addDays, formatDay, kstToday, weekStart } from '@/lib/dates';
 import { jarMarbles, shelfByYear } from '@/lib/jars';
 import { useApp } from '@/state/app';
 import { Icon } from '@/ui/Icon';
+import { MarbleJar } from '@/ui/MarbleJar';
 import { Card, H, Sub } from '@/ui/kit';
 import { WinList } from '@/ui/WinList';
+import { useWinSheet } from '@/ui/WinSheet';
 import { ART, C, H as HT, R, TAB_SPACE } from '@/ui/theme';
 
 const RECENT_LIST_DAYS = 14; // 유리병 화면 목록은 최근 2주만. 그 전은 선반의 병을 열거나 찾기 (FEATURES C6 J1-A)
@@ -33,6 +35,7 @@ function ShelfJar({ jar }: { jar: JarInfo }) {
 }
 
 function WeekCard({ start, wins, title }: { start: string; wins: Win[]; title: string }) {
+  const { openWin } = useWinSheet();
   const end = addDays(start, 6);
   const ws = wins.filter((w) => w.win_date >= start && w.win_date <= end);
   const byCat = CATEGORY_ORDER.map((c) => [c, ws.filter((w) => w.category === c).length] as const).filter(([, n]) => n > 0);
@@ -68,10 +71,10 @@ function WeekCard({ start, wins, title }: { start: string; wins: Win[]; title: s
             ))}
           </View>
           {memory ? (
-            <View style={st.memory}>
+            <Pressable style={st.memory} onPress={() => openWin(memory)} accessibilityRole="button" accessibilityHint="눌러서 크게 보기">
               <Text style={st.memoryQ}>이 순간 기억나?</Text>
               <Text style={st.memoryT}>“{memory.text}” · {formatDay(memory.win_date)}</Text>
-            </View>
+            </Pressable>
           ) : null}
         </>
       )}
@@ -83,10 +86,16 @@ export default function Jar() {
   const { wins, jars } = useApp();
   const [showPast, setShowPast] = useState(false);
   const [openYears, setOpenYears] = useState<Record<string, boolean>>({});
+  const [locked, setLocked] = useState(false); // 구슬 쓸어 보는 동안 화면 스크롤 멈춤
+  const [counts, setCounts] = useState<WinCounts | null>(null);
 
   const today = kstToday();
   const thisWeek = weekStart(today);
-  const current = wins.filter((w) => w.jar_no === jars.current_jar);
+  const current = wins.filter((w) => w.jar_no === jars.current_jar).sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+  // 분류 칩 숫자 (전체 기록 기준, 서버에서). 기록이 바뀌면 다시
+  const sig = `${wins.length}:${wins.filter((w) => w.starred).length}:${wins.map((w) => w.category).join('')}`;
+  useEffect(() => { api.winCounts().then(setCounts).catch(() => {}); }, [sig]);
+  const catChips = CATEGORY_ORDER.map((c) => [c, counts?.cats[c] ?? 0] as const).filter(([, n]) => n > 0);
   const shelf = shelfByYear(jars);
   const recentFrom = addDays(today, -(RECENT_LIST_DAYS - 1));
   const recent = wins.filter((w) => w.win_date >= recentFrom);
@@ -95,7 +104,7 @@ export default function Jar() {
 
   return (
     <SafeAreaView style={st.wrap} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: TAB_SPACE + 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: TAB_SPACE + 16 }} scrollEnabled={!locked}>
         <View style={st.headRow}>
           <H>나의 작은 승리 유리병</H>
           {jars.total > 0 && (
@@ -107,9 +116,10 @@ export default function Jar() {
         </View>
         <Sub>지금까지 구슬 {jars.total}개. 구슬은 줄어들지 않아.</Sub>
 
-        <View style={st.jar} accessibilityLabel={`${jars.current_jar}번째 병, 구슬 ${current.length}개`}>
-          {[...current].reverse().map((w) => <View key={w.id} style={[st.jarMarble, { backgroundColor: CATS[w.category].color }]} />)}
-        </View>
+        <MarbleJar
+          wins={current} label={`${jars.current_jar}번째 병, 구슬 ${current.length}개`}
+          listHref={`/jar/${jars.current_jar}`} onScrollLock={setLocked}
+        />
         {jars.current_jar > 1 && (
           <Text style={st.jarCaption}>
             {current.length === 0 ? '새 병이야. 다음 구슬은 여기에 들어가.' : `${jars.current_jar}번째 병`}
@@ -143,6 +153,25 @@ export default function Jar() {
           </View>
         )}
 
+        {/* 분류별로 보기 (C9 M2·N3): ☆ 칩이 맨 앞, 누르면 같은 목록 화면 */}
+        {jars.total > 0 && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={st.weekTitle}>분류별로 보기</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipRow}>
+              <Pressable onPress={() => router.push('/jar/list/star')} style={st.chip} accessibilityRole="button" accessibilityLabel={`다시 보고 싶은 기록 ${counts?.starred ?? 0}개`}>
+                <Icon name="star" size={14} color={C.accentInk} fill={(counts?.starred ?? 0) > 0 ? C.accentInk : undefined} />
+                <Text style={st.chipText}>다시 보고 싶은{counts?.starred ? ` ${counts.starred}` : ''}</Text>
+              </Pressable>
+              {catChips.map(([c, n]) => (
+                <Pressable key={c} onPress={() => router.push(`/jar/list/${c}`)} style={st.chip} accessibilityRole="button">
+                  <View style={[st.catDot, { backgroundColor: CATS[c].color }]} />
+                  <Text style={st.chipText}>{CATS[c].name} {n}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         <WeekCard start={thisWeek} wins={wins} title="이번 주 유리병" />
         {pastWeeks.length > 0 && (
           <Pressable onPress={() => { setShowPast((v) => !v); if (!showPast) track('weekly_viewed', { weeks: pastWeeks.length }); }} style={{ marginBottom: 14 }}>
@@ -167,10 +196,9 @@ const st = StyleSheet.create({
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   searchBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, height: HT.chip, paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
   searchTxt: { fontSize: 13, color: C.ink, fontWeight: '700' },
-  // 병 그림 (유리병 자체는 화면 속 소품이라 선을 유지)
-  jar: { alignSelf: 'center', width: 150, height: 170, borderWidth: 4, borderTopWidth: 10, borderColor: ART.jarLine, borderTopLeftRadius: 26, borderTopRightRadius: 26, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: ART.jarGlass, flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 9, gap: 3, overflow: 'hidden', marginBottom: 8 },
-  // 50개가 다 들어가는 크기 (한 줄 7개 × 8줄)
-  jarMarble: { width: 14, height: 14, borderRadius: 7 },
+  chipRow: { gap: 6, paddingHorizontal: 2 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: HT.chip, paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
+  chipText: { fontSize: 13, color: C.ink, fontWeight: '600' },
   jarCaption: { textAlign: 'center', fontSize: 13, color: C.muted, marginBottom: 18 },
   yearRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
   yearH: { fontSize: 13, color: C.ink, fontWeight: '700' },
