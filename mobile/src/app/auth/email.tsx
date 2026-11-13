@@ -45,7 +45,7 @@ export default function EmailLogin() {
               <Text style={st.h}>이메일로 계속하기</Text>
               <Text style={st.sub}>로그인 코드를 메일로 보내줄게. 비밀번호는 필요 없어.</Text>
               <TextInput
-                style={st.input} value={email} onChangeText={setEmail} placeholder="email@example.com" placeholderTextColor="#A8968A"
+                style={st.input} value={email} onChangeText={setEmail} placeholder="email@example.com" placeholderTextColor={C.placeholder}
                 autoCapitalize="none" autoComplete="email" keyboardType="email-address" inputMode="email"
                 onSubmitEditing={() => validEmail && send()} accessibilityLabel="이메일"
               />
@@ -57,7 +57,7 @@ export default function EmailLogin() {
               <Text style={st.sub}>{email.trim()}로 메일을 보냈어. 6자리 코드를 입력하거나, 휴대폰에서 메일 속 링크를 눌러줘.</Text>
               <TextInput
                 style={[st.input, st.code]} value={code} onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000" placeholderTextColor="#C9BBA8" keyboardType="number-pad" inputMode="numeric" autoComplete="one-time-code"
+                placeholder="000000" placeholderTextColor={C.placeholderSoft} keyboardType="number-pad" inputMode="numeric" autoComplete="one-time-code"
                 textContentType="oneTimeCode" maxLength={6} accessibilityLabel="인증 코드"
                 onSubmitEditing={() => code.length === 6 && verify()}
               />

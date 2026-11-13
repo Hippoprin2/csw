@@ -104,7 +104,7 @@ export default function Settings() {
 
         <Text style={st.sec}>알림</Text>
         <Group>
-          <Row label="하루 한 번 물어보기" right={<Switch value={!!profile?.notify_enabled} onValueChange={toggleNotify} trackColor={{ true: C.accent, false: '#E2D6C2' }} thumbColor={C.white} />} />
+          <Row label="하루 한 번 물어보기" right={<Switch value={!!profile?.notify_enabled} onValueChange={toggleNotify} trackColor={{ true: C.accent, false: C.track }} thumbColor={C.white} />} />
           {profile?.notify_enabled ? <Row label={`시간: ${time}`} onPress={() => setTimeEdit(true)} /> : null}
         </Group>
 

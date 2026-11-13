@@ -272,7 +272,7 @@ function LockedYard({ devPanel, chrome }: { devPanel: React.ReactNode; chrome: R
   return (
     <View style={st.wrap}>
       <Image source={YARD_IMG['yard/bg_1_0.webp']} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={14} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(251,246,236,0.25)' }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: C.veil }]} />
       <View style={st.gate}>
         <View style={st.gateIcon}><Icon name="lock" size={26} color={C.accentInk} /></View>
         <Text style={st.gateTitle}>기록한 날이 7일이 되면 열려</Text>
@@ -298,7 +298,7 @@ const st = StyleSheet.create({
   devBtnText: { fontSize: 13, fontWeight: '600', color: C.ink },
   feedBtn: { position: 'absolute', left: 16, bottom: TAB_SPACE, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.chip, borderRadius: R.pill, height: H.btn - 8, paddingHorizontal: 18 },
   feedText: { fontSize: 14, fontWeight: '700', color: C.ink },
-  toast: { position: 'absolute', left: 40, right: 40, bottom: TAB_SPACE + 56, backgroundColor: 'rgba(74,50,38,0.9)', borderRadius: R.pill, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center' },
+  toast: { position: 'absolute', left: 40, right: 40, bottom: TAB_SPACE + 56, backgroundColor: C.toast, borderRadius: R.pill, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center' },
   toastText: { color: C.white, fontSize: 14, fontWeight: '600' },
   bagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, backgroundColor: C.card, borderRadius: R.card, padding: 10, paddingLeft: 12 },
   bagName: { flex: 1, fontSize: 15, color: C.ink, fontWeight: '600' },

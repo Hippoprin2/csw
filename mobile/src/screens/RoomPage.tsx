@@ -24,7 +24,7 @@ import type { Pager } from '@/ui/pager';
 import { SpaceImage } from '@/ui/SpaceImage';
 import { useSpaceSize } from '@/ui/layout';
 import { PANEL_OVERLAP, SpaceChips, SpaceSwitch, useSceneLayout, type SpaceNav } from '@/ui/SpaceChrome';
-import { C, H, R, TAB_SPACE } from '@/ui/theme';
+import { ART, C, H, R, TAB_SPACE } from '@/ui/theme';
 
 const DAILY_REWARD_CAP = 10;
 const NOTIF_ASKED_KEY = 'csw.notifAsked';
@@ -351,7 +351,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
           <View style={st.row}>
             <TextInput
               style={st.input} value={text} onChangeText={(v) => { setText(v); setErr(''); }}
-              placeholder="예) 침대 정리했다" placeholderTextColor="#A8968A" maxLength={100} returnKeyType="done"
+              placeholder="예) 침대 정리했다" placeholderTextColor={C.placeholder} maxLength={100} returnKeyType="done"
               onSubmitEditing={() => submit()} accessibilityLabel="오늘 해낸 일" editable={!busy}
             />
             <Pressable onPress={() => submit()} disabled={!text.trim() || busy} accessibilityRole="button" accessibilityLabel="기록"
@@ -432,7 +432,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg },
-  room: { overflow: 'hidden', backgroundColor: '#EADBC4' },
+  room: { overflow: 'hidden', backgroundColor: ART.roomFill },
   // 크림 판: 위 모서리 32, 그림 아래를 살짝 덮으며 올라옴
   panel: { marginTop: -PANEL_OVERLAP, backgroundColor: C.bg, borderTopLeftRadius: R.sheet, borderTopRightRadius: R.sheet, paddingHorizontal: 20, paddingTop: 18 },
   basketBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, backgroundColor: C.accentBg, borderRadius: R.pill, height: H.btn, paddingHorizontal: 18 },

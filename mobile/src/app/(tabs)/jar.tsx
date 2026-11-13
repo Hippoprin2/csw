@@ -12,7 +12,7 @@ import { useApp } from '@/state/app';
 import { Icon } from '@/ui/Icon';
 import { Card, H, Sub } from '@/ui/kit';
 import { WinList } from '@/ui/WinList';
-import { C, H as HT, R, TAB_SPACE } from '@/ui/theme';
+import { ART, C, H as HT, R, TAB_SPACE } from '@/ui/theme';
 
 const RECENT_LIST_DAYS = 14; // 유리병 화면 목록은 최근 2주만. 그 전은 선반의 병을 열거나 찾기 (FEATURES C6 J1-A)
 
@@ -168,17 +168,17 @@ const st = StyleSheet.create({
   searchBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, height: HT.chip, paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
   searchTxt: { fontSize: 13, color: C.ink, fontWeight: '700' },
   // 병 그림 (유리병 자체는 화면 속 소품이라 선을 유지)
-  jar: { alignSelf: 'center', width: 150, height: 170, borderWidth: 4, borderTopWidth: 10, borderColor: '#d9c9b1', borderTopLeftRadius: 26, borderTopRightRadius: 26, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: '#fffaf2', flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 9, gap: 3, overflow: 'hidden', marginBottom: 8 },
+  jar: { alignSelf: 'center', width: 150, height: 170, borderWidth: 4, borderTopWidth: 10, borderColor: ART.jarLine, borderTopLeftRadius: 26, borderTopRightRadius: 26, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, backgroundColor: ART.jarGlass, flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 9, gap: 3, overflow: 'hidden', marginBottom: 8 },
   // 50개가 다 들어가는 크기 (한 줄 7개 × 8줄)
   jarMarble: { width: 14, height: 14, borderRadius: 7 },
   jarCaption: { textAlign: 'center', fontSize: 13, color: C.muted, marginBottom: 18 },
   yearRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
   yearH: { fontSize: 13, color: C.ink, fontWeight: '700' },
   shelf: { gap: 12, paddingHorizontal: 6, alignItems: 'flex-end' },
-  shelfBoard: { height: 8, borderRadius: 4, backgroundColor: '#d9c9b1', marginTop: -2 },
+  shelfBoard: { height: 8, borderRadius: 4, backgroundColor: ART.jarLine, marginTop: -2 },
   shelfItem: { alignItems: 'center', width: 64 },
-  lid: { width: 40, height: 9, borderRadius: 3, backgroundColor: '#c9a27a', marginBottom: -1 },
-  miniJar: { width: 54, height: 62, borderWidth: 3, borderColor: '#d9c9b1', borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, backgroundColor: '#fffaf2', flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 3, gap: 1, overflow: 'hidden' },
+  lid: { width: 40, height: 9, borderRadius: 3, backgroundColor: ART.jarLid, marginBottom: -1 },
+  miniJar: { width: 54, height: 62, borderWidth: 3, borderColor: ART.jarLine, borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, backgroundColor: ART.jarGlass, flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 3, gap: 1, overflow: 'hidden' },
   miniMarble: { width: 6, height: 6, borderRadius: 3 },
   shelfLabel: { fontSize: 11, color: C.muted, marginTop: 4, marginBottom: 6 },
   weekTitle: { fontSize: 13, color: C.muted, fontWeight: '700', marginBottom: 8, marginLeft: 4 },

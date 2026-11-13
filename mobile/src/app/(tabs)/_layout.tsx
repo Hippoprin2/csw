@@ -51,7 +51,7 @@ const st = StyleSheet.create({
     position: 'absolute', left: 16, right: 16, height: H.tab, maxWidth: 488, alignSelf: 'center',
     flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8,
     backgroundColor: C.card, borderRadius: R.pill,
-    shadowColor: '#4A3226', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 8,
+    shadowColor: C.shadow, shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 8,
   },
   item: { flex: 1, height: 52, borderRadius: R.pill, alignItems: 'center', justifyContent: 'center', gap: 2 },
   itemOn: { backgroundColor: C.accentBg },

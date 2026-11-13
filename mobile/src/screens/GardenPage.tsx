@@ -12,7 +12,7 @@ import { useSpaceSize } from '@/ui/layout';
 import { PANEL_OVERLAP, SpaceChips, SpaceSwitch, useSceneLayout, type SpaceNav } from '@/ui/SpaceChrome';
 import { CANVAS, GARDEN, ICONS } from '@/data/world';
 import { Image } from 'expo-image';
-import { C, R, TAB_SPACE } from '@/ui/theme';
+import { ART, C, R, TAB_SPACE } from '@/ui/theme';
 
 // 텃밭 (docs/FEATURES.md 7장, docs/WORLD.md 1·2장)
 // - 3칸 처음부터. 기록한 날 3일마다 한 단계(작심삼일), 9일에 수확. 쉬어도 리셋 없음
@@ -35,7 +35,7 @@ function Overlay({ plot, crop, dozing, s, i }: { plot?: Plot; crop?: Crop; dozin
   const nine = plot.required_days > 1;
   const mark = (name: 'zzz' | 'sparkle') => (
     <View pointerEvents="none" style={[st.mark, { left: P.cx * s + 20 * s, top: (P.cy - 250) * s }]}>
-      <Icon name={name} size={18} color={name === 'sparkle' ? '#B07A1E' : C.muted} stroke={2} />
+      <Icon name={name} size={18} color={name === 'sparkle' ? ART.sparkle : C.muted} stroke={2} />
     </View>
   );
   return (
@@ -190,7 +190,7 @@ export function GardenPage({ nav }: { nav?: SpaceNav } = {}) {
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg },
-  garden: { overflow: 'hidden', backgroundColor: '#cfe8c4' },
+  garden: { overflow: 'hidden', backgroundColor: ART.gardenFill },
   panel: { marginTop: -PANEL_OVERLAP, backgroundColor: C.bg, borderTopLeftRadius: R.sheet, borderTopRightRadius: R.sheet, paddingHorizontal: 20, paddingTop: 18 },
   title: { fontSize: 21, fontWeight: '800', color: C.ink, marginTop: 20, marginBottom: 6 },
   pill: { position: 'absolute', width: 120, height: 26, flexDirection: 'row', gap: 3, alignItems: 'center', justifyContent: 'center', backgroundColor: C.chip, borderRadius: R.pill },

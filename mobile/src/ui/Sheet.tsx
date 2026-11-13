@@ -39,7 +39,7 @@ export function Confirm({ visible, title, body, confirm, danger, onConfirm, onCa
 export const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.scrim, justifyContent: 'flex-end' },
   sheet: { backgroundColor: C.bg, borderTopLeftRadius: R.sheet, borderTopRightRadius: R.sheet, paddingHorizontal: 22, paddingTop: 10, maxWidth: 520, width: '100%', alignSelf: 'center' },
-  handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: R.pill, backgroundColor: '#E2D6C2', marginBottom: 18 },
+  handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: R.pill, backgroundColor: C.track, marginBottom: 18 },
   title: { fontSize: 19, fontWeight: '800', color: C.ink, marginBottom: 8 },
   body: { fontSize: 14, color: C.muted, lineHeight: 21, marginBottom: 18 },
   row: { flexDirection: 'row', gap: 8, marginTop: 4 },

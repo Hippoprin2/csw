@@ -53,8 +53,8 @@ export default function Welcome() {
           />
         )}
         {KAKAO && (
-          <Pressable accessibilityRole="button" disabled={!!busy} onPress={() => run('kakao', () => signInWithProvider('kakao'))} style={[st.social, { backgroundColor: '#FEE500' }]}>
-            <Text style={[st.socialText, { color: '#191919' }]}>{busy === 'kakao' ? '연결 중…' : '카카오로 계속하기'}</Text>
+          <Pressable accessibilityRole="button" disabled={!!busy} onPress={() => run('kakao', () => signInWithProvider('kakao'))} style={[st.social, { backgroundColor: C.kakao }]}>
+            <Text style={[st.socialText, { color: C.kakaoInk }]}>{busy === 'kakao' ? '연결 중…' : '카카오로 계속하기'}</Text>
           </Pressable>
         )}
         {GOOGLE && (
