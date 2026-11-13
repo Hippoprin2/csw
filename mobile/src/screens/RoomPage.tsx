@@ -110,6 +110,19 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
   const shownBubble = extFresh ? celebration!.line : bubble;
   const newItemId = celebration?.itemId;
 
+  // 단짝이 동작을 시작하면(기록·먹이기·선물·상점 구매 등 무엇이든) 아래로 내려가 있던 화면을 맨 위로 올려 동작·말풍선이 보이게 (대표 피드백 2026-11-13).
+  // 바구니처럼 시트에서 시작한 동작은 시트가 내려가는 동안 스크롤이 끊길 수 있어 한 번 더
+  const petKey = petAction?.key;
+  const shownKey = useRef(petKey);
+  useEffect(() => {
+    if (petKey === undefined || petKey === shownKey.current) return;
+    shownKey.current = petKey;
+    const top = () => scrollRef.current?.scrollTo({ y: 0, animated: true });
+    top();
+    const t = setTimeout(top, 400);
+    return () => clearTimeout(t);
+  }, [petKey]);
+
   async function submit(raw?: string) {
     const t = (raw ?? text).trim();
     if (!t || busy) return;
@@ -212,10 +225,10 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     try {
       await api.useHarvest(cropId);
       setBasket(false);
-      await reloadGarden();
-      // 채소·열매 = 먹이기(냠냠), 꽃 = 선물하기(냄새 맡고 반짝 → 기지개+회전 재사용)
+      // 채소·열매 = 먹이기(냠냠), 꽃 = 선물하기(냄새 맡고 반짝 → 기지개+회전 재사용). 바구니 새로 받기를 기다리지 않고 바로 시작
       if (c.kind === 'edible') celebrate({ kind: c.id === 'strawberry' ? 'eat_strawberry' : 'eat', line: `${c.name} 냠냠, 고마워!` });
       else celebrate({ kind: 'care', line: `${c.name} 향기 좋다! 고마워` });
+      await reloadGarden();
       track('harvest_used', { crop: cropId, kind: c.kind });
     } catch (e) {
       setErr(friendlyError(e));
