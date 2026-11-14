@@ -32,6 +32,19 @@ export async function sessionFromUrl(url: string) {
 
 // 카카오·구글: 브라우저 OAuth (Expo Go에서도 동작)
 export async function signInWithProvider(provider: 'kakao' | 'google') {
+  if (Platform.OS === 'web') {
+    // 웹 테스트판(Vercel): 같은 창에서 카카오로 갔다가 <origin>/auth/callback?code= 로 돌아옴 → callback.tsx가 세션 교환.
+    // Supabase uri_allow_list에 그 origin이 있어야 함 (scripts/deploy_web_app.py가 등록).
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
+      },
+    });
+    if (error) throw error;
+    return false; // 페이지가 이동하므로 여기서 끝
+  }
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {

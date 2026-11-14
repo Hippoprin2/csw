@@ -12,6 +12,7 @@
   - 2026-11-11 **자리 동작 클립 앱 적용 완료**: 벤치 앉기, 해먹 눕기, 연못 물장구(오리 튜브 탭도), 화단 냄새 맡기, 나무 열매 보여주기, 매트에서 딸기/고구마 먹기(in → loop 5~10초 → out). 소품 탭은 그림 모양대로(투명 여백 제외), 동작 없는 소품은 옆에 섬. 웹에서 5개 동작 확인. 대표 확인 대기: 폰에서 마당 동작
   - 2026-11-11 페이지 끌기: 손가락 따라 넘기기(방 여백·방 끝·마당 끝), 마당→방이 텃밭까지 넘어가던 문제 수정. ⏳ 출시 후로 미룸(대표 결정): 방↔텃밭 천천히 끌 때 툭 끊기는 느낌
 - 출시 막힘: 이름·도메인, Apple 계정, 사업자·구독, 처리방침용 운영자 이름·문의 이메일, continue/kill 기준. 대표 몫: 2FA 7개 계정
+- **앱 웹 테스트판(임시, 밖에서 Expo Go 안 될 때)**: https://csw-app-web.vercel.app — 실제 앱 코드 웹 빌드 + 실제 Supabase(대표 카카오 계정 그대로). 웹 카카오 로그인은 같은 창 이동(`lib/auth.ts` 웹 분기, uri_allow_list 등록됨). **다시 올리기: `python3 scripts/deploy_web_app.py`** (작업 트리 그대로 빌드 → 앱 스레드는 폰 확인이 필요한 변경 후 실행, 1~2분). 웹이라 진동·알림·키보드·제스처 느낌은 실제 폰과 다름
 - 프로토타입: design/prototype.html → https://csw-prototype.vercel.app (배포: `python3 scripts/deploy_prototype.py`)
 - 마당 움직임 테스트(웹, 실제 앱 아님): design/yard_test/index.html → https://csw-yard-test.vercel.app (배포: `python3 scripts/deploy_yard_test.py`, 커밋된 world export를 그대로 씀). ⚙︎에서 낮/밤·구역·카메라 수치 조절 — 대표가 정한 수치를 manifest `spaces.yard.camera`와 앱에 반영
 - 게임 디자인: docs/GAME_DESIGN.md
