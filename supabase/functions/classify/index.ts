@@ -33,10 +33,23 @@ const schema = {
   required: ["category", "self_harm", "harm_others"],
 };
 
+// 웹 테스트판(csw-app-web.vercel.app·localhost)에서 부를 수 있게 CORS. 앱(네이티브)은 CORS와 무관. 로그인 토큰 검사는 그대로
+const WEB_ORIGINS = ["https://csw-app-web.vercel.app", "http://localhost:8081"];
+let cors: Record<string, string> = {};
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors } });
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get("Origin") ?? "";
+  cors = WEB_ORIGINS.includes(origin)
+    ? {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      Vary: "Origin",
+    }
+    : {};
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ error: "method" }, 405);
   let text = "";
   try {
