@@ -3,3 +3,8 @@ node_modules/
 .env*
 .env.local
 *.blend1
+
+# 빌드 산출물·Blender 자동 백업 (2026-11-14)
+__pycache__/
+*.pyc
+*.blend1
