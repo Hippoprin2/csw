@@ -1,6 +1,8 @@
 # Seed economy simulation (docs/WORLD.md 3장). Daily model, greedy cheapest-first purchases.
 # usage: python3 scripts/sim_seed_economy.py
-# Archetypes = FEATURES 7장: light 3 days/4 records per week, normal 5/10, heavy 7/21, max 7/70 (cap 10 rewarded/day).
+# Archetypes = FEATURES 7장: light 3 days/4 records per week, normal 5/10, heavy 7/21, max 7/70,
+# binge = real tester week (2,35,17,16,11,3,9 records/day). Seeds go to the first DAILY_CAP records of a day
+# (5 since 2026-11-15 대표 결정 I1·I2; was 10).
 import math
 
 ROOM = [9] * 6 + [12] * 5 + [18] * 4 + [24] * 2 + [30]          # 264, confirmed 2026-11-09
@@ -9,11 +11,12 @@ YARD = {                                                           # first updat
     "picnic_mat": 18, "bird_feeder": 18, "bench": 18, "hammock": 24, "tent": 30,
 }
 SEED_PER_RECORD, GIFT, PLANT = 3, 6, 3
+DAILY_CAP = 5                      # rewarded records per day (2026-11-15: 10 -> 5)
 PLOTS, DAYS_TO_HARVEST = 3, 9
 YARD_OPEN_DAYS = 7                 # yard opens after 7 recorded days (cumulative, 2026-11-10 대표 결정)
 ZONES = [60, 120]                  # extra yard zones bought with seeds (2026-11-10 대표 결정: 씨앗으로 삼)
 
-ARCH = {"light": (3, 4), "normal": (5, 10), "heavy": (7, 21), "max": (7, 70)}
+ARCH = {"light": (3, 4), "normal": (5, 10), "heavy": (7, 21), "max": (7, 70), "binge": [2, 35, 17, 16, 11, 3, 9]}
 
 
 def schedule(days_per_week, recs_per_week):
@@ -25,10 +28,10 @@ def schedule(days_per_week, recs_per_week):
     return out
 
 
-def sim(arch, yard_release_day, garden=True, yard_prices=YARD, weeks=60, zones=None):
+def sim(arch, yard_release_day, garden=True, yard_prices=YARD, weeks=60, zones=None, cap=None):
     zones = list(ZONES if zones is None else zones)
-    dpw, rpw = ARCH[arch]
-    week = schedule(dpw, rpw)
+    cap = DAILY_CAP if cap is None else cap
+    week = ARCH[arch] if isinstance(ARCH[arch], list) else schedule(*ARCH[arch])
     seeds, records, rec_days = GIFT, 0, 0
     room_left = sorted(ROOM)
     yard_left = sorted(yard_prices.values())
@@ -40,7 +43,7 @@ def sim(arch, yard_release_day, garden=True, yard_prices=YARD, weeks=60, zones=N
         n = week[day % 7]
         if n:
             records += n; rec_days += 1
-            seeds += SEED_PER_RECORD * n
+            seeds += SEED_PER_RECORD * min(n, cap)
             if garden:
                 for i in range(PLOTS):
                     plot_progress[i] += 1
@@ -91,6 +94,9 @@ if __name__ == "__main__":
             print(f"{a:6} open {wk(r['yard_open'])} | room done {wk(r['room_done'])} | yard done {wk(r['yard_done'])} "
                   f"(no garden {wk(ng['yard_done'])}) | owned w1 {r['owned_w1']} w4 {r['owned_w4']} | "
                   f"yard items 2w after open {r['yard_owned_2w_after_open']} | zones {[wk(d) for d in r['zones']]}")
+    print("\n== daily cap options (launch user): room done / week-1 owned")
+    for cap in (10, 5, 3):
+        print(cap, {a: (wk(r["room_done"]), r["owned_w1"]) for a in ARCH for r in [sim(a, 28, cap=cap)]})
     print("\n== zone price options (launch user): weeks when zone 2 / zone 3 become affordable after the yard is full")
     for zs in ([45, 90], [60, 120], [90, 180], [120, 240]):
         print(zs, {a: [wk(d) for d in sim(a, 28, zones=zs)["zones"]] for a in ARCH})
