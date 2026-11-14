@@ -12,7 +12,7 @@ vx = man["view"]["start_x"]; pet = man["pet"]
 bg = Image.open(f"{ROOT}/design/world/export/v1/room/background.webp").convert("RGBA").crop((vx, 0, vx + 1080, 1080))
 RIG = f"{ROOT}/design/character/3d/rig"
 fr = lambda n: sorted(glob.glob(f"{RIG}/{n}_frames/f_*.png"))
-idle, fart, roll = fr("idle"), fr("fart_hop"), fr("roll")
+idle, fart, roll = fr("idle"), fr("fart_hop_ko"), fr("roll")
 K = pet["w"] / 600                       # clip px -> room px
 cx, cy = pet["center"][0] - vx, pet["center"][1]
 font = ImageFont.truetype("/System/Library/Fonts/AppleSDGothicNeo.ttc", 30)
@@ -20,8 +20,8 @@ font = ImageFont.truetype("/System/Library/Fonts/AppleSDGothicNeo.ttc", 30)
 seq = []
 def add_idle(n): seq.extend((idle[i % len(idle)], False, "") for i in range(n))
 add_idle(24); seq += [(f, False, "방귀 뿡 → 방방") for f in fart]
-add_idle(16); seq += [(f, False, "데굴 (오른쪽)") for f in roll]
-add_idle(16); seq += [(f, True, "데굴 (왼쪽 = 앱이 뒤집기)") for f in roll]
+add_idle(16); seq += [(f, False, "통나무 데굴 (오른쪽)") for f in roll]
+add_idle(16); seq += [(f, True, "통나무 데굴 (왼쪽 = 뒤집기)") for f in roll]
 add_idle(20)
 
 tmp = tempfile.mkdtemp(dir=os.environ.get("TMPDIR"))

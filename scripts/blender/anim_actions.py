@@ -800,58 +800,66 @@ def fart_hop():  # 탭 반응: 뿡! 방귀 추진력으로 위로 방방 3번 �
                 s = max(s, 1e-3); pf.scale = (s, s, s); pf.keyframe_insert("scale", frame=f)
     return F
 
-def roll():  # 탭 반응: 몸을 동그랗게 말아 옆으로 데굴 한 바퀴 → 반대로 데굴 돌아와 '짠' (왼쪽은 앱이 좌우 뒤집기)
-    F = 76; TRAVEL = float(os.environ.get("ROLL_TRAVEL", "0.9"))
+def roll():  # 탭 반응 v2 (대표: '엎드려서 통나무처럼'): 엎드려 → 몸 길이 축으로 오른쪽 데굴 한 바퀴 → 반대로 데굴 → 일어나 '짠'
+    F = 100; TRAVEL = float(os.environ.get("ROLL_TRAVEL", "1.2"))
     rest(1); _key_shadow(1)
     rp = P["root"]; B = rp.bone.matrix_local
-    c0 = Vector((0, 0, -0.06)); A, Bh = 0.33, 0.44           # curled half-width / half-height
-    def curl(f, k=1.0):
-        S(f, "body", (1 + 0.05 * k, 1 - 0.12 * k, 1 + 0.05 * k)); R(f, "head", x=12 * k)
-        arms(f, ly=-45 * k, lz=40 * k); R(f, "leg.L", x=-55 * k); R(f, "leg.R", x=-55 * k)
-        R(f, "ear.L", y=14 * k); R(f, "ear.R", y=-14 * k)
-    def pose_root(f, theta, dx, lift=0.0):
-        h = math.sqrt((A * math.sin(theta)) ** 2 + (Bh * math.cos(theta)) ** 2)
-        c = Vector((dx, 0, -0.5 + h + lift))
-        Rw = Matrix.Rotation(theta, 4, "Y")
-        M = B.inverted() @ Matrix.Translation(c) @ Rw @ Matrix.Translation(-c0) @ B
+    c0 = Vector((0, 0, -0.08))
+    def prone(f, k=1.0):     # belly down, head toward the camera, chin up to show the face, legs stretched back
+        R(f, "head", x=-62 * k); R(f, "leg.L", x=75 * k); R(f, "leg.R", x=75 * k)
+        arms(f, ly=-55 * k, lz=-20 * k); R(f, "ear.L", y=10 * k); R(f, "ear.R", y=-10 * k)
+        S(f, "body", (1 + 0.04 * k, 1 - 0.04 * k, 1 + 0.04 * k)); R(f, "tail", z=0)
+    # body lies diagonally (head toward camera-left, ~40 deg off the view axis) so the camera sees head AND body; it rolls perpendicular
+    # to its long axis = toward screen-right and slightly toward the camera
+    PSI = math.radians(float(os.environ.get("ROLL_YAW", "-20")))
+    tdir = Matrix.Rotation(PSI, 3, "Z") @ Vector((1, 0, 0))
+    def pose_root(f, alpha, phi, dx, zc):
+        k = min(1.0, alpha / AL) if AL else 0
+        Rw = Matrix.Rotation(PSI * k, 4, "Z") @ Matrix.Rotation(phi, 4, "Y") @ Matrix.Rotation(alpha, 4, "X")
+        d = tdir * dx
+        M = B.inverted() @ Matrix.Translation(Vector((d.x, d.y, zc))) @ Rw @ Matrix.Translation(-c0) @ B
         loc, q, _ = M.decompose()
         rp.location = loc; rp.rotation_quaternion = q
         rp.keyframe_insert("location", frame=f); rp.keyframe_insert("rotation_quaternion", frame=f)
-        _key_shadow(f, dx, max(0.0, lift))
+        _key_shadow(f, d.x, 0.0); rig["shy"] = d.y; rig.keyframe_insert('["shy"]', frame=f)
     ease = lambda t: t * t * (3 - 2 * t)
-    # tuck in
-    S(4, "body", (1.06, 0.9, 1.06)); curl(9)
-    for f in range(1, 10): pose_root(f, 0, 0, 0)
-    # roll right (top moves +X), then a little settle, then roll back
-    R1, R2 = (10, 30), (40, 60)
+    AL, ZL = math.radians(90), -0.5 + 0.29
+    # lie down f1-16 (small squat first)
+    S(4, "body", (1.05, 0.92, 1.05)); prone(16)
+    for f in range(1, 17):
+        t = ease(max(0, f - 4) / 12); pose_root(f, AL * t, 0, 0, c0.z + (ZL - c0.z) * t)
+    for f in range(17, 22): pose_root(f, AL, 0, 0, ZL)
+    # roll right (top toward +X), rock, roll back
+    R1, R2 = (22, 44), (54, 76)
     for f in range(R1[0], R1[1] + 1):
-        t = ease((f - R1[0]) / (R1[1] - R1[0])); pose_root(f, 2 * math.pi * t, TRAVEL * t)
-    for f in range(R1[1] + 1, R2[0]):                       # rock a little at the far end
+        t = ease((f - R1[0]) / (R1[1] - R1[0])); pose_root(f, AL, 2 * math.pi * t, TRAVEL * t, ZL)
+    for f in range(R1[1] + 1, R2[0]):
         w = math.sin((f - R1[1]) / (R2[0] - R1[1]) * math.pi)
-        pose_root(f, 2 * math.pi - 0.12 * w, TRAVEL - 0.02 * w)
+        pose_root(f, AL, 2 * math.pi - 0.15 * w, TRAVEL - 0.03 * w, ZL)
     for f in range(R2[0], R2[1] + 1):
-        t = ease((f - R2[0]) / (R2[1] - R2[0])); pose_root(f, 2 * math.pi * (1 - t), TRAVEL * (1 - t))
-    curl(R2[1])
-    # pop up: '짠' — uncurl, small hop, arms out
-    for f, lift in ((61, 0.0), (64, 0.07), (67, 0.0), (F, 0.0)): pose_root(f, 0, 0, lift)
-    rest(64, ("body", "head", "ear.L", "ear.R", "leg.L", "leg.R", "tail"))
-    S(64, "body", (0.95, 1.08, 0.95)); arms(64, ly=60, lz=-10)
-    S(67, "body", (1.06, 0.92, 1.06)); arms(68, ly=40); S(71, "body", (1, 1, 1))
+        t = ease((f - R2[0]) / (R2[1] - R2[0])); pose_root(f, AL, 2 * math.pi * (1 - t), TRAVEL * (1 - t), ZL)
+    prone(78)
+    # get up f78-90, '짠' hop
+    for f in range(77, 91):
+        t = ease((f - 78) / 12) if f >= 78 else 0; pose_root(f, AL * (1 - t), 0, 0, ZL + (c0.z - ZL) * t)
+    rest(90, ("body", "head", "ear.L", "ear.R", "leg.L", "leg.R", "tail")); arms(90, ly=55, lz=-10)
+    for f, up in ((91, 0.0), (93, 0.06), (96, 0.0), (F, 0.0)): pose_root(f, 0, 0, 0, c0.z + up)
+    S(96, "body", (1.06, 0.92, 1.06)); arms(96, ly=20)
     rest(F, ("body", "head", "ear.L", "ear.R", "arm.L", "arm.R", "leg.L", "leg.R", "tail")); S(F, "body", (1, 1, 1))
-    eyes([(1, 0), (6, 1), (62, 1), (63, 0), (F, 0)])
-    wag(62, 74, 20, 3)
-    # floor pass: the curled shape is not an ellipse -> measure the lowest vertex per frame and re-key so it touches the floor
+    eyes([(1, 0), (20, 0), (22, 1), (76, 1), (78, 0), (F, 0)])
+    wag(78, 96, 20, 3)
+    # floor pass: lowest evaluated vertex touches the floor (z -0.5) on every lying/rolling frame
     keys = {}
     for f in range(1, F + 1):
         sc.frame_set(f); dg = bpy.context.evaluated_depsgraph_get()
         ho = bpy.data.objects["Hippo"].evaluated_get(dg); mw = ho.matrix_world
         keys[f] = min((mw @ v.co).z for v in ho.data.vertices) + 0.5
     rest_gap = keys[1]
-    for f in range(10, 61):
-        rp.location = (0, 0, 0); sc.frame_set(f)
+    for f in range(5, 91):
+        sc.frame_set(f)
         loc = Vector(rp.location); dz = keys[f] - rest_gap
         rp.location = loc - (B.inverted().to_3x3() @ Vector((0, 0, dz))); rp.keyframe_insert("location", frame=f)
-    print("ROLL floor gaps", [round(keys[f] - rest_gap, 3) for f in range(10, 61, 5)])
+    print("ROLL floor gaps", [round(keys[f] - rest_gap, 3) for f in range(5, 91, 6)])
     return F
 
 ACTIONS = {"fart_hop": fart_hop, "roll": roll, "milestone10": milestone10, "cook": cook, "drink": drink, "eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}

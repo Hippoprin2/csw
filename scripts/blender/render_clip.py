@@ -120,7 +120,7 @@ if "noshadow" not in flags:
         else:
             h = 0.0
         if rig and "shx" in rig.keys():    # tap clips (roll/fart_hop) key shadow x + lift on the rig
-            sh.location.x = float(rig["shx"]); sh.keyframe_insert("location", frame=f)
+            sh.location.x = float(rig["shx"]); sh.location.y = 0.02 + float(rig.get("shy", 0.0)); sh.keyframe_insert("location", frame=f)
             h = float(rig.get("shh", 0.0))
         lift = max(0.0, h)
         k = max(0.5, 1.0 - 2.2 * lift)     # smaller + lighter while airborne

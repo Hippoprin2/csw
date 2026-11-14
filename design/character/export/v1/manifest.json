@@ -132,7 +132,7 @@
       "frames": 90,
       "duration_ms": 3750,
       "loop": false,
-      "source_clip": "fart_hop",
+      "source_clip": "fart_hop_ko",
       "canvas": [
         600,
         1100
@@ -145,8 +145,8 @@
     "tap_roll": {
       "file": "hippo_tap_roll.webp",
       "poster": "hippo_tap_roll_poster.png",
-      "frames": 76,
-      "duration_ms": 3167,
+      "frames": 100,
+      "duration_ms": 4167,
       "loop": false,
       "source_clip": "roll",
       "canvas": [
