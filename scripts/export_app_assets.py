@@ -23,6 +23,9 @@ CLIPS = {
     "eat_strawberry": ("eat_strawberry", False),   # 방에서 '먹이기'(딸기)
     "drink": ("drink", False),   # 잘 먹기 > 물 마시기 (2026-11-12, 기록에 '물')
     "cook": ("cook", False),     # 잘 먹기 > 요리 (2026-11-12, 요리/만들/끓/볶)
+    # 방에서 단짝 탭 → 랜덤 반응 (2026-11-14). 캔버스가 600x800이 아님 → manifest clips[key].canvas/feet, tap_reactions
+    "tap_fart_hop": ("fart_hop", False),   # 600x1100 (위로 300px 더: 방방 높이)
+    "tap_roll":     ("roll", False),       # 1600x800 (양옆 500px씩 더: 옆으로 데굴), 왼쪽 = 좌우 뒤집기
     "garden_idle":    ("idle25", True),            # 텃밭 25도 (WORLD.md W2)
     "garden_cheer":   ("cheer25", False),          # 텃밭 수확 만세, 25도
     # 마당·텃밭 걷기 25도 (anim_yard.py). 제자리 걷기 루프, 앱이 위치를 옮김. 왼쪽 = walk_side 좌우 뒤집기
@@ -65,7 +68,17 @@ for key, (clip, loop) in CLIPS.items():
     manifest["clips"][key] = {"file": os.path.basename(path), "poster": f"hippo_{key}_poster.png",
                               "frames": len(ims), "duration_ms": round(len(ims) * 1000 / FPS), "loop": loop,
                               "source_clip": clip}
+    if ims[0].size != (600, 800):   # bigger canvas: same px scale, feet point moves (wide = both sides, tall = extra on top)
+        W, H = ims[0].size
+        manifest["clips"][key]["canvas"] = [W, H]
+        manifest["clips"][key]["feet"] = [303 + (W - 600) // 2, 713 + (H - 800)]
     print(f"{key:9s} {clip:13s} frames={len(ims):3d} loop={loop!s:5s} {kb} KB")
+manifest["tap_reactions"] = {
+    "clips": ["tap_fart_hop", "tap_roll"],
+    "note": "Room: tapping the pet plays one of these at random (tap_roll: 50% mirrored = roll left), then idle. "
+            "Clips with `canvas` are bigger than 600x800 at the SAME px scale: draw at canvas*(pet.w/600) and put clip `feet` "
+            "on the room feet point (= the idle clip's (303,713)). Ignore taps while a record/feed action plays.",
+}
 # walk loops: the sprite speed at which the feet do not slide (scripts/blender/measure_stride.py: 0.42 unit/s,
 # ortho 1.45 spans the 800-px HEIGHT -> 1 unit = 800/1.45 clip px; yard/garden draw the clip at w=435 -> x0.725 = 400 px = yard px_per_unit)
 GROUND = 0.42 * 800 / 1.45 * 0.725

@@ -78,6 +78,7 @@
 - 2026-11-13 (앱 바탕색, 대표 결정): 바탕을 크림 → 순백 #FFFFFF로 변경(카드 #F7F6F3, 옅은 면 #F2F0EB). 색은 ui/theme.ts(C·ART)에만 두고 화면 코드에 직접 쓰지 않는다 — eslint가 오류로 잡음. 새 기능도 이 토큰으로 개발 (ART_BIBLE 11장)
 
 - 2026-11-13 (기능→공간·개발, 대표 결정): **유리병 탭 병 그림 J1 = (A) 둥근 방 유리장 병** — 병 껍데기만 3D(A_back/A_front.png) + 구슬은 앱이 3D 구슬 그림(marble_0~7.png)을 한 겹으로(50개 = 7×8, 지름 약 31pt, 숨는 구슬 없음 → N5 쓸어 보기). 상세 FEATURES C9 J1, 시안 design/features/jar_redesign/. **공간 스레드: 방 유리장 병 둥근 모양 다시 렌더 완료(2026-11-13)** — jar_back/jar_front.webp + manifest jar_cabinet slots 좌표 바뀜, 방 병 구슬도 7×8 한 겹(WORLD 요청 절). **개발 스레드**: C9와 함께 MarbleJar 교체
+- 2026-11-14 (캐릭터→개발, 대표 요청 · 동작 모양은 대표 확인 대기): **방에서 단짝 탭 → 랜덤 반응** 클립 2종 export 완료 = `tap_fart_hop`(방귀 뿡 → 방방, 캔버스 600x1100) · `tap_roll`(옆으로 데굴 갔다 돌아옴, 1600x800, 왼쪽 = 뒤집기). 600x800이 아니라 같은 배율로 그리고 manifest `clips[key].feet`를 방 발 위치에 맞춰야 함 → README·manifest `tap_reactions`. **개발 스레드 할 일**: 방 단짝 탭 영역 + 랜덤 재생(기록·먹이기 동작 중엔 무시) + mobile/assets/pet 복사·petClips 등록. 대표가 모양 OK 하기 전에 붙여도 됨(고치면 같은 이름으로 다시 export)
 ## 남은 일
 - [ ] 대표 피드백 반영 (동물 종류, 톤, 화면)
 - [ ] 최종 캐릭터/아트 방향 (AI 생성 vs 외주 vs 무료 에셋)

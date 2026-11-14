@@ -34,7 +34,9 @@ for e in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
     except Exception: pass
 s.render.film_transparent = True
 s.view_settings.view_transform = "Standard"; s.view_settings.look = "None"
-s.render.resolution_x, s.render.resolution_y = 600, 800
+W = int(next((x[2:] for x in flags if x.startswith("w=")), 600))   # w=1600: wide canvas for clips that travel sideways (roll), same px scale, centred
+H = int(next((x[2:] for x in flags if x.startswith("h=")), 800))   # h=1100: taller canvas (extra room ABOVE, feet stay at y 713 from the bottom-aligned 800 frame)
+s.render.resolution_x, s.render.resolution_y = W, H
 s.render.fps = 24
 w = bpy.data.worlds.new("w"); s.world = w; w.use_nodes = True
 w.node_tree.nodes["Background"].inputs[1].default_value = 0.9
@@ -51,7 +53,7 @@ for o in bpy.data.objects:
         if hasattr(o, "visible_shadow"): o.visible_shadow = False
         if o.get("holdout"): o.is_holdout = True
         else: o.hide_render = True
-cd = bpy.data.cameras.new("cam"); cd.type = "ORTHO"; cd.ortho_scale = 1.45
+cd = bpy.data.cameras.new("cam"); cd.type = "ORTHO"; cd.ortho_scale = 1.45 * max(W, H) / 800
 c = bpy.data.objects.new("cam", cd); s.collection.objects.link(c); s.camera = c
 t = Vector((0, 0, 0.07))
 def place(e):
@@ -67,6 +69,9 @@ if "glide" in flags:
         place(e); c.keyframe_insert("location", frame=f); c.keyframe_insert("rotation_euler", frame=f)
 else:
     place(elev)
+    if H > 800:   # extend upward: shift the view along the camera's up axis by the extra height
+        bpy.context.view_layer.update()
+        c.location += c.matrix_world.to_3x3() @ Vector((0, (H - 800) / 2 * 1.45 / 800, 0))
 
 # ---------------- soft floor shadow (blob): shrinks/fades as the character leaves the floor
 if "noshadow" not in flags:
@@ -114,6 +119,9 @@ if "noshadow" not in flags:
             h = hz - (-0.5)                # 0 when standing on the floor
         else:
             h = 0.0
+        if rig and "shx" in rig.keys():    # tap clips (roll/fart_hop) key shadow x + lift on the rig
+            sh.location.x = float(rig["shx"]); sh.keyframe_insert("location", frame=f)
+            h = float(rig.get("shh", 0.0))
         lift = max(0.0, h)
         k = max(0.5, 1.0 - 2.2 * lift)     # smaller + lighter while airborne
         sit = min(0.0, h)                  # sitting lowers the root -> slightly wider, darker

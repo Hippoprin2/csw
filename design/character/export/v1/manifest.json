@@ -126,6 +126,38 @@
       "loop": false,
       "source_clip": "cook"
     },
+    "tap_fart_hop": {
+      "file": "hippo_tap_fart_hop.webp",
+      "poster": "hippo_tap_fart_hop_poster.png",
+      "frames": 90,
+      "duration_ms": 3750,
+      "loop": false,
+      "source_clip": "fart_hop",
+      "canvas": [
+        600,
+        1100
+      ],
+      "feet": [
+        303,
+        1013
+      ]
+    },
+    "tap_roll": {
+      "file": "hippo_tap_roll.webp",
+      "poster": "hippo_tap_roll_poster.png",
+      "frames": 76,
+      "duration_ms": 3167,
+      "loop": false,
+      "source_clip": "roll",
+      "canvas": [
+        1600,
+        800
+      ],
+      "feet": [
+        803,
+        713
+      ]
+    },
     "garden_idle": {
       "file": "hippo_garden_idle.webp",
       "poster": "hippo_garden_idle_poster.png",
@@ -294,6 +326,13 @@
       "loop": false,
       "source_clip": "show_fruit25"
     }
+  },
+  "tap_reactions": {
+    "clips": [
+      "tap_fart_hop",
+      "tap_roll"
+    ],
+    "note": "Room: tapping the pet plays one of these at random (tap_roll: 50% mirrored = roll left), then idle. Clips with `canvas` are bigger than 600x800 at the SAME px scale: draw at canvas*(pet.w/600) and put clip `feet` on the room feet point (= the idle clip's (303,713)). Ignore taps while a record/feed action plays."
   },
   "walk": {
     "clips": {

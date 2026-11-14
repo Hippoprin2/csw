@@ -735,7 +735,126 @@ def milestone10():  # 누적 10번 축하 (전체 화면): float up underwater w
     props.attach(e, rig, "head", 32)
     return F
 
-ACTIONS = {"milestone10": milestone10, "cook": cook, "drink": drink, "eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
+# ------------------------------------------------------------------ tap reactions (방에서 단짝 탭 → 랜덤, 2026-11-14)
+def _key_shadow(f, x=0.0, h=0.0):
+    """render_clip.py reads these animated rig props: shadow x (world) and lift above the floor"""
+    rig["shx"] = x; rig["shh"] = h
+    rig.keyframe_insert('["shx"]', frame=f); rig.keyframe_insert('["shh"]', frame=f)
+
+def puff(name, n=6, seed=1, r=0.07):
+    """soft cartoon gas cloud: a lumpy cluster of spheres, pale butter-mint (ART_BIBLE 4, 2026-11-14)"""
+    import random
+    rnd = random.Random(seed); parts = []
+    for i in range(n):
+        a = 2 * math.pi * i / n + rnd.uniform(-0.3, 0.3)
+        rr = r * rnd.uniform(0.7, 1.15)
+        loc = (math.cos(a) * r * 0.9, rnd.uniform(-0.02, 0.02), math.sin(a) * r * 0.55)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=rr, location=loc, segments=20, ring_count=12)
+        parts.append(bpy.context.active_object)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r * 1.25, location=(0, 0, 0), segments=24, ring_count=14)
+    parts.append(bpy.context.active_object)
+    o = props.join(parts, name)
+    for pg in o.data.polygons: pg.use_smooth = True
+    o.data.materials.clear(); o.data.materials.append(props.mat("Puff", (0.93, 0.95, 0.80), 0.8, emit=0.35))
+    if hasattr(o, "visible_shadow"): o.visible_shadow = False
+    return o
+
+def fart_hop():  # 탭 반응: 뿡! 방귀 추진력으로 위로 방방 3번 → 착지, 헤헤 쑥스러운 웃음
+    F = 90; rest(1)
+    _key_shadow(1)
+    # strain: tiny squat, eyes squeezed, body trembles
+    S(5, "body", (1.06, 0.9, 1.06)); L(5, "root", -0.02); arms(5, ly=-30, lz=10)
+    R(6, "body", y=2); R(7, "body", y=-2); R(8, "body", y=2); R(9, "body", y=0)
+    hops = [(10, 0.46, 10), (31, 0.3, 9), (50, 0.16, 7)]     # (launch frame, height, frames to apex); needs render h=1100
+    for i, (f0, hgt, up) in enumerate(hops):
+        S(f0, "body", (0.92, 1.1, 0.92)); L(f0, "root", 0.0)                       # pop
+        arms(f0 + 2, ly=70, lz=-10); S(f0 + 2, "arm.L", (1.1, 1.3, 1.1)); S(f0 + 2, "arm.R", (1.1, 1.3, 1.1))
+        L(f0 + up, "root", hgt); S(f0 + up, "body", (0.97, 1.04, 0.97))
+        R(f0 + up, "leg.L", x=18); R(f0 + up, "leg.R", x=22)                      # legs dangle
+        arms(f0 + up - 2, ly=55, lz=-25); arms(f0 + up + 1, ly=75, lz=5)           # flail
+        R(f0 + up, "body", x=-6 + 3 * i); R(f0 + up, "head", x=-8)
+        land = f0 + 2 * up - 1
+        L(land, "root", 0.0); S(land, "body", (1.08, 0.88, 1.08)); R(land, "leg.L"); R(land, "leg.R")
+        arms(land, ly=-20, lz=10); S(land, "arm.L", (1, 1, 1)); S(land, "arm.R", (1, 1, 1)); R(land, "body"); R(land, "head")
+        S(land + 3, "body", (1.0, 1.0, 1.0))
+        for f, hh in ((f0, 0), (f0 + up, hgt), (land, 0)): _key_shadow(f, 0, hh)
+    ears_bounce([(1, 0), (10, 0), (15, 16), (20, -14), (27, 10), (34, 14), (40, -12), (47, 8), (53, 10), (57, -8), (62, 0)])
+    # 헤헤: head tilt, body wiggle, tail wag, eyes closed smile
+    for f, y, z in ((66, 10, 6), (72, -6, -4), (78, 8, 4), (84, 0, 0)):
+        R(f, "head", y=y, x=4); R(f, "body", z=z)
+    arms(66, ly=-25, lz=30); arms(82, ly=-25, lz=30)
+    rest(F); _key_shadow(F)
+    eyes([(1, 0), (4, 1), (10, 0), (62, 0), (64, 1), (84, 1), (85, 0), (F, 0)])
+    wag(62, 86, 22, 3)
+    # gas puffs: pop at the butt on each launch, stay low and drift backward/sideways while the hippo rises
+    for i, (f0, hgt, up) in enumerate(hops):
+        sz = (1.0, 0.75, 0.55)[i]
+        for j, (sx, seed) in enumerate(((-1, 3 + i), (1, 7 + i))):
+            if i > 0 and j == 1: continue
+            pf = puff(f"Puff{i}{j}", seed=seed, r=0.075 * sz)
+            side = sx if i == 0 else (-1 if i == 1 else 1)
+            start = Vector((0.06 * side, 0.12, -0.42)); end = Vector((0.36 * side, 0.18, -0.36 + 0.04 * i))
+            for f, t, s in ((1, 0, 0), (f0 - 1, 0, 0), (f0, 0, 0.6 * sz), (f0 + 3, 0.45, 1.25 * sz),
+                            (f0 + 9, 0.85, 1.1 * sz), (f0 + 15, 1.0, 0.0), (F, 1.0, 0.0)):
+                pf.location = start.lerp(end, t); pf.keyframe_insert("location", frame=f)
+                s = max(s, 1e-3); pf.scale = (s, s, s); pf.keyframe_insert("scale", frame=f)
+    return F
+
+def roll():  # 탭 반응: 몸을 동그랗게 말아 옆으로 데굴 한 바퀴 → 반대로 데굴 돌아와 '짠' (왼쪽은 앱이 좌우 뒤집기)
+    F = 76; TRAVEL = float(os.environ.get("ROLL_TRAVEL", "0.9"))
+    rest(1); _key_shadow(1)
+    rp = P["root"]; B = rp.bone.matrix_local
+    c0 = Vector((0, 0, -0.06)); A, Bh = 0.33, 0.44           # curled half-width / half-height
+    def curl(f, k=1.0):
+        S(f, "body", (1 + 0.05 * k, 1 - 0.12 * k, 1 + 0.05 * k)); R(f, "head", x=12 * k)
+        arms(f, ly=-45 * k, lz=40 * k); R(f, "leg.L", x=-55 * k); R(f, "leg.R", x=-55 * k)
+        R(f, "ear.L", y=14 * k); R(f, "ear.R", y=-14 * k)
+    def pose_root(f, theta, dx, lift=0.0):
+        h = math.sqrt((A * math.sin(theta)) ** 2 + (Bh * math.cos(theta)) ** 2)
+        c = Vector((dx, 0, -0.5 + h + lift))
+        Rw = Matrix.Rotation(theta, 4, "Y")
+        M = B.inverted() @ Matrix.Translation(c) @ Rw @ Matrix.Translation(-c0) @ B
+        loc, q, _ = M.decompose()
+        rp.location = loc; rp.rotation_quaternion = q
+        rp.keyframe_insert("location", frame=f); rp.keyframe_insert("rotation_quaternion", frame=f)
+        _key_shadow(f, dx, max(0.0, lift))
+    ease = lambda t: t * t * (3 - 2 * t)
+    # tuck in
+    S(4, "body", (1.06, 0.9, 1.06)); curl(9)
+    for f in range(1, 10): pose_root(f, 0, 0, 0)
+    # roll right (top moves +X), then a little settle, then roll back
+    R1, R2 = (10, 30), (40, 60)
+    for f in range(R1[0], R1[1] + 1):
+        t = ease((f - R1[0]) / (R1[1] - R1[0])); pose_root(f, 2 * math.pi * t, TRAVEL * t)
+    for f in range(R1[1] + 1, R2[0]):                       # rock a little at the far end
+        w = math.sin((f - R1[1]) / (R2[0] - R1[1]) * math.pi)
+        pose_root(f, 2 * math.pi - 0.12 * w, TRAVEL - 0.02 * w)
+    for f in range(R2[0], R2[1] + 1):
+        t = ease((f - R2[0]) / (R2[1] - R2[0])); pose_root(f, 2 * math.pi * (1 - t), TRAVEL * (1 - t))
+    curl(R2[1])
+    # pop up: '짠' — uncurl, small hop, arms out
+    for f, lift in ((61, 0.0), (64, 0.07), (67, 0.0), (F, 0.0)): pose_root(f, 0, 0, lift)
+    rest(64, ("body", "head", "ear.L", "ear.R", "leg.L", "leg.R", "tail"))
+    S(64, "body", (0.95, 1.08, 0.95)); arms(64, ly=60, lz=-10)
+    S(67, "body", (1.06, 0.92, 1.06)); arms(68, ly=40); S(71, "body", (1, 1, 1))
+    rest(F, ("body", "head", "ear.L", "ear.R", "arm.L", "arm.R", "leg.L", "leg.R", "tail")); S(F, "body", (1, 1, 1))
+    eyes([(1, 0), (6, 1), (62, 1), (63, 0), (F, 0)])
+    wag(62, 74, 20, 3)
+    # floor pass: the curled shape is not an ellipse -> measure the lowest vertex per frame and re-key so it touches the floor
+    keys = {}
+    for f in range(1, F + 1):
+        sc.frame_set(f); dg = bpy.context.evaluated_depsgraph_get()
+        ho = bpy.data.objects["Hippo"].evaluated_get(dg); mw = ho.matrix_world
+        keys[f] = min((mw @ v.co).z for v in ho.data.vertices) + 0.5
+    rest_gap = keys[1]
+    for f in range(10, 61):
+        rp.location = (0, 0, 0); sc.frame_set(f)
+        loc = Vector(rp.location); dz = keys[f] - rest_gap
+        rp.location = loc - (B.inverted().to_3x3() @ Vector((0, 0, dz))); rp.keyframe_insert("location", frame=f)
+    print("ROLL floor gaps", [round(keys[f] - rest_gap, 3) for f in range(10, 61, 5)])
+    return F
+
+ACTIONS = {"fart_hop": fart_hop, "roll": roll, "milestone10": milestone10, "cook": cook, "drink": drink, "eat_strawberry": eat_strawberry, "sit_in": sit_in, "sit_loop": sit_loop, "sit_out": sit_out, "sweep": sweep, "hop": hop, "nod": nod, "write": write, "desk_write": desk_write, "desk_laptop": desk_laptop, "eat": eat, "stretch_spin": stretch_spin, "wave": wave}
 F = ACTIONS[ACTION]()
 sc.frame_start, sc.frame_end = 1, F
 for fc in fcurves(rig.animation_data.action):
