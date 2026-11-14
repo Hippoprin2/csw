@@ -63,3 +63,16 @@ export const pickLine = (k: Category) => CATS[k].say[Math.floor(Math.random() * 
 export const CHIPS = ['침대 정리했다', '물 한 잔 마셨다', '10분 산책', '책 5쪽 읽었다', '엄마한테 전화', '샤워했다'];
 
 export const SAFETY_LINE = '말해줘서 고마워. 오늘 버틴 것도 정말 큰 일이야.';
+// L2 남을 해치는 표현: 행동을 칭찬하지도 꾸짖지도 않고 곁에 있기만 (축하·상담 번호 없음)
+export const HARM_LINE = '마음이 많이 거칠었던 하루였나 봐. 잠깐 같이 숨 고르자.';
+
+// Z2 (2026-11-12 대표 결정): '잘 먹기' 안의 세부 동작. 요리 단어가 있으면 cook, 마시기면 drink, 아니면 기본 eat.
+// '물'만으로 잡으면 선물·동물·물건까지 걸려서 마시는 맥락(물 한 잔·물 마셨다·마시기)으로만 본다.
+const COOK_RE = /요리|만들|끓|볶/;
+const DRINK_RE = /물\s*(한\s*)?(잔|컵|병|마|챙)|마셨|마시|마심/;
+export function eatVariant(category: Category, text: string): 'drink' | 'cook' | null {
+  if (category !== 'eat') return null;
+  if (COOK_RE.test(text)) return 'cook';
+  if (DRINK_RE.test(text)) return 'drink';
+  return null;
+}

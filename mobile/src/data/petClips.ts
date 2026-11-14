@@ -1,5 +1,5 @@
 // 자동 생성: design/character/export/v1/manifest.json → 수정하지 말고 다시 생성 (scripts/gen_pet_clips.py)
-export type ClipKey = 'idle' | 'tidy' | 'move' | 'study' | 'work' | 'eat' | 'care' | 'people' | 'cheer' | 'sit_in' | 'sit_loop' | 'sit_out' | 'eat_strawberry' | 'garden_idle' | 'garden_cheer' | 'walk_front' | 'walk_side' | 'walk_back' | 'sit_bench_in' | 'sit_bench_loop' | 'sit_bench_out' | 'sit_eat_in' | 'sit_eat_loop' | 'sit_eat_strawberry' | 'sit_eat_sweetpotato' | 'sit_eat_out' | 'lie_in' | 'lie_loop' | 'lie_out' | 'splash_in' | 'splash_loop' | 'splash_out' | 'sniff' | 'show_fruit';
+export type ClipKey = 'idle' | 'tidy' | 'move' | 'study' | 'work' | 'eat' | 'care' | 'people' | 'cheer' | 'sit_in' | 'sit_loop' | 'sit_out' | 'eat_strawberry' | 'drink' | 'cook' | 'garden_idle' | 'garden_cheer' | 'walk_front' | 'walk_side' | 'walk_back' | 'sit_bench_in' | 'sit_bench_loop' | 'sit_bench_out' | 'sit_eat_in' | 'sit_eat_loop' | 'sit_eat_strawberry' | 'sit_eat_sweetpotato' | 'sit_eat_out' | 'lie_in' | 'lie_loop' | 'lie_out' | 'splash_in' | 'splash_loop' | 'splash_out' | 'sniff' | 'show_fruit';
 export const PET_ASPECT = 800 / 600; // 높이 / 너비
 export const PET_CLIPS: Record<ClipKey, { source: number; durationMs: number; loop: boolean }> = {
   idle: { source: require('@/assets/pet/hippo_idle.webp'), durationMs: 2000, loop: true },
@@ -15,6 +15,8 @@ export const PET_CLIPS: Record<ClipKey, { source: number; durationMs: number; lo
   sit_loop: { source: require('@/assets/pet/hippo_sit_loop.webp'), durationMs: 3000, loop: true },
   sit_out: { source: require('@/assets/pet/hippo_sit_out.webp'), durationMs: 833, loop: false },
   eat_strawberry: { source: require('@/assets/pet/hippo_eat_strawberry.webp'), durationMs: 2167, loop: false },
+  drink: { source: require('@/assets/pet/hippo_drink.webp'), durationMs: 2667, loop: false },
+  cook: { source: require('@/assets/pet/hippo_cook.webp'), durationMs: 3167, loop: false },
   garden_idle: { source: require('@/assets/pet/hippo_garden_idle.webp'), durationMs: 2000, loop: true },
   garden_cheer: { source: require('@/assets/pet/hippo_garden_cheer.webp'), durationMs: 1667, loop: false },
   walk_front: { source: require('@/assets/pet/hippo_walk_front.webp'), durationMs: 2000, loop: true },

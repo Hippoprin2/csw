@@ -1,16 +1,16 @@
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { ActivityIndicator, AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { Easing, ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CANVAS, ICONS, ROOM } from '@/data/world';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
-import { CATEGORY_ORDER, CATS, CHIPS, SAFETY_LINE, classifyByKeyword, pickLine, type Category } from '@/lib/categories';
+import { CATEGORY_ORDER, CATS, CHIPS, HARM_LINE, SAFETY_LINE, classifyByKeyword, eatVariant, pickLine, type Category } from '@/lib/categories';
 import { formatTime, kstToday, kstYesterday } from '@/lib/dates';
 import { jarMarbles } from '@/lib/jars';
 import { askPermission } from '@/lib/notifications';
@@ -61,6 +61,22 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
   const [day, setDay] = useState<'today' | 'yesterday'>('today');
   const [busy, setBusy] = useState(false);
   const [action, setAction] = useState<PetAction>(null);
+  // Z1 기록 축하 줌: 기록 축하 동작 동안 단짝 쪽으로 1.25배 + 주변 살짝 어둡게. 동작 끝(Pet onDone)·화면 탭이면 복귀.
+  // 자해·남 해치는 표현의 '곁에 앉기'에는 줌 없음, 기기 '동작 줄이기' 켜져 있으면 줌 없음
+  const zoom = useSharedValue(0);
+  const zoomKey = useRef<number | null>(null);
+  const reduceMotion = useReducedMotion();
+  const zoomIn = useCallback((key: number) => {
+    if (reduceMotion) return;
+    zoomKey.current = key;
+    zoom.set(withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic), reduceMotion: ReduceMotion.Never }));
+  }, [reduceMotion, zoom]);
+  const zoomOut = useCallback(() => {
+    if (zoomKey.current === null) return;
+    zoomKey.current = null;
+    zoom.set(withTiming(0, { duration: 350, easing: Easing.inOut(Easing.cubic), reduceMotion: ReduceMotion.Never }));
+  }, [zoom]);
+  const onPetDone = useCallback((key: number) => { if (key === zoomKey.current) zoomOut(); }, [zoomOut]);
   const [bubble, setBubble] = useState('');
   const [float, setFloat] = useState<{ key: number; n: number } | null>(null);
   const [safety, setSafety] = useState<'card' | 'banner' | null>(null);
@@ -117,11 +133,12 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
   useEffect(() => {
     if (petKey === undefined || petKey === shownKey.current) return;
     shownKey.current = petKey;
+    if (petKey !== zoomKey.current) zoomOut(); // 줌 중에 다른 동작(먹이기·구매)이 끼어들면 복귀
     const top = () => scrollRef.current?.scrollTo({ y: 0, animated: true });
     top();
     const t = setTimeout(top, 400);
     return () => clearTimeout(t);
-  }, [petKey]);
+  }, [petKey, zoomOut]);
 
   async function submit(raw?: string) {
     const t = (raw ?? text).trim();
@@ -136,8 +153,10 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     const llm = await api.classify(t);
     const userPicked = !!chosen && !raw;
     const unsafe = kwSafety || !!llm?.self_harm; // 둘 중 하나라도 걸리면 안내 (안전한 쪽으로)
-    // 자해 표현이 감지되면 '나 돌보기' 같은 분류로 남지 않게 항상 '버틴 하루'로 저장 (사용자가 고른 분류보다 우선)
-    const category: Category = unsafe ? 'endure' : userPicked ? chosen! : (llm?.category ?? classifyByKeyword(t));
+    // L2: 남을 해치는 표현 → 축하 대신 단짝이 조용히 곁에. 상담 번호 안 띄움, 판정은 어디에도 저장 안 함, 씨앗은 그대로
+    const harm = !unsafe && !!llm?.harm_others;
+    // 자해·남 해치는 표현이면 '나 돌보기' 같은 분류로 남지 않게 항상 '버틴 하루'로 저장 (사용자가 고른 분류보다 우선)
+    const category: Category = unsafe || harm ? 'endure' : userPicked ? chosen! : (llm?.category ?? classifyByKeyword(t));
     const source = unsafe ? 'auto' : userPicked ? 'user' : llm ? 'llm' : 'auto';
     try {
       const winDate = day === 'today' ? today : kstYesterday();
@@ -157,8 +176,13 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
         setSafety(shownToday ? 'banner' : 'card');
         store.set(SAFETY_DAY_KEY, today);
         api.logSafety(kwSafety ? 'keyword' : 'llm').catch(() => {}); // 익명 날짜별 개수만 (계정과 연결 안 함, J2)
+      } else if (harm) {
+        setAction({ kind: 'sit', key: Date.now() });
+        say(HARM_LINE, 7000);
       } else {
-        setAction({ kind: category, key: Date.now() });
+        const k = Date.now();
+        setAction({ kind: eatVariant(category, t) ?? category, key: k });
+        zoomIn(k);
         if (r.sealed) {
           say('유리병이 꽉 찼어! 뚜껑 닫아서 선반에 올려둘게. 새 병 시작이야', 6000);
           track('jar_sealed', { no: r.win.jar_no });
@@ -273,6 +297,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     maxDistance: 8, runOnJS: true,
     onDeactivate: (e) => {
       if (e.canceled) return;
+      if (zoomKey.current !== null) { zoomOut(); return; } // 줌 중 탭 = 바로 복귀
       const x = Math.min(maxWorldX, Math.max(0, camX.value + offX)) + e.x / sc, y = offY + e.y / sc;
       const hit = (r: number[]) => x >= r[0] && x <= r[0] + r[2] && y >= r[1] && y <= r[1] + r[3];
       const si = cab.findIndex((_, i) => hit(JC.slots[i].tap));
@@ -287,6 +312,15 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     onUpdate: (e) => { 'worklet'; pager?.drag(e.translationX); },
     onDeactivate: (e) => { 'worklet'; pager?.end(e.translationX, e.velocityX, e.canceled); },
   });
+  // 줌: 단짝 몸 가운데(화면 좌표)를 고정점으로 확대. RN transform은 뷰 가운데 기준이라 이동-확대-되돌리기
+  const petCX = (ROOM.pet.x + ROOM.pet.w / 2) * sc, petCY = (ROOM.pet.y + ROOM.pet.h * 0.55) * sc;
+  const zoomStyle = useAnimatedStyle(() => {
+    const cam = Math.min(maxWorldX, Math.max(0, camX.value + offX)) * sc;
+    const dx = petCX - cam - fullWidth / 2, dy = petCY - offY * sc - sceneH / 2;
+    const s = 1 + 0.25 * zoom.value;
+    return { transform: [{ translateX: dx }, { translateY: dy }, { scale: s }, { translateX: -dx }, { translateY: -dy }] };
+  });
+  const dimStyle = useAnimatedStyle(() => ({ opacity: 0.28 * zoom.value }));
   const worldStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -Math.min(maxWorldX, Math.max(0, camX.value + offX)) * sc }, { translateY: -offY * sc }] }));
 
   const jarDots = (j: (typeof cab)[number], slot: (typeof JC.slots)[number]) => {
@@ -307,6 +341,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
         contentContainerStyle={{ paddingBottom: TAB_SPACE + 12 + kbPad }}>
         <GestureDetector gesture={roomGesture}>
         <View style={[st.room, { width: fullWidth, height: sceneH }]} accessibilityHint="좌우로 끌면 방을 둘러볼 수 있어요">
+          <Animated.View style={[StyleSheet.absoluteFill, zoomStyle]}>
           <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: ROOM.width * sc, height: ROOM.height * sc }, worldStyle]}>
             <Image source={ROOM.background} style={StyleSheet.absoluteFill} contentFit="cover" loading="eager" />
             {cab.map((j, i) => {
@@ -321,10 +356,12 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
             })}
             <Image source={JC.glass.source} style={{ position: 'absolute', left: JC.glass.x * sc, top: JC.glass.y * sc, width: JC.glass.w * sc, height: JC.glass.h * sc }} />
             {back.map(draw)}
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, st.dim, dimStyle]} />
             <View style={{ position: 'absolute', left: ROOM.pet.x * sc, top: ROOM.pet.y * sc }}>
-              <Pet action={petAction} size={ROOM.pet.w * sc} />
+              <Pet action={petAction} size={ROOM.pet.w * sc} onDone={onPetDone} />
             </View>
             {front.map(draw)}
+          </Animated.View>
           </Animated.View>
           {shownBubble ? (
             <View style={[st.bubble, { top: belowChips }]}>
@@ -474,6 +511,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg },
   room: { overflow: 'hidden', backgroundColor: ART.roomFill },
+  dim: { backgroundColor: ART.zoomDim },
   // 크림 판: 위 모서리 32, 그림 아래를 살짝 덮으며 올라옴
   panel: { marginTop: -PANEL_OVERLAP, backgroundColor: C.bg, borderTopLeftRadius: R.sheet, borderTopRightRadius: R.sheet, paddingHorizontal: 20, paddingTop: 18 },
   basketBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, backgroundColor: C.accentBg, borderRadius: R.pill, height: H.btn, paddingHorizontal: 18 },

@@ -159,11 +159,11 @@ export const api = {
   devSeeds: () => rpc<number>('dev_seeds'),
   deleteAccount: () => rpc<void>('delete_my_account'),
 
-  async classify(text: string): Promise<{ category: Category; self_harm: boolean } | null> {
+  async classify(text: string): Promise<{ category: Category; self_harm: boolean; harm_others?: boolean } | null> {
     try {
       const timeout = new Promise<null>((r) => setTimeout(() => r(null), 5000));
       const call = supabase.functions.invoke('classify', { body: { text } }).then(({ data, error }) =>
-        error || !data?.category ? null : (data as { category: Category; self_harm: boolean }),
+        error || !data?.category ? null : (data as { category: Category; self_harm: boolean; harm_others?: boolean }),
       );
       return await Promise.race([call, timeout]);
     } catch {

@@ -1,4 +1,4 @@
-// 기록 분류(8종 + 버틴 하루) + 자해 표현 2차 판정. 키워드 결과를 보정하는 용도라 실패해도 앱은 키워드 결과로 동작한다.
+// 기록 분류(8종 + 버틴 하루) + 자해 표현 2차 판정 + 남을 해치는 표현 판정(L2, 저장 안 함). 키워드 결과를 보정하는 용도라 실패해도 앱은 키워드 결과로 동작한다.
 // 본문만 보내고 사용자 식별자는 OpenAI로 보내지 않는다. 본문은 저장·로그하지 않는다.
 const CATEGORIES = ["tidy", "move", "study", "work", "eat", "care", "people", "cheer", "endure"] as const;
 const MODEL = Deno.env.get("CLASSIFY_MODEL") ?? "gpt-5.4-nano";
@@ -17,7 +17,10 @@ category (하나만):
 self_harm: 글쓴이가 자해·자살 생각, 계획, 시도, 또는 "살기 싫다/사라지고 싶다" 같은 마음을 드러내면 true.
 자살 수단·장소를 떠올리는 말(옥상·다리에 가고 싶다, 약을 모은다 등), 이미 한 자해(칼로 그었다, 상처 냈다), 약을 한꺼번에·많이 먹었다는 말, "나 없어도 된다/사라지고 싶다" 같은 말도 true.
 "죽을 만큼 맛있었다", "피곤해 죽겠다", "웃겨 죽는 줄", "죽어라 공부했다", "배고파 죽을 뻔했다"처럼 해낸 일을 강조하는 과장 표현, "책에 밑줄 그었다/선을 그었다/줄을 그었다"처럼 몸이 아닌 것에 그은 말은 false. 애매하면 true.
-self_harm이 true면 category는 반드시 endure.`;
+self_harm은 글쓴이 자신을 해치는 경우만이다. 남(사람·동물)을 죽이고 싶다, 찌르고 싶다, 때리고 싶다는 말은 아무리 격해도 self_harm이 아니라 harm_others다.
+harm_others: 글쓴이가 남(사람·동물)을 해치려는 마음·계획(\"죽여버리고 싶다\", \"패버릴 거다\", \"음료에 뭐 탈 거다\", \"다 쓸어버리고 싶다\"), 이미 한 폭력·학대(때렸다, 꼬집었다, 밀쳤다, 물건을 던졌다, 동물을 찼다/굶겼다), 괴롭힘·협박·스토킹·남의 물건 망가뜨리기·신상 퍼뜨리기를 쓰면 true.
+\"죽여주는 김치찌개\", 게임·운동·경기(\"보스 잡았다\", \"샌드백 쳤다\", \"상대팀 박살냈다\"), 모기·벌레 잡기, 장난(베개 싸움), \"싸웠지만 사과했다\", \"화났지만 참았다\"는 false.
+self_harm이 true거나 harm_others가 true면 category는 반드시 endure.`;
 
 const schema = {
   type: "object",
@@ -25,8 +28,9 @@ const schema = {
   properties: {
     category: { type: "string", enum: CATEGORIES },
     self_harm: { type: "boolean" },
+    harm_others: { type: "boolean" },
   },
-  required: ["category", "self_harm"],
+  required: ["category", "self_harm", "harm_others"],
 };
 
 const json = (body: unknown, status = 200) =>
@@ -74,7 +78,7 @@ Deno.serve(async (req) => {
         instructions: INSTRUCTIONS,
         input: text,
         reasoning: { effort: "none" },
-        max_output_tokens: 60,
+        max_output_tokens: 80,
         store: false,
         text: { format: { type: "json_schema", name: "win", strict: true, schema } },
       }),
@@ -85,7 +89,9 @@ Deno.serve(async (req) => {
     const parsed = JSON.parse(out);
     if (!CATEGORIES.includes(parsed.category)) throw new Error("bad category");
     const selfHarm = !!parsed.self_harm;
-    return json({ category: selfHarm ? "endure" : parsed.category, self_harm: selfHarm });
+    const harmOthers = !selfHarm && !!parsed.harm_others; // 자해 안내가 우선
+    // 판정은 응답으로만 돌려주고 어디에도 저장하지 않는다 (L2)
+    return json({ category: selfHarm || harmOthers ? "endure" : parsed.category, self_harm: selfHarm, harm_others: harmOthers });
   } catch (e) {
     return json({ error: "failed", detail: String(e).slice(0, 80) }, 502);
   } finally {

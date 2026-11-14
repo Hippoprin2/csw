@@ -15,7 +15,7 @@ import type { Category } from '@/lib/categories';
 // - 'sit'(곁에 앉기, 자해 표현 대응): sit_in → sit_loop(SIT_HOLD_MS) → sit_out
 // - 'endure'(버틴 하루): 같은 앉기를 짧게 (ENDURE_HOLD_MS)
 // - space='garden': 텃밭 25° 클립. 대기 = garden_idle, 어떤 동작이든 garden_cheer(수확 만세). 방(6.5°) 클립과 섞지 않음
-export type PetKind = Category | 'sit' | 'eat_strawberry';
+export type PetKind = Category | 'sit' | 'eat_strawberry' | 'drink' | 'cook'; // drink·cook = '잘 먹기' 세부 동작 (eatVariant)
 export type PetAction = { kind: PetKind; key: number } | null;
 
 const SIT_HOLD_MS = 9000;
@@ -50,7 +50,7 @@ function sequence(kind: PetKind, space: 'room' | 'garden'): { clip: ClipKey; ms:
   return [{ clip: kind, ms: PET_CLIPS[kind].durationMs }];
 }
 
-export function Pet({ action, size = 200, space = 'room' }: { action: PetAction; size?: number; space?: 'room' | 'garden' }) {
+export function Pet({ action, size = 200, space = 'room', onDone }: { action: PetAction; size?: number; space?: 'room' | 'garden'; onDone?: (key: number) => void }) {
   const idle: ClipKey = space === 'garden' ? 'garden_idle' : 'idle';
   const width = size;
   const height = Math.round(size * PET_ASPECT);
@@ -75,6 +75,12 @@ export function Pet({ action, size = 200, space = 'room' }: { action: PetAction;
     const t = setTimeout(() => setProg({ key: actionKey, step: step + 1 }), wait);
     return () => clearTimeout(t);
   }, [actionKey, curMs, step, overlayVisible]);
+
+  // 동작이 다 끝나면 알림 (방 기록 줌 복귀용)
+  const finished = !!action && seq.length > 0 && step >= seq.length;
+  useEffect(() => {
+    if (finished) onDone?.(actionKey);
+  }, [finished, actionKey, onDone]);
 
   const fill = { position: 'absolute' as const, left: 0, top: 0, width, height };
 

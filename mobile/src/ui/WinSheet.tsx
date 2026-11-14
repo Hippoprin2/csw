@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PET_ASPECT, PET_POSTER } from '@/data/petClips';
 import { api, friendlyError, type Win } from '@/lib/api';
 import { track } from '@/lib/analytics';
-import { CATEGORY_ORDER, CATS, type Category } from '@/lib/categories';
+import { CATEGORY_ORDER, CATS, eatVariant, type Category } from '@/lib/categories';
 import { formatDay, formatTime } from '@/lib/dates';
 import { useReduceMotion } from '@/lib/useReduceMotion';
 import { useApp } from '@/state/app';
@@ -46,7 +46,7 @@ export function WinSheetProvider({ children }: PropsWithChildren) {
   const [pet, setPet] = useState<PetAction>(null);
   const petKey = useRef(0);
 
-  const playPet = useCallback((w: Win) => { petKey.current += 1; setPet({ kind: w.category, key: petKey.current }); }, []);
+  const playPet = useCallback((w: Win) => { petKey.current += 1; setPet({ kind: eatVariant(w.category, w.text) ?? w.category, key: petKey.current }); }, []);
 
   const openWin = useCallback((w: Win, onChange?: OnChange) => {
     onChangeRef.current = onChange;
