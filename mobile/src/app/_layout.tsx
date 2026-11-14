@@ -42,6 +42,7 @@ function Gate() {
         <Stack.Screen name="jar/list/[f]" />
         <Stack.Screen name="jar/day/[d]" />
       </Stack.Protected>
+      <Stack.Screen name="legal/[doc]" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

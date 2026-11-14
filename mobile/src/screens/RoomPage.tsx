@@ -156,8 +156,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
         const shownToday = store.get(SAFETY_DAY_KEY) === today;
         setSafety(shownToday ? 'banner' : 'card');
         store.set(SAFETY_DAY_KEY, today);
-        api.logSafety(kwSafety ? 'keyword' : 'llm').catch(() => {});
-        track('safety_shown', { repeat: shownToday });
+        api.logSafety(kwSafety ? 'keyword' : 'llm').catch(() => {}); // 익명 날짜별 개수만 (계정과 연결 안 함, J2)
       } else {
         setAction({ kind: category, key: Date.now() });
         if (r.sealed) {

@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 // S9 이용 분석. 기록 본문은 절대 넣지 않는다 (카테고리·개수 같은 메타만).
 export type EventName =
   | 'app_open' | 'signed_in' | 'onboarding_done' | 'win_recorded' | 'win_edited' | 'win_deleted'
-  | 'item_bought' | 'item_placed' | 'notif_prompt' | 'safety_shown' | 'export_done' | 'weekly_viewed'
+  | 'item_bought' | 'item_placed' | 'notif_prompt' | 'export_done' | 'weekly_viewed'
   | 'planted' | 'harvested' | 'harvest_used' | 'garden_woke' | 'space_viewed'
   | 'jar_sealed' | 'jar_viewed'
   | 'yard_zone_bought' | 'memory_fruit'

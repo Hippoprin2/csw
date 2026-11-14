@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { openLegal } from '@/lib/legal';
 import { appleAvailable, signInWithApple, signInWithProvider } from '@/lib/auth';
 import { Btn } from '@/ui/kit';
 import { Pet } from '@/ui/Pet';
@@ -65,7 +66,8 @@ export default function Welcome() {
         <Btn title="이메일로 계속하기" kind={apple || KAKAO || GOOGLE ? 'ghost' : 'primary'} onPress={() => router.push('/auth/email')} />
         {err ? <Text style={st.err}>{err}</Text> : null}
         <Text style={st.legal}>
-          계속하면 이용약관과 개인정보처리방침에 동의하고, 만 14세 이상임을 확인한 것으로 봐요.
+          가입하면 다음 화면에서 <Text style={st.link} onPress={() => openLegal('terms')} accessibilityRole="link">이용약관</Text>과{' '}
+          <Text style={st.link} onPress={() => openLegal('privacy')} accessibilityRole="link">개인정보처리방침</Text>에 동의를 받아요. 만 14세 이상만 쓸 수 있어요.
         </Text>
       </View>
     </SafeAreaView>
@@ -81,5 +83,6 @@ const st = StyleSheet.create({
   social: { minHeight: HT.btn, borderRadius: R.pill, alignItems: 'center', justifyContent: 'center' },
   socialText: { fontSize: 15, fontWeight: '700' },
   err: { color: C.danger, fontSize: 13, textAlign: 'center' },
+  link: { color: C.accentInk, fontWeight: '700', textDecorationLine: 'underline' },
   legal: { fontSize: 12, color: C.muted, textAlign: 'center', marginTop: 6, lineHeight: 17 },
 });

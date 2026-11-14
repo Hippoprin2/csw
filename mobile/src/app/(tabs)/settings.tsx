@@ -11,10 +11,9 @@ import { useApp } from '@/state/app';
 import { Icon } from '@/ui/Icon';
 import { Btn, H } from '@/ui/kit';
 import { Confirm, Sheet, st as sheetSt } from '@/ui/Sheet';
+import { openLegal } from '@/lib/legal';
 import { C, H as HT, R, TAB_SPACE } from '@/ui/theme';
 
-const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL;
-const TERMS_URL = process.env.EXPO_PUBLIC_TERMS_URL;
 const CONTACT = process.env.EXPO_PUBLIC_CONTACT_EMAIL;
 const HOURS = Array.from({ length: 17 }, (_, i) => `${String(i + 7).padStart(2, '0')}:00`); // 07~23시
 
@@ -118,8 +117,8 @@ export default function Settings() {
         <Text style={st.sec}>도움 · 정보</Text>
         <Group>
           <Row label="도움받을 수 있는 곳" onPress={() => router.push('/help')} />
-          <Row label="개인정보처리방침" onPress={() => open(PRIVACY_URL)} />
-          <Row label="이용약관" onPress={() => open(TERMS_URL)} />
+          <Row label="개인정보처리방침" onPress={() => openLegal('privacy')} />
+          <Row label="이용약관" onPress={() => openLegal('terms')} />
           <Row label="문의하기" onPress={() => open(CONTACT ? `mailto:${CONTACT}` : undefined)} />
         </Group>
 

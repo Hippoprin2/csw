@@ -24,6 +24,7 @@ export type Profile = {
   notify_enabled: boolean;
   notify_time: string; // 'HH:MM:SS'
   consented_at: string | null;
+  sensitive_consented_at?: string | null;
   onboarded_at: string | null;
   first_crop_used: boolean;
 };
