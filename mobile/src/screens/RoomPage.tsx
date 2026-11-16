@@ -109,6 +109,18 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     return () => { show.remove(); hide.remove(); };
   }, []);
 
+  // 웹(폰 사파리 = 웹 테스트판): 입력칸을 누르면 사파리가 키보드 위로 보이게 문서 전체를 위로 밀고, 키보드가 내려가도
+  // 안 되돌려서 위 날짜·씨앗 칩이 주소창 밑으로 잘린 채 남음(대표 폰 2026-11-16). 키보드가 내려가면(화면 높이 복귀) 맨 위로 되돌림.
+  // 네이티브 앱은 문서 스크롤이 없어 해당 없음
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const vv = window.visualViewport;
+    const reset = () => { if (!vv || vv.height >= window.innerHeight - 40) window.scrollTo(0, 0); };
+    vv?.addEventListener('resize', reset);
+    window.addEventListener('focusout', reset);
+    return () => { vv?.removeEventListener('resize', reset); window.removeEventListener('focusout', reset); };
+  }, []);
+
   // 상점에서 소품을 사거나 바꾸면 그 소품이 보이게 '방 보기'로 (렌더 중 파생: 이펙트 안 setState 금지 규칙)
   const [seenCel, setSeenCel] = useState(celebration?.key);
   if (celebration?.key !== seenCel) {
