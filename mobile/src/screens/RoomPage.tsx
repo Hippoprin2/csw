@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { ActivityIndicator, AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type TextStyle } from 'react-native';
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,6 +51,9 @@ function useLayoutViewportHeight() {
   }, []);
   return h;
 }
+
+// 웹: 입력칸 포커스 파란 테두리 없앰 (사파리는 outlineWidth 0만으론 남음, RN 타입엔 'none'이 없어 캐스팅)
+const WEB_NO_OUTLINE = (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as unknown as TextStyle;
 
 let keptCamX: number = ROOM.view.start_x; // 둘러본 위치 유지 (앱을 켜 둔 동안). 처음엔 단짝 가운데(= 예전 방)
 
@@ -481,7 +484,7 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
           )}
           <View style={st.pill}>
             <TextInput
-              style={st.pillInput} value={text} onChangeText={(v) => { setText(v); setErr(''); }}
+              style={[st.pillInput, WEB_NO_OUTLINE]} value={text} onChangeText={(v) => { setText(v); setErr(''); }}
               onFocus={() => setComposing(true)} onBlur={() => { setComposing(false); setPicking(false); }}
               placeholder="오늘 해낸 거, 아무리 작아도 좋아" placeholderTextColor={C.placeholder} maxLength={100} returnKeyType="done"
               onSubmitEditing={() => submit()} accessibilityLabel="오늘 해낸 일" editable={!busy}
@@ -586,7 +589,7 @@ const st = StyleSheet.create({
   chipFloat: { backgroundColor: C.card },
   errPill: { alignSelf: 'flex-start', backgroundColor: C.card, color: C.danger, fontSize: 13, borderRadius: R.pill, paddingVertical: 8, paddingHorizontal: 14, overflow: 'hidden' },
   pill: { height: H.input, flexDirection: 'row', alignItems: 'center', paddingLeft: 6, paddingRight: 7, borderRadius: R.pill, backgroundColor: C.card },
-  pillInput: { flex: 1, minWidth: 0, height: H.input, fontSize: 15.5, paddingHorizontal: 16, color: C.ink, outlineWidth: 0, outlineStyle: 'none' }, // 웹 포커스 파란 테두리 없앰 (사파리는 outlineWidth만으론 남음)
+  pillInput: { flex: 1, minWidth: 0, height: H.input, fontSize: 15.5, paddingHorizontal: 16, color: C.ink, outlineWidth: 0 },
   sendSm: { width: 42, height: 42, borderRadius: R.pill, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
   roomBar: { position: 'absolute', left: 0, right: 0, height: ROOM_BAR, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 16 },
   barBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 46, paddingHorizontal: 18, borderRadius: R.pill, backgroundColor: C.card },
