@@ -1,13 +1,15 @@
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { BlurView } from 'expo-blur';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { ActivityIndicator, AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type LayoutChangeEvent } from 'react-native';
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
-import Animated, { Easing, ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CANVAS, ICONS, ROOM } from '@/data/world';
+import { PET_ASPECT } from '@/data/petClips';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { CATEGORY_ORDER, CATS, CHIPS, HARM_LINE, SAFETY_LINE, classifyByKeyword, eatVariant, pickLine, type Category } from '@/lib/categories';
@@ -17,22 +19,24 @@ import { askPermission } from '@/lib/notifications';
 import { safetyKeywordHit } from '@/lib/safety';
 import { useApp } from '@/state/app';
 import { Icon } from '@/ui/Icon';
-import { Btn, HelpLines } from '@/ui/kit';
+import { Btn } from '@/ui/kit';
 import { Pet, type PetAction } from '@/ui/Pet';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
 import type { Pager } from '@/ui/pager';
 import { SpaceImage } from '@/ui/SpaceImage';
 import { useSpaceSize } from '@/ui/layout';
-import { PANEL_OVERLAP, SpaceChips, SpaceSwitch, useSceneLayout, type SpaceNav } from '@/ui/SpaceChrome';
+import { SpaceChips, SpaceSwitch, type SpaceNav } from '@/ui/SpaceChrome';
 import { ART, C, H, R, TAB_SPACE } from '@/ui/theme';
 import { useWinSheet } from '@/ui/WinSheet';
 
 const DAILY_REWARD_CAP = 10;
 const NOTIF_ASKED_KEY = 'csw.notifAsked';
-const SAFETY_DAY_KEY = 'csw.safetyShownDay';
 const VASE_KEY = 'csw.sillVase'; // 창턱 꽃병 자리: 튤립/해바라기 둘 다 있으면 탭해서 바꿈 (기기에만 저장)
-const NOTES_SHOWN = 5; // 오늘의 쪽지는 최근 5개까지, 나머지는 하루 한 장에서
 const DOT = 7; // 유리장 병 속 구슬 한 칸 (캔버스 px)
+const SWITCH_H = 44; // 텃밭/방/마당 전환 높이 (36 + 위아래 4)
+const PEEK_H = 44; // 오늘의 쪽지 접힌 한 줄
+const ROOM_BAR = 64; // 방 보기 아래 버튼 줄(바구니·꾸미기) 자리
+const REC_MAX_MS = 12000; // 기록 카드: 동작이 끝나지 않는 경우(로딩 실패)에도 이 뒤엔 걷음
 let keptCamX: number = ROOM.view.start_x; // 둘러본 위치 유지 (앱을 켜 둔 동안). 처음엔 단짝 가운데(= 예전 방)
 
 const store = {
@@ -41,19 +45,33 @@ const store = {
 };
 
 // 방 = 홈. 기록 입력창·축하 8종·곁에 앉기·먹이기/선물하기는 방에서만 (STATUS 2026-11-09 결정)
+// 2026-11-16 홈 '하마 무대' (대표 결정 H1~H4, design/home_stage/README.md):
+// - 'stage'(기본): 뿌옇게 흐린 방 위에 단짝을 크게. 입력은 알약 한 줄(누르면 펼침), 오늘의 쪽지는 아래 한 줄(누르거나 끌어올리면 시트)
+// - 'room'(씨앗 칩 옆 '방' 버튼): 흐림이 걷히고 예전 방 그대로 — 끌어 둘러보기·유리장·꽃병·수확 바구니·꾸미기
 export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {}) {
   const { jars, profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
-  // 그림: 화면 위쪽 가로 꽉(약 420). 1080 창을 높이에 맞추고 남는 쪽은 가운데 기준으로 잘라 보여준다
+  const [mode, setMode] = useState<'stage' | 'room'>('stage');
   const { fullWidth } = useSpaceSize();
-  const { canvasH, sceneH } = useSceneLayout();
   const insets = useSafeAreaInsets();
-  const belowChips = insets.top + 8 + H.chip + 10; // 위쪽 칩 아래
-  // 1080 창의 세로 전체를 canvasH에 맞춘다 (단짝 발까지 보이게). 가로는 가운데 기준으로 자르거나 넓게 보여줌
-  const sc = canvasH / CANVAS;
+  const [pageH, setPageH] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => { const h = Math.round(e.nativeEvent.layout.height); if (h && h !== pageH) setPageH(h); };
+  const H0 = pageH || 760;
+  const switchTop = insets.top + 8 + H.chip + 8;
+  const belowSwitch = switchTop + SWITCH_H + 10;
+  // 그림 배율: 무대 = 페이지 전체를 덮게(흐린 배경), 방 보기 = 1080 창 세로가 아래 버튼 줄·탭 바 위에서 끝나게 (단짝 발이 안 가려지게)
+  const roomH = Math.max(300, H0 - TAB_SPACE - ROOM_BAR);
+  const sc = (mode === 'stage' ? H0 : roomH) / CANVAS;
   const offX = (CANVAS - fullWidth / sc) / 2; // 창(1080) 중 화면 밖으로 잘리는 왼쪽 폭 (캔버스 px, 넓은 화면이면 음수)
   const maxWorldX = Math.max(0, ROOM.width - fullWidth / sc);
-  const offY = 0;
+  // 무대 단짝: 전환 아래 ~ 쪽지 위 사이를 꽉 채우는 크기 (가로는 화면의 92%까지)
+  const composerBottom = TAB_SPACE + 12;
+  const peekBottom = composerBottom + H.input + 10;
+  const stageTop = belowSwitch;
+  const stageBottom = H0 - (peekBottom + PEEK_H + 8);
+  const petW = Math.round(Math.max(160, Math.min(fullWidth * 0.92, (stageBottom - stageTop) / PET_ASPECT)));
+  const petH = Math.round(petW * PET_ASPECT);
+  const petTop = stageTop + Math.max(0, (stageBottom - stageTop - petH) / 2);
   const [vase, setVase] = useState(() => store.get(VASE_KEY));
   const [text, setText] = useState('');
   const [chosen, setChosen] = useState<Category | null>(null);
@@ -61,51 +79,41 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
   const [day, setDay] = useState<'today' | 'yesterday'>('today');
   const [busy, setBusy] = useState(false);
   const [action, setAction] = useState<PetAction>(null);
-  // Z1 기록 축하 줌: 기록 축하 동작 동안 단짝 쪽으로 1.25배 + 주변 살짝 어둡게. 동작 끝(Pet onDone)·화면 탭이면 복귀.
-  // 자해·남 해치는 표현의 '곁에 앉기'에는 줌 없음, 기기 '동작 줄이기' 켜져 있으면 줌 없음
-  const zoom = useSharedValue(0);
-  const zoomKey = useRef<number | null>(null);
-  const reduceMotion = useReducedMotion();
-  const zoomIn = useCallback((key: number) => {
-    if (reduceMotion) return;
-    zoomKey.current = key;
-    zoom.set(withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic), reduceMotion: ReduceMotion.Never }));
-  }, [reduceMotion, zoom]);
-  const zoomOut = useCallback(() => {
-    if (zoomKey.current === null) return;
-    zoomKey.current = null;
-    zoom.set(withTiming(0, { duration: 350, easing: Easing.inOut(Easing.cubic), reduceMotion: ReduceMotion.Never }));
-  }, [zoom]);
-  const onPetDone = useCallback((key: number) => { if (key === zoomKey.current) zoomOut(); }, [zoomOut]);
+  const [composing, setComposing] = useState(false); // 입력 펼침 (H1)
+  const [notesOpen, setNotesOpen] = useState(false); // 오늘의 쪽지 시트 (H2)
+  const [rec, setRec] = useState<{ key: number; text: string; category: Category } | null>(null); // 기록 카드 (H4)
+  const onPetDone = useCallback((key: number) => { setRec((r) => (r?.key === key ? null : r)); }, []);
+  useEffect(() => {
+    if (!rec) return;
+    const t = setTimeout(() => setRec((r) => (r?.key === rec.key ? null : r)), REC_MAX_MS);
+    return () => clearTimeout(t);
+  }, [rec]);
   const [bubble, setBubble] = useState('');
   const [float, setFloat] = useState<{ key: number; n: number } | null>(null);
-  const [safety, setSafety] = useState<'card' | 'banner' | null>(null);
   const [notifAsk, setNotifAsk] = useState(false);
   const [notifTime, setNotifTime] = useState('21:00');
   const [err, setErr] = useState('');
   const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 키보드가 입력창을 가리지 않게: 키보드가 스크롤 영역 아래를 얼마나 덮는지 재서 그만큼 아래 여백을 늘리고 맨 아래로 스크롤.
-  // (iOS는 화면이 줄지 않음. 안드로이드는 화면이 줄어드는 경우가 많아 덮는 양이 0이면 그대로)
-  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
-  const [kbPad, setKbPad] = useState(0);
+  // 펼친 입력은 키보드 바로 위에: 키보드가 이 페이지 아래를 얼마나 덮는지 잰다 (iOS는 화면이 안 줄고, 안드로이드는 줄면 0)
+  const wrapRef = useRef<React.ComponentRef<typeof View>>(null);
+  const [kb, setKb] = useState(0);
   useEffect(() => {
     const showEv = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEv = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const show = Keyboard.addListener(showEv, (e) => {
-      scrollRef.current?.measureInWindow((_x, y, _w, h) => {
-        const overlap = Math.max(0, y + h - e.endCoordinates.screenY);
-        setKbPad(overlap);
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
-      });
+      wrapRef.current?.measureInWindow((_x, y, _w, h) => setKb(Math.max(0, y + h - e.endCoordinates.screenY)));
     });
-    // 키보드가 내려가면 맨 위로 되돌림: 안 그러면 내려간 채로 남아 방 위쪽과 단짝 말풍선(멘트)이 잘림 (대표 피드백 2026-11-11)
-    const hide = Keyboard.addListener(hideEv, () => {
-      setKbPad(0);
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-    });
+    const hide = Keyboard.addListener(hideEv, () => setKb(0));
     return () => { show.remove(); hide.remove(); };
   }, []);
+
+  // 상점에서 소품을 사거나 바꾸면 그 소품이 보이게 '방 보기'로 (렌더 중 파생: 이펙트 안 setState 금지 규칙)
+  const [seenCel, setSeenCel] = useState(celebration?.key);
+  if (celebration?.key !== seenCel) {
+    setSeenCel(celebration?.key);
+    if (celebration?.itemId) setMode('room');
+  }
 
   const today = kstToday();
   const todayWins = wins.filter((w) => w.win_date === today).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
@@ -126,26 +134,11 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
   const shownBubble = extFresh ? celebration!.line : bubble;
   const newItemId = celebration?.itemId;
 
-  // 단짝이 동작을 시작하면(기록·먹이기·선물·상점 구매 등 무엇이든) 아래로 내려가 있던 화면을 맨 위로 올려 동작·말풍선이 보이게 (대표 피드백 2026-11-13).
-  // 바구니처럼 시트에서 시작한 동작은 시트가 내려가는 동안 스크롤이 끊길 수 있어 한 번 더
-  const petKey = petAction?.key;
-  const shownKey = useRef(petKey);
-  useEffect(() => {
-    if (petKey === undefined || petKey === shownKey.current) return;
-    shownKey.current = petKey;
-    if (petKey !== zoomKey.current) zoomOut(); // 줌 중에 다른 동작(먹이기·구매)이 끼어들면 복귀
-    const top = () => scrollRef.current?.scrollTo({ y: 0, animated: true });
-    top();
-    const t = setTimeout(top, 400);
-    return () => clearTimeout(t);
-  }, [petKey, zoomOut]);
-
   async function submit(raw?: string) {
     const t = (raw ?? text).trim();
     if (!t || busy) return;
-    // 기록하면 맨 위로: 예시 버튼처럼 키보드 없이 기록할 땐 키보드 내려감 이벤트가 없어서 직접 올림 (대표 피드백 2026-11-11)
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
     Keyboard.dismiss();
+    setComposing(false); // 보내면 입력은 다시 한 줄로 (H1)
     setBusy(true); setErr('');
     say('듣고 있어…', 8000);
     const kwSafety = safetyKeywordHit(t);
@@ -165,16 +158,13 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
       reloadJars().catch(() => {});
       setBalance(r.balance);
       setText(''); setChosen(null); setPicking(false); setDay('today');
-      setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 50); // 말풍선이 보이게 (위 스크롤이 중간에 끊겨도 다시)
       track('win_recorded', { category, source, first: r.first, yesterday: day === 'yesterday', earned: r.earned });
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
       if (unsafe) {
         setAction({ kind: 'sit', key: Date.now() });
         say(SAFETY_LINE, 9000);
-        const shownToday = store.get(SAFETY_DAY_KEY) === today;
-        setSafety(shownToday ? 'banner' : 'card');
-        store.set(SAFETY_DAY_KEY, today);
+        // 상담 번호 안내 카드·배너는 지움 (대표 결정 2026-11-16, 홈 무대 개편). 곁에 앉기 + 말풍선은 그대로, 상담 번호는 설정 > 도움받을 곳
         api.logSafety(kwSafety ? 'keyword' : 'llm').catch(() => {}); // 익명 날짜별 개수만 (계정과 연결 안 함, J2)
       } else if (harm) {
         setAction({ kind: 'sit', key: Date.now() });
@@ -182,7 +172,8 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
       } else {
         const k = Date.now();
         setAction({ kind: eatVariant(category, t) ?? category, key: k });
-        zoomIn(k);
+        // H4: 줌·어둡게 대신 적은 문장이 카드로 떠서 '지금 이걸 축하하는 중'이 보임. 동작 끝(Pet onDone)·화면 탭이면 걷힘
+        setRec({ key: k, text: t, category });
         if (r.sealed) {
           say('유리병이 꽉 찼어! 뚜껑 닫아서 선반에 올려둘게. 새 병 시작이야', 6000);
           track('jar_sealed', { no: r.win.jar_no });
@@ -200,6 +191,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
       }
     } catch (e) {
       setErr(friendlyError(e));
+      setComposing(true); // 실패하면 적은 글이 남은 입력을 다시 펼쳐 오류를 보여줌
       say('');
     } finally {
       setBusy(false);
@@ -270,11 +262,13 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
   // 앱을 내렸다 다시 열 때도 가운데로. 내려갈 때 바꿔 둬서 다시 열면 화면이 움직이는 게 안 보임
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => {
-      if (st === 'background') { keptCamX = V.start_x; camX.set(V.start_x); }
+      if (st === 'background') { keptCamX = V.start_x; camX.set(V.start_x); setMode('stage'); setComposing(false); } // 다시 열면 하마 무대부터
     });
     return () => sub.remove();
   }, [camX, V.start_x]);
+  // 방 끌어 둘러보기는 '방 보기'에서만. 하마 무대에서 좌우로 끌면 페이지 넘기기(pagePan)
   const pan = usePanGesture({
+    enabled: mode === 'room',
     activeOffsetX: [-10, 10], failOffsetY: [-12, 12], maxPointers: 1, runOnJS: true,
     onActivate: () => { drag.current = { start: camX.value, over: 0, on: true }; },
     onUpdate: (e) => {
@@ -297,8 +291,8 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     maxDistance: 8, runOnJS: true,
     onDeactivate: (e) => {
       if (e.canceled) return;
-      if (zoomKey.current !== null) { zoomOut(); return; } // 줌 중 탭 = 바로 복귀
-      const x = Math.min(maxWorldX, Math.max(0, camX.value + offX)) + e.x / sc, y = offY + e.y / sc;
+      if (mode === 'stage') { setRec(null); return; } // 무대: 탭하면 기록 카드만 걷음 (단짝 동작은 계속)
+      const x = Math.min(maxWorldX, Math.max(0, camX.value + offX)) + e.x / sc, y = e.y / sc;
       const hit = (r: number[]) => x >= r[0] && x <= r[0] + r[2] && y >= r[1] && y <= r[1] + r[3];
       const si = cab.findIndex((_, i) => hit(JC.slots[i].tap));
       if (si >= 0) { track('jar_viewed', { no: cab[si].no, from: 'cabinet' }); router.push(`/jar/${cab[si].no}`); return; }
@@ -312,16 +306,11 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     onUpdate: (e) => { 'worklet'; pager?.drag(e.translationX); },
     onDeactivate: (e) => { 'worklet'; pager?.end(e.translationX, e.velocityX, e.canceled); },
   });
-  // 줌: 단짝 몸 가운데(화면 좌표)를 고정점으로 확대. RN transform은 뷰 가운데 기준이라 이동-확대-되돌리기
-  const petCX = (ROOM.pet.x + ROOM.pet.w / 2) * sc, petCY = (ROOM.pet.y + ROOM.pet.h * 0.55) * sc;
-  const zoomStyle = useAnimatedStyle(() => {
-    const cam = Math.min(maxWorldX, Math.max(0, camX.value + offX)) * sc;
-    const dx = petCX - cam - fullWidth / 2, dy = petCY - offY * sc - sceneH / 2;
-    const s = 1 + 0.25 * zoom.value;
-    return { transform: [{ translateX: dx }, { translateY: dy }, { scale: s }, { translateX: -dx }, { translateY: -dy }] };
-  });
-  const dimStyle = useAnimatedStyle(() => ({ opacity: 0.28 * zoom.value }));
-  const worldStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -Math.min(maxWorldX, Math.max(0, camX.value + offX)) * sc }, { translateY: -offY * sc }] }));
+  // 무대: 단짝 가운데 고정(start_x). 방 보기: 둘러본 위치(camX)
+  const worldStyle = useAnimatedStyle(() => {
+    const x = mode === 'stage' ? V.start_x : camX.value;
+    return { transform: [{ translateX: -Math.min(maxWorldX, Math.max(0, x + offX)) * sc }] };
+  }, [mode, sc, offX, maxWorldX]);
 
   const jarDots = (j: (typeof cab)[number], slot: (typeof JC.slots)[number]) => {
     const [mx, my, mw, mh] = slot.marbles;
@@ -334,149 +323,190 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     });
   };
 
+  // 오늘의 쪽지 한 줄을 위로 끌면 시트 (누르기도 됨)
+  const peekPan = usePanGesture(useMemo(() => ({
+    activeOffsetY: [-10, 10] as [number, number], failOffsetX: [-14, 14] as [number, number], runOnJS: true,
+    onActivate: () => setNotesOpen(true),
+  }), []));
+  // 시트(Modal) 위에 다른 시트를 바로 띄우면 iOS에서 겹쳐 안 뜸 → 닫고 나서
+  const afterNotes = (fn: () => void) => { setNotesOpen(false); setTimeout(fn, 350); };
+
+  const stage = mode === 'stage';
+  const latest = todayWins[0];
+  const roomBtn = (
+    <Pressable onPress={() => { setMode(stage ? 'room' : 'stage'); setRec(null); setComposing(false); track('space_viewed', { space: stage ? 'room_view' : 'room' }); }}
+      style={st.modeBtn} hitSlop={6} accessibilityRole="button" accessibilityLabel={stage ? '방 보기' : '단짝 보기'}>
+      <Icon name={stage ? 'expand' : 'shrink'} size={16} color={C.ink} />
+      <Text style={st.modeText}>{stage ? '방' : '단짝'}</Text>
+    </Pressable>
+  );
+
   return (
     <GestureDetector gesture={pagePan}>
-    <View style={st.wrap}>
-      <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
-        contentContainerStyle={{ paddingBottom: TAB_SPACE + 12 + kbPad }}>
-        <GestureDetector gesture={roomGesture}>
-        <View style={[st.room, { width: fullWidth, height: sceneH }]} accessibilityHint="좌우로 끌면 방을 둘러볼 수 있어요">
-          <Animated.View style={[StyleSheet.absoluteFill, zoomStyle]}>
-          <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: ROOM.width * sc, height: ROOM.height * sc }, worldStyle]}>
-            <Image source={ROOM.background} style={StyleSheet.absoluteFill} contentFit="cover" loading="eager" />
-            {cab.map((j, i) => {
-              const sl = JC.slots[i];
-              return (
-                <View key={j.no} style={StyleSheet.absoluteFill} pointerEvents="none" accessible accessibilityLabel={`${j.no}번째 유리병`}>
-                  <Image source={JC.jarBack.source} style={{ position: 'absolute', left: sl.back[0] * sc, top: sl.back[1] * sc, width: JC.jarBack.w * sc, height: JC.jarBack.h * sc }} />
-                  {jarDots(j, sl)}
-                  <Image source={JC.jarFront.source} style={{ position: 'absolute', left: sl.front[0] * sc, top: sl.front[1] * sc, width: JC.jarFront.w * sc, height: JC.jarFront.h * sc }} />
-                </View>
-              );
-            })}
-            <Image source={JC.glass.source} style={{ position: 'absolute', left: JC.glass.x * sc, top: JC.glass.y * sc, width: JC.glass.w * sc, height: JC.glass.h * sc }} />
-            {back.map(draw)}
-            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, st.dim, dimStyle]} />
+    <View ref={wrapRef} style={st.wrap} onLayout={onLayout}>
+      <GestureDetector gesture={roomGesture}>
+      <View style={[st.room, { width: fullWidth, height: stage ? H0 : roomH }]} accessibilityHint={stage ? undefined : '좌우로 끌면 방을 둘러볼 수 있어요'}>
+        <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: ROOM.width * sc, height: ROOM.height * sc }, worldStyle]}>
+          <Image source={ROOM.background} style={StyleSheet.absoluteFill} contentFit="cover" loading="eager" />
+          {cab.map((j, i) => {
+            const sl = JC.slots[i];
+            return (
+              <View key={j.no} style={StyleSheet.absoluteFill} pointerEvents="none" accessible={!stage} accessibilityLabel={`${j.no}번째 유리병`}>
+                <Image source={JC.jarBack.source} style={{ position: 'absolute', left: sl.back[0] * sc, top: sl.back[1] * sc, width: JC.jarBack.w * sc, height: JC.jarBack.h * sc }} />
+                {jarDots(j, sl)}
+                <Image source={JC.jarFront.source} style={{ position: 'absolute', left: sl.front[0] * sc, top: sl.front[1] * sc, width: JC.jarFront.w * sc, height: JC.jarFront.h * sc }} />
+              </View>
+            );
+          })}
+          <Image source={JC.glass.source} style={{ position: 'absolute', left: JC.glass.x * sc, top: JC.glass.y * sc, width: JC.glass.w * sc, height: JC.glass.h * sc }} />
+          {back.map(draw)}
+          {!stage && (
             <View style={{ position: 'absolute', left: ROOM.pet.x * sc, top: ROOM.pet.y * sc }}>
-              <Pet action={petAction} size={ROOM.pet.w * sc} onDone={onPetDone} />
+              <Pet action={petAction} size={ROOM.pet.w * sc} />
             </View>
-            {front.map(draw)}
-          </Animated.View>
-          </Animated.View>
-          {shownBubble ? (
-            <View style={[st.bubble, { top: belowChips }]}>
-              <Text style={st.bubbleText}>{shownBubble}</Text>
-            </View>
-          ) : null}
-          {float && (
-            <Text key={float.key} style={[st.float, { top: belowChips + 8 }]}>+{float.n} 씨앗</Text>
           )}
-          <SpaceChips space="room" />
-        </View>
-        </GestureDetector>
-
-        <View style={st.panel}>
-        {nav && <SpaceSwitch nav={nav} />}
-        {/* 안전 안내는 기록 직후 맨 위로 올라갔을 때 바로 보이게 전환 바로 아래 */}
-        {safety === 'card' && (
-          <View style={st.safetyCard}>
-            <Text style={st.safetyTitle}>혼자 견디고 있다면, 이야기할 곳이 있어요</Text>
-            <Text style={st.safetyBody}>모두 24시간 연결돼요. 번호를 누르면 바로 전화가 걸려요.</Text>
-            <HelpLines />
-            <Btn title="닫기" kind="ghost" onPress={() => setSafety(null)} style={{ marginTop: 10 }} />
-          </View>
+          {front.map(draw)}
+        </Animated.View>
+        {/* H1 무대: 방을 뿌옇게 (산 소품은 색감으로만). 안드로이드는 실험적 흐림 방식 */}
+        {stage && (
+          <>
+            <BlurView intensity={36} tint="light" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <View style={[StyleSheet.absoluteFill, st.veil]} pointerEvents="none" />
+          </>
         )}
-        {safety === 'banner' && (
-          <Pressable style={st.banner} onPress={() => router.push('/help')} accessibilityRole="button">
-            <Text style={st.bannerText}>힘들 땐 109 (24시간) · 도움받을 수 있는 곳 보기</Text>
-            <Icon name="chevronRight" size={18} color={C.muted} />
+      </View>
+      </GestureDetector>
+
+      {stage && (
+        <View pointerEvents="none" style={{ position: 'absolute', left: (fullWidth - petW) / 2, top: petTop }}>
+          <Pet action={petAction} size={petW} onDone={onPetDone} />
+        </View>
+      )}
+      {stage && rec && (
+        <View pointerEvents="none" style={[st.rec, { top: Math.min(petTop + petH * 0.9, stageBottom - 20) }]}>
+          <View style={[st.noteDot, { backgroundColor: CATS[rec.category].color }]} />
+          <Text style={st.recText} numberOfLines={2}>{rec.text}</Text>
+        </View>
+      )}
+      {shownBubble ? (
+        <View pointerEvents="none" style={[st.bubble, { top: belowSwitch }]}>
+          <Text style={st.bubbleText}>{shownBubble}</Text>
+        </View>
+      ) : null}
+      {float && (
+        <Text key={float.key} pointerEvents="none" style={[st.float, { top: belowSwitch + 8 }]}>+{float.n} 씨앗</Text>
+      )}
+      <SpaceChips space="room" extra={roomBtn} />
+      {nav && <View style={[st.switchWrap, { top: switchTop }]}><SpaceSwitch nav={nav} style={st.switch} /></View>}
+
+      {/* 하마 무대 아래: 오늘의 쪽지 한 줄(H2) + 입력 알약(H1). 기록 축하 중엔 비켜 줌 */}
+      {stage && !rec && !composing && (
+        <>
+          {latest && (
+            <GestureDetector gesture={peekPan}>
+              <Pressable onPress={() => setNotesOpen(true)} style={[st.peek, { bottom: peekBottom }]} accessibilityRole="button" accessibilityLabel={`오늘의 쪽지 ${todayCount}가지, 눌러서 펼치기`}>
+                <Text style={st.peekTitle}>오늘의 쪽지 {todayCount}</Text>
+                <Text style={st.peekText} numberOfLines={1}>{`  ·  ${latest.text}`}</Text>
+                <Icon name="chevronUp" size={18} color={C.muted} />
+              </Pressable>
+            </GestureDetector>
+          )}
+          <Pressable onPress={() => setComposing(true)} style={[st.pill, { bottom: composerBottom }]} accessibilityRole="button" accessibilityLabel="오늘 해낸 일 적기">
+            <Text style={st.pillText} numberOfLines={1}>{text.trim() || '오늘 해낸 거, 아무리 작아도 좋아'}</Text>
+            <View style={st.sendSm}><Icon name="plus" size={22} color={C.white} stroke={2.2} /></View>
           </Pressable>
-        )}
+        </>
+      )}
 
-        <View style={st.composer}>
-          <Text style={st.label}>오늘 해낸 거, 아무리 작아도 좋아</Text>
-          <View style={st.dayRow}>
-            {(['today', 'yesterday'] as const).map((d) => (
-              <Pressable key={d} onPress={() => setDay(d)} style={[st.dayBtn, day === d && st.dayOn]} accessibilityRole="radio" accessibilityState={{ selected: day === d }}>
-                <Text style={[st.dayText, day === d && st.dayTextOn]}>{d === 'today' ? '오늘' : '어제'}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View style={st.row}>
-            <TextInput
-              style={st.input} value={text} onChangeText={(v) => { setText(v); setErr(''); }}
-              placeholder="예) 침대 정리했다" placeholderTextColor={C.placeholder} maxLength={100} returnKeyType="done"
-              onSubmitEditing={() => submit()} accessibilityLabel="오늘 해낸 일" editable={!busy}
-            />
-            <Pressable onPress={() => submit()} disabled={!text.trim() || busy} accessibilityRole="button" accessibilityLabel="기록"
-              style={({ pressed }) => [st.send, (!text.trim() || busy) && { opacity: 0.4 }, pressed && { transform: [{ scale: 0.95 }] }]}>
-              {busy ? <ActivityIndicator color={C.white} /> : <Icon name="send" size={24} color={C.white} stroke={2.2} />}
-            </Pressable>
-          </View>
-          {text.trim() ? (
-            <View style={st.catLine}>
-              <Text style={st.catText}><Text style={{ color: C.ink, fontWeight: '700' }}>{CATS[k].name}</Text> 동작을 할 거예요 · </Text>
-              <Pressable onPress={() => setPicking((p) => !p)} accessibilityRole="button"><Text style={st.change}>바꾸기</Text></Pressable>
-            </View>
-          ) : null}
-          {picking && (
-            <View style={st.chips}>
-              {CATEGORY_ORDER.map((c) => (
-                <Pressable key={c} onPress={() => { setChosen(c); setPicking(false); }} style={[st.chip, k === c && st.chipOn]}>
-                  <Text style={[st.chipText, k === c && st.chipTextOn]}>{CATS[c].name}</Text>
+      {/* H1 펼친 입력: 키보드 바로 위 카드 (오늘/어제·예시 칩·분류는 지금과 같음). 바깥 누르면 접힘(적던 글은 남음) */}
+      {stage && composing && (
+        <>
+          <Pressable style={[StyleSheet.absoluteFill, st.composeScrim]} onPress={() => { Keyboard.dismiss(); setComposing(false); }} accessibilityLabel="입력 접기" />
+          <View style={[st.composer, { bottom: kb ? kb + 8 : composerBottom }]}>
+            <View style={st.dayRow}>
+              {(['today', 'yesterday'] as const).map((d) => (
+                <Pressable key={d} onPress={() => setDay(d)} style={[st.dayBtn, day === d && st.dayOn]} accessibilityRole="radio" accessibilityState={{ selected: day === d }}>
+                  <Text style={[st.dayText, day === d && st.dayTextOn]}>{d === 'today' ? '오늘' : '어제'}</Text>
                 </Pressable>
               ))}
             </View>
-          )}
-          {!text.trim() && (
-            <View style={st.chips}>
-              {CHIPS.map((c) => (
-                <Pressable key={c} onPress={() => submit(c)} style={st.chip} accessibilityRole="button" disabled={busy}>
-                  <Text style={st.chipText}>{c}</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-          {err ? <Text style={st.err}>{err}</Text> : null}
-        </View>
-        {/* 오늘의 쪽지 (C9 M1): 오늘 적은 기록이 쪽지로 쌓임 (최근 것 위). 누르면 크게 보기, 다 보기 → 하루 한 장 */}
-        {todayWins.length > 0 && (
-          <View style={st.notes}>
-            <View style={st.notesHead}>
-              <Text style={st.notesTitle}>오늘의 쪽지 · {todayWins.length}가지</Text>
-              <Pressable onPress={() => router.push(`/jar/day/${today}`)} hitSlop={8} accessibilityRole="button" accessibilityLabel="오늘 기록 다 보기">
-                <Text style={st.notesMore}>다 보기 ›</Text>
+            <View style={st.row}>
+              <TextInput
+                style={st.input} value={text} onChangeText={(v) => { setText(v); setErr(''); }} autoFocus
+                placeholder="예) 침대 정리했다" placeholderTextColor={C.placeholder} maxLength={100} returnKeyType="done"
+                onSubmitEditing={() => submit()} accessibilityLabel="오늘 해낸 일" editable={!busy}
+              />
+              <Pressable onPress={() => submit()} disabled={!text.trim() || busy} accessibilityRole="button" accessibilityLabel="기록"
+                style={({ pressed }) => [st.send, (!text.trim() || busy) && { opacity: 0.4 }, pressed && { transform: [{ scale: 0.95 }] }]}>
+                {busy ? <ActivityIndicator color={C.white} /> : <Icon name="send" size={24} color={C.white} stroke={2.2} />}
               </Pressable>
             </View>
-            {todayWins.slice(0, NOTES_SHOWN).map((w) => (
-              <Pressable key={w.id} onPress={() => openWin(w)} style={st.note} accessibilityRole="button" accessibilityHint="눌러서 크게 보기">
-                <View style={[st.noteDot, { backgroundColor: CATS[w.category].color }]} />
-                <Text style={st.noteText} numberOfLines={1}>{w.text}</Text>
-                {w.starred ? <Icon name="star" size={13} color={C.accentInk} fill={C.accentInk} /> : null}
-                <Text style={st.noteTime}>{formatTime(w.created_at)}</Text>
-              </Pressable>
-            ))}
-            {todayWins.length > NOTES_SHOWN && (
-              <Pressable onPress={() => router.push(`/jar/day/${today}`)} accessibilityRole="button">
-                <Text style={st.notesRest}>+ {todayWins.length - NOTES_SHOWN}가지 더</Text>
-              </Pressable>
+            {text.trim() ? (
+              <View style={st.catLine}>
+                <Text style={st.catText}><Text style={{ color: C.ink, fontWeight: '700' }}>{CATS[k].name}</Text> 동작을 할 거예요 · </Text>
+                <Pressable onPress={() => setPicking((p) => !p)} accessibilityRole="button"><Text style={st.change}>바꾸기</Text></Pressable>
+              </View>
+            ) : null}
+            {picking && (
+              <View style={st.chips}>
+                {CATEGORY_ORDER.map((c) => (
+                  <Pressable key={c} onPress={() => { setChosen(c); setPicking(false); }} style={[st.chip, k === c && st.chipOn]}>
+                    <Text style={[st.chipText, k === c && st.chipTextOn]}>{CATS[c].name}</Text>
+                  </Pressable>
+                ))}
+              </View>
             )}
+            {!text.trim() && (
+              <View style={st.chips}>
+                {CHIPS.map((c) => (
+                  <Pressable key={c} onPress={() => submit(c)} style={st.chip} accessibilityRole="button" disabled={busy}>
+                    <Text style={st.chipText}>{c}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            {err ? <Text style={st.err}>{err}</Text> : null}
           </View>
-        )}
+        </>
+      )}
+
+      {/* H3 방 보기: 아래 버튼 줄 — 수확 바구니(있을 때) + 꾸미기 */}
+      {!stage && (
+        <View style={[st.roomBar, { top: roomH }]}>
+          {bagCount > 0 && (
+            <Pressable style={st.barBtn} onPress={() => setBasket(true)} accessibilityRole="button">
+              <Icon name="basket" size={20} color={C.accentInk} />
+              <Text style={st.barText}>수확 바구니 {bagCount}</Text>
+            </Pressable>
+          )}
+          <Pressable style={[st.barBtn, st.barMain]} onPress={() => router.navigate('/shop')} accessibilityRole="button">
+            <Icon name="plant" size={20} color={C.white} />
+            <Text style={[st.barText, { color: C.white }]}>꾸미기</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <Sheet visible={notesOpen} onClose={() => setNotesOpen(false)}>
+        <View style={st.notesHead}>
+          <Text style={sheetSt.title}>오늘의 쪽지 · {todayCount}가지</Text>
+          <Pressable onPress={() => afterNotes(() => router.push(`/jar/day/${today}`))} hitSlop={8} accessibilityRole="button" accessibilityLabel="오늘 기록 다 보기">
+            <Text style={st.notesMore}>다 보기 ›</Text>
+          </Pressable>
+        </View>
+        <ScrollView style={{ maxHeight: H0 * 0.45 }}>
+          {todayWins.map((w) => (
+            <Pressable key={w.id} onPress={() => afterNotes(() => openWin(w))} style={st.note} accessibilityRole="button" accessibilityHint="눌러서 크게 보기">
+              <View style={[st.noteDot, { backgroundColor: CATS[w.category].color }]} />
+              <Text style={st.noteText} numberOfLines={1}>{w.text}</Text>
+              {w.starred ? <Icon name="star" size={13} color={C.accentInk} fill={C.accentInk} /> : null}
+              <Text style={st.noteTime}>{formatTime(w.created_at)}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
         <Text style={st.cap}>
-          {todayCount > 0 ? `오늘 ${todayCount}가지를 해냈어. ` : ''}
           기록 1개 = 씨앗 3개{todayCount >= DAILY_REWARD_CAP ? ' · 오늘 씨앗은 다 받았어. 기록은 얼마든지 남겨도 돼!' : ` (하루 ${DAILY_REWARD_CAP}개 기록까지)`}
         </Text>
-        {bagCount > 0 && (
-          <Pressable style={st.basketBtn} onPress={() => setBasket(true)} accessibilityRole="button">
-            <Icon name="basket" size={20} color={C.accentInk} />
-            <Text style={st.basketText}>수확 바구니 {bagCount}개 · 먹이기/선물하기</Text>
-          </Pressable>
-        )}
-
-        </View>
-      </ScrollView>
-
+      </Sheet>
       <Sheet visible={notifAsk} onClose={() => allowNotif(false)}>
         <Text style={sheetSt.title}>내일 이 시간쯤 한 번만 물어봐도 될까?</Text>
         <Text style={sheetSt.body}>하루 한 번, 오늘 해낸 걸 물어볼게. 이미 적은 날엔 안 보내.</Text>
@@ -509,20 +539,32 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
 }
 
 const st = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: C.bg },
-  room: { overflow: 'hidden', backgroundColor: ART.roomFill },
-  dim: { backgroundColor: ART.zoomDim },
-  // 크림 판: 위 모서리 32, 그림 아래를 살짝 덮으며 올라옴
-  panel: { marginTop: -PANEL_OVERLAP, backgroundColor: C.bg, borderTopLeftRadius: R.sheet, borderTopRightRadius: R.sheet, paddingHorizontal: 20, paddingTop: 18 },
-  basketBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, backgroundColor: C.accentBg, borderRadius: R.pill, height: H.btn, paddingHorizontal: 18 },
-  basketText: { fontSize: 14, fontWeight: '700', color: C.accentInk },
+  wrap: { flex: 1, backgroundColor: C.bg, overflow: 'hidden' },
+  room: { position: 'absolute', left: 0, top: 0, overflow: 'hidden', backgroundColor: ART.roomFill },
+  veil: { backgroundColor: C.stageVeil },
+  switchWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 15 },
+  switch: { alignSelf: 'center', width: 228, backgroundColor: C.chip },
+  modeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, height: H.chip, paddingHorizontal: 12, borderRadius: R.pill, backgroundColor: C.chip },
+  modeText: { fontSize: 13, fontWeight: '800', color: C.ink },
+  bubble: { position: 'absolute', alignSelf: 'center', maxWidth: '80%', backgroundColor: C.card, borderRadius: R.card, paddingVertical: 10, paddingHorizontal: 16, zIndex: 12 },
+  bubbleText: { fontSize: 15, fontWeight: '700', color: C.ink, textAlign: 'center', lineHeight: 21 },
+  float: { position: 'absolute', right: 28, fontSize: 16, fontWeight: '800', color: C.seed, zIndex: 12 },
+  rec: { position: 'absolute', alignSelf: 'center', maxWidth: '86%', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.card, borderRadius: R.card, paddingVertical: 12, paddingHorizontal: 18, zIndex: 11 },
+  recText: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: C.ink },
+  peek: { position: 'absolute', left: 16, right: 16, height: PEEK_H, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderRadius: R.card, backgroundColor: C.card, zIndex: 10 },
+  peekTitle: { fontSize: 13.5, fontWeight: '800', color: C.ink },
+  peekText: { flex: 1, fontSize: 13.5, color: C.muted, marginRight: 6 },
+  pill: { position: 'absolute', left: 16, right: 16, height: H.input, flexDirection: 'row', alignItems: 'center', paddingLeft: 22, paddingRight: 7, borderRadius: R.pill, backgroundColor: C.card, zIndex: 10 },
+  pillText: { flex: 1, fontSize: 15, color: C.placeholder },
+  sendSm: { width: 42, height: 42, borderRadius: R.pill, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
+  composeScrim: { backgroundColor: C.composeScrim, zIndex: 30 },
+  composer: { position: 'absolute', left: 8, right: 8, backgroundColor: C.bg, borderRadius: R.cardLg, padding: 16, zIndex: 31 },
+  roomBar: { position: 'absolute', left: 0, right: 0, height: ROOM_BAR, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 16 },
+  barBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 46, paddingHorizontal: 18, borderRadius: R.pill, backgroundColor: C.accentBg },
+  barMain: { backgroundColor: C.accent },
+  barText: { fontSize: 14, fontWeight: '800', color: C.accentInk },
   bagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, backgroundColor: C.card, borderRadius: R.card, padding: 10, paddingLeft: 12 },
   bagName: { flex: 1, fontSize: 15, color: C.ink, fontWeight: '600' },
-  bubble: { position: 'absolute', alignSelf: 'center', top: 96, maxWidth: '80%', backgroundColor: C.card, borderRadius: R.card, paddingVertical: 10, paddingHorizontal: 16, zIndex: 5 },
-  bubbleText: { fontSize: 14, fontWeight: '600', color: C.ink, textAlign: 'center', lineHeight: 20 },
-  float: { position: 'absolute', right: 28, top: 104, fontSize: 16, fontWeight: '800', color: C.seed },
-  composer: { marginTop: 20 },
-  label: { fontSize: 21, fontWeight: '800', color: C.ink, marginBottom: 10, lineHeight: 28 },
   dayRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
   dayBtn: { height: 32, justifyContent: 'center', paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
   dayOn: { backgroundColor: C.accentBg },
@@ -540,19 +582,11 @@ const st = StyleSheet.create({
   chipText: { fontSize: 14, color: C.ink },
   chipTextOn: { color: C.accentInk, fontWeight: '700' },
   err: { marginTop: 10, color: C.danger, fontSize: 13 },
-  notes: { marginTop: 16, backgroundColor: C.card, borderRadius: R.card, padding: 12, paddingTop: 14 },
-  notesHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 6, marginBottom: 8 },
-  notesTitle: { fontSize: 13, fontWeight: '800', color: C.ink },
+  notesHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   notesMore: { fontSize: 13, color: C.accentInk, fontWeight: '700' },
-  note: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.bg, borderRadius: R.pill, paddingVertical: 11, paddingHorizontal: 16, marginBottom: 6 },
+  note: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.card, borderRadius: R.pill, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 6 },
   noteDot: { width: 9, height: 9, borderRadius: R.pill },
   noteText: { flex: 1, fontSize: 14, color: C.ink },
   noteTime: { fontSize: 11, color: C.muted },
-  notesRest: { fontSize: 13, color: C.muted, textAlign: 'center', paddingVertical: 6 },
-  cap: { fontSize: 12, color: C.muted, marginHorizontal: 6, marginTop: 12, lineHeight: 18 },
-  safetyCard: { marginTop: 14, backgroundColor: C.card, borderRadius: R.card, padding: 18 },
-  safetyTitle: { fontSize: 16, fontWeight: '800', color: C.ink, marginBottom: 4 },
-  safetyBody: { fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 19 },
-  banner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, backgroundColor: C.card, borderRadius: R.card, paddingVertical: 14, paddingHorizontal: 18 },
-  bannerText: { flex: 1, fontSize: 13, color: C.ink, fontWeight: '600' },
+  cap: { fontSize: 12, color: C.muted, marginHorizontal: 6, marginTop: 10, marginBottom: 6, lineHeight: 18 },
 });

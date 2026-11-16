@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { todayLabel } from '@/lib/dates';
@@ -31,7 +31,7 @@ export function useSceneLayout() {
   return { canvasH, sceneH: canvasH + PANEL_OVERLAP };
 }
 
-export function SpaceChips({ space }: { space: SpaceKey }) {
+export function SpaceChips({ space, extra }: { space: SpaceKey; extra?: React.ReactNode }) {
   const { profile, balance } = useApp();
   const insets = useSafeAreaInsets();
   const pet = profile?.pet_name ?? '단짝';
@@ -42,14 +42,17 @@ export function SpaceChips({ space }: { space: SpaceKey }) {
         <Text style={st.chipDate}>{date}</Text>
         <Text style={st.chipName} numberOfLines={1}>{pet}의 {LABEL[space]}</Text>
       </FloatChip>
-      <Seeds n={balance} />
+      <View style={st.right}>
+        {extra}
+        <Seeds n={balance} />
+      </View>
     </View>
   );
 }
 
-export function SpaceSwitch({ nav }: { nav: SpaceNav }) {
+export function SpaceSwitch({ nav, style }: { nav: SpaceNav; style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={st.seg} accessibilityRole="tablist">
+    <View style={[st.seg, style]} accessibilityRole="tablist">
       {SPACES.map((p, i) => {
         const on = nav.page === i;
         return (
@@ -77,6 +80,7 @@ export function RoomHandle({ onPress }: { onPress: () => void }) {
 
 const st = StyleSheet.create({
   chips: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, zIndex: 20 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   chipDate: { fontSize: 13, color: C.muted, fontWeight: '600' },
   chipName: { fontSize: 13, color: C.ink, fontWeight: '800', flexShrink: 1 },
   seg: { flexDirection: 'row', backgroundColor: C.soft, borderRadius: R.pill, padding: 4, alignSelf: 'stretch' },

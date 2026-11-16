@@ -6,7 +6,7 @@ import { C } from './theme';
 export type IconName =
   | 'home' | 'jar' | 'plant' | 'gear' | 'search' | 'basket' | 'leaf' | 'lock' | 'send'
   | 'chevronLeft' | 'chevronRight' | 'chevronDown' | 'check' | 'plus' | 'sparkle' | 'zzz'
-  | 'fruit' | 'sliders' | 'close' | 'star' | 'more';
+  | 'fruit' | 'sliders' | 'close' | 'star' | 'more' | 'chevronUp' | 'expand' | 'shrink';
 
 export function Icon({ name, size = 22, color = C.ink, stroke = 1.8, fill }: {
   name: IconName; size?: number; color?: string; stroke?: number; fill?: string;
@@ -55,6 +55,9 @@ export function Icon({ name, size = 22, color = C.ink, stroke = 1.8, fill }: {
       {name === 'chevronLeft' && <Path {...p} d="M14.5 6 8.5 12l6 6" />}
       {name === 'chevronRight' && <Path {...p} d="m9.5 6 6 6-6 6" />}
       {name === 'chevronDown' && <Path {...p} d="m6 9.5 6 6 6-6" />}
+      {name === 'chevronUp' && <Path {...p} d="m6 14.5 6-6 6 6" />}
+      {name === 'expand' && <Path {...p} d="M5 9.5V5h4.5M19 9.5V5h-4.5M5 14.5V19h4.5M19 14.5V19h-4.5" />}
+      {name === 'shrink' && <Path {...p} d="M9.5 5v4.5H5M14.5 5v4.5H19M9.5 19v-4.5H5M14.5 19v-4.5H19" />}
       {name === 'check' && <Path {...p} d="m5.5 12.5 4 4 9-9" />}
       {name === 'plus' && <Path {...p} d="M12 5.5v13M5.5 12h13" />}
       {name === 'close' && <Path {...p} d="m6.5 6.5 11 11M17.5 6.5l-11 11" />}
