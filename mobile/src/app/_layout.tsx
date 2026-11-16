@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import '@/lib/webViewport'; // 웹: html·body 화면 고정 (사파리 위 잘림)
 import { AppProvider, useApp } from '@/state/app';
 import { C } from '@/ui/theme';
 import { WinSheetProvider } from '@/ui/WinSheet';

@@ -19,6 +19,7 @@ import { askPermission } from '@/lib/notifications';
 import { safetyKeywordHit } from '@/lib/safety';
 import { useApp } from '@/state/app';
 import { Icon } from '@/ui/Icon';
+import { webBodyHeight } from '@/lib/webViewport';
 import { Btn } from '@/ui/kit';
 import { Pet, type PetAction } from '@/ui/Pet';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
@@ -38,16 +39,16 @@ const PEEK_H = 44; // 오늘의 쪽지 접힌 한 줄
 const ROOM_BAR = 64; // 방 보기 아래 버튼 줄(바구니·꾸미기) 자리
 const REC_MAX_MS = 12000; // 기록 카드: 동작이 끝나지 않는 경우(로딩 실패)에도 이 뒤엔 걷음
 const nowKey = () => Date.now(); // 동작·씨앗 표시 키 (이벤트 핸들러에서만 부름)
-// 웹 전용: 키보드에 안 줄어드는 레이아웃 높이 (창 크기·회전·사파리 툴바 변화만 따라감)
+// 웹 전용: 화면에 고정된 body 높이 (lib/webViewport, 키보드엔 안 줄고 사파리 툴바·회전만 따라감)
 function useLayoutViewportHeight() {
-  const read = () => (Platform.OS === 'web' && typeof document !== 'undefined' ? document.documentElement.clientHeight : 0);
-  const [h, setH] = useState(read);
+  const [h, setH] = useState(webBodyHeight);
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-    const on = () => setH(document.documentElement.clientHeight);
+    const on = () => setH(webBodyHeight());
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(on) : null;
+    ro?.observe(document.body);
     window.addEventListener('resize', on);
-    window.addEventListener('orientationchange', on);
-    return () => { window.removeEventListener('resize', on); window.removeEventListener('orientationchange', on); };
+    return () => { ro?.disconnect(); window.removeEventListener('resize', on); };
   }, []);
   return h;
 }
