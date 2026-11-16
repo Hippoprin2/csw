@@ -33,6 +33,7 @@ export const C = {
 // 화면 속 그림 소품 색 (UI가 아니라 그림의 일부라 바탕색이 바뀌어도 그대로 둔다)
 export const ART = {
   roomFill: '#EADBC4', // 방 그림 뒤 (그림 로딩 전·가장자리)
+  roomFloor: '#CCA77F', // 방 보기: 그림 아래(버튼 줄·탭 바 뒤)를 바닥색으로 이어 칠함 (화면에 그려진 방 그림 맨 아래 줄 색)
   zoomDim: '#1D140C', // 기록 축하 줌 때 주변 어둡게 (불투명도 0.28)
   gardenFill: '#cfe8c4', // 텃밭 그림 뒤
   sparkle: '#B07A1E', // 텃밭 반짝 아이콘

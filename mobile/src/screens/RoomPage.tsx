@@ -37,6 +37,7 @@ const SWITCH_H = 44; // 텃밭/방/마당 전환 높이 (36 + 위아래 4)
 const PEEK_H = 44; // 오늘의 쪽지 접힌 한 줄
 const ROOM_BAR = 64; // 방 보기 아래 버튼 줄(바구니·꾸미기) 자리
 const REC_MAX_MS = 12000; // 기록 카드: 동작이 끝나지 않는 경우(로딩 실패)에도 이 뒤엔 걷음
+const nowKey = () => Date.now(); // 동작·씨앗 표시 키 (이벤트 핸들러에서만 부름)
 let keptCamX: number = ROOM.view.start_x; // 둘러본 위치 유지 (앱을 켜 둔 동안). 처음엔 단짝 가운데(= 예전 방)
 
 const store = {
@@ -137,8 +138,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
   async function submit(raw?: string) {
     const t = (raw ?? text).trim();
     if (!t || busy) return;
-    Keyboard.dismiss();
-    setComposing(false); // 보내면 입력은 다시 한 줄로 (H1)
+    Keyboard.dismiss(); // 보내면 키보드가 내려가며 입력은 다시 한 줄로 (H1)
     setBusy(true); setErr('');
     say('듣고 있어…', 8000);
     const kwSafety = safetyKeywordHit(t);
@@ -162,15 +162,15 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
       if (unsafe) {
-        setAction({ kind: 'sit', key: Date.now() });
+        setAction({ kind: 'sit', key: nowKey() });
         say(SAFETY_LINE, 9000);
         // 상담 번호 안내 카드·배너는 지움 (대표 결정 2026-11-16, 홈 무대 개편). 곁에 앉기 + 말풍선은 그대로, 상담 번호는 설정 > 도움받을 곳
         api.logSafety(kwSafety ? 'keyword' : 'llm').catch(() => {}); // 익명 날짜별 개수만 (계정과 연결 안 함, J2)
       } else if (harm) {
-        setAction({ kind: 'sit', key: Date.now() });
+        setAction({ kind: 'sit', key: nowKey() });
         say(HARM_LINE, 7000);
       } else {
-        const k = Date.now();
+        const k = nowKey();
         setAction({ kind: eatVariant(category, t) ?? category, key: k });
         // H4: 줌·어둡게 대신 적은 문장이 카드로 떠서 '지금 이걸 축하하는 중'이 보임. 동작 끝(Pet onDone)·화면 탭이면 걷힘
         setRec({ key: k, text: t, category });
@@ -180,7 +180,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
         } else say(r.first ? '첫 구슬이 유리병에 들어갔어!' : pickLine(category));
       }
       if (r.earned) {
-        const fk = Date.now();
+        const fk = nowKey();
         setFloat({ key: fk, n: r.earned });
         setTimeout(() => setFloat((f) => (f?.key === fk ? null : f)), 1600);
       }
@@ -191,7 +191,6 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
       }
     } catch (e) {
       setErr(friendlyError(e));
-      setComposing(true); // 실패하면 적은 글이 남은 입력을 다시 펼쳐 오류를 보여줌
       say('');
     } finally {
       setBusy(false);
@@ -345,7 +344,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
     <GestureDetector gesture={pagePan}>
     <View ref={wrapRef} style={st.wrap} onLayout={onLayout}>
       <GestureDetector gesture={roomGesture}>
-      <View style={[st.room, { width: fullWidth, height: stage ? H0 : roomH }]} accessibilityHint={stage ? undefined : '좌우로 끌면 방을 둘러볼 수 있어요'}>
+      <View style={[st.room, { width: fullWidth, height: H0 }, !stage && { backgroundColor: ART.roomFloor }]} accessibilityHint={stage ? undefined : '좌우로 끌면 방을 둘러볼 수 있어요'}>
         <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: ROOM.width * sc, height: ROOM.height * sc }, worldStyle]}>
           <Image source={ROOM.background} style={StyleSheet.absoluteFill} contentFit="cover" loading="eager" />
           {cab.map((j, i) => {
@@ -399,75 +398,70 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
       <SpaceChips space="room" extra={roomBtn} />
       {nav && <View style={[st.switchWrap, { top: switchTop }]}><SpaceSwitch nav={nav} style={st.switch} /></View>}
 
-      {/* 하마 무대 아래: 오늘의 쪽지 한 줄(H2) + 입력 알약(H1). 기록 축하 중엔 비켜 줌 */}
-      {stage && !rec && !composing && (
-        <>
-          {latest && (
-            <GestureDetector gesture={peekPan}>
-              <Pressable onPress={() => setNotesOpen(true)} style={[st.peek, { bottom: peekBottom }]} accessibilityRole="button" accessibilityLabel={`오늘의 쪽지 ${todayCount}가지, 눌러서 펼치기`}>
-                <Text style={st.peekTitle}>오늘의 쪽지 {todayCount}</Text>
-                <Text style={st.peekText} numberOfLines={1}>{`  ·  ${latest.text}`}</Text>
-                <Icon name="chevronUp" size={18} color={C.muted} />
-              </Pressable>
-            </GestureDetector>
-          )}
-          <Pressable onPress={() => setComposing(true)} style={[st.pill, { bottom: composerBottom }]} accessibilityRole="button" accessibilityLabel="오늘 해낸 일 적기">
-            <Text style={st.pillText} numberOfLines={1}>{text.trim() || '오늘 해낸 거, 아무리 작아도 좋아'}</Text>
-            <View style={st.sendSm}><Icon name="plus" size={22} color={C.white} stroke={2.2} /></View>
+      {/* 하마 무대 아래: 오늘의 쪽지 한 줄(H2). 기록 축하 중·입력 중엔 비켜 줌 */}
+      {stage && !rec && !composing && latest && (
+        <GestureDetector gesture={peekPan}>
+          <Pressable onPress={() => setNotesOpen(true)} style={[st.peek, { bottom: peekBottom }]} accessibilityRole="button" accessibilityLabel={`오늘의 쪽지 ${todayCount}가지, 눌러서 펼치기`}>
+            <Text style={st.peekTitle}>오늘의 쪽지 {todayCount}</Text>
+            <Text style={st.peekText} numberOfLines={1}>{`· ${latest.text}`}</Text>
+            <Icon name="chevronUp" size={18} color={C.muted} />
           </Pressable>
-        </>
+        </GestureDetector>
       )}
 
-      {/* H1 펼친 입력: 키보드 바로 위 카드 (오늘/어제·예시 칩·분류는 지금과 같음). 바깥 누르면 접힘(적던 글은 남음) */}
+      {/* H1 입력: 알약 그 자리에서 바로 적음 (새 창 없음, 대표 피드백 2026-11-16). 적는 동안만 키보드 위로 올라가고
+          바로 위에 오늘/어제·예시(빈칸일 때)·분류(적었을 때) 작은 칩이 뜸. 바깥 누르면 키보드만 내려감(적던 글은 남음) */}
       {stage && composing && (
-        <>
-          <Pressable style={[StyleSheet.absoluteFill, st.composeScrim]} onPress={() => { Keyboard.dismiss(); setComposing(false); }} accessibilityLabel="입력 접기" />
-          <View style={[st.composer, { bottom: kb ? kb + 8 : composerBottom }]}>
-            <View style={st.dayRow}>
-              {(['today', 'yesterday'] as const).map((d) => (
-                <Pressable key={d} onPress={() => setDay(d)} style={[st.dayBtn, day === d && st.dayOn]} accessibilityRole="radio" accessibilityState={{ selected: day === d }}>
-                  <Text style={[st.dayText, day === d && st.dayTextOn]}>{d === 'today' ? '오늘' : '어제'}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={st.row}>
-              <TextInput
-                style={st.input} value={text} onChangeText={(v) => { setText(v); setErr(''); }} autoFocus
-                placeholder="예) 침대 정리했다" placeholderTextColor={C.placeholder} maxLength={100} returnKeyType="done"
-                onSubmitEditing={() => submit()} accessibilityLabel="오늘 해낸 일" editable={!busy}
-              />
-              <Pressable onPress={() => submit()} disabled={!text.trim() || busy} accessibilityRole="button" accessibilityLabel="기록"
-                style={({ pressed }) => [st.send, (!text.trim() || busy) && { opacity: 0.4 }, pressed && { transform: [{ scale: 0.95 }] }]}>
-                {busy ? <ActivityIndicator color={C.white} /> : <Icon name="send" size={24} color={C.white} stroke={2.2} />}
-              </Pressable>
-            </View>
-            {text.trim() ? (
-              <View style={st.catLine}>
-                <Text style={st.catText}><Text style={{ color: C.ink, fontWeight: '700' }}>{CATS[k].name}</Text> 동작을 할 거예요 · </Text>
-                <Pressable onPress={() => setPicking((p) => !p)} accessibilityRole="button"><Text style={st.change}>바꾸기</Text></Pressable>
-              </View>
-            ) : null}
-            {picking && (
-              <View style={st.chips}>
-                {CATEGORY_ORDER.map((c) => (
-                  <Pressable key={c} onPress={() => { setChosen(c); setPicking(false); }} style={[st.chip, k === c && st.chipOn]}>
-                    <Text style={[st.chipText, k === c && st.chipTextOn]}>{CATS[c].name}</Text>
+        <Pressable style={[StyleSheet.absoluteFill, { zIndex: 29 }]} onPress={() => Keyboard.dismiss()} accessibilityLabel="입력 닫기" />
+      )}
+      {stage && !rec && (
+        <View style={[st.inputDock, { bottom: composing && kb ? kb + 8 : composerBottom }]}>
+          {composing && (
+            <View style={st.assist}>
+              {err ? <Text style={st.errPill}>{err}</Text> : null}
+              {picking && (
+                <View style={st.assistRow}>
+                  {CATEGORY_ORDER.map((c) => (
+                    <Pressable key={c} onPress={() => { setChosen(c); setPicking(false); }} style={[st.chip, st.chipFloat, k === c && st.chipOn]}>
+                      <Text style={[st.chipText, k === c && st.chipTextOn]}>{CATS[c].name}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={st.assistLine}>
+                {(['today', 'yesterday'] as const).map((d) => (
+                  <Pressable key={d} onPress={() => setDay(d)} style={[st.chip, st.chipFloat, day === d && st.chipOn]} accessibilityRole="radio" accessibilityState={{ selected: day === d }}>
+                    <Text style={[st.chipText, day === d && st.chipTextOn]}>{d === 'today' ? '오늘' : '어제'}</Text>
                   </Pressable>
                 ))}
-              </View>
-            )}
-            {!text.trim() && (
-              <View style={st.chips}>
-                {CHIPS.map((c) => (
-                  <Pressable key={c} onPress={() => submit(c)} style={st.chip} accessibilityRole="button" disabled={busy}>
-                    <Text style={st.chipText}>{c}</Text>
+                <View style={st.assistSep} />
+                {text.trim() ? (
+                  <Pressable onPress={() => setPicking((v) => !v)} style={[st.chip, st.chipFloat]} accessibilityRole="button" accessibilityLabel={`${CATS[k].name} 동작, 눌러서 바꾸기`}>
+                    <Text style={st.chipText}><Text style={{ fontWeight: '800' }}>{CATS[k].name}</Text> 동작 · <Text style={st.change}>바꾸기</Text></Text>
                   </Pressable>
-                ))}
-              </View>
-            )}
-            {err ? <Text style={st.err}>{err}</Text> : null}
+                ) : (
+                  CHIPS.map((c) => (
+                    <Pressable key={c} onPress={() => submit(c)} style={[st.chip, st.chipFloat]} accessibilityRole="button" disabled={busy}>
+                      <Text style={st.chipText}>{c}</Text>
+                    </Pressable>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          )}
+          <View style={st.pill}>
+            <TextInput
+              style={st.pillInput} value={text} onChangeText={(v) => { setText(v); setErr(''); }}
+              onFocus={() => setComposing(true)} onBlur={() => { setComposing(false); setPicking(false); }}
+              placeholder="오늘 해낸 거, 아무리 작아도 좋아" placeholderTextColor={C.placeholder} maxLength={100} returnKeyType="done"
+              onSubmitEditing={() => submit()} accessibilityLabel="오늘 해낸 일" editable={!busy}
+            />
+            <Pressable onPress={() => submit()} disabled={!text.trim() || busy} accessibilityRole="button" accessibilityLabel="기록"
+              style={({ pressed }) => [st.sendSm, (!text.trim() || busy) && { opacity: 0.4 }, pressed && { transform: [{ scale: 0.95 }] }]}>
+              {busy ? <ActivityIndicator color={C.white} /> : <Icon name="send" size={20} color={C.white} stroke={2.2} />}
+            </Pressable>
           </View>
-        </>
+        </View>
       )}
 
       {/* H3 방 보기: 아래 버튼 줄 — 수확 바구니(있을 때) + 꾸미기 */}
@@ -553,14 +547,19 @@ const st = StyleSheet.create({
   recText: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: C.ink },
   peek: { position: 'absolute', left: 16, right: 16, height: PEEK_H, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderRadius: R.card, backgroundColor: C.card, zIndex: 10 },
   peekTitle: { fontSize: 13.5, fontWeight: '800', color: C.ink },
-  peekText: { flex: 1, fontSize: 13.5, color: C.muted, marginRight: 6 },
-  pill: { position: 'absolute', left: 16, right: 16, height: H.input, flexDirection: 'row', alignItems: 'center', paddingLeft: 22, paddingRight: 7, borderRadius: R.pill, backgroundColor: C.card, zIndex: 10 },
-  pillText: { flex: 1, fontSize: 15, color: C.placeholder },
+  peekText: { flex: 1, fontSize: 13.5, color: C.muted, marginLeft: 6, marginRight: 6 },
+  inputDock: { position: 'absolute', left: 16, right: 16, zIndex: 31 },
+  assist: { gap: 8, marginBottom: 8 },
+  assistRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
+  assistLine: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  assistSep: { width: 1, height: 20, backgroundColor: C.divider, marginHorizontal: 2 },
+  chipFloat: { backgroundColor: C.card },
+  errPill: { alignSelf: 'flex-start', backgroundColor: C.card, color: C.danger, fontSize: 13, borderRadius: R.pill, paddingVertical: 8, paddingHorizontal: 14, overflow: 'hidden' },
+  pill: { height: H.input, flexDirection: 'row', alignItems: 'center', paddingLeft: 6, paddingRight: 7, borderRadius: R.pill, backgroundColor: C.card },
+  pillInput: { flex: 1, minWidth: 0, height: H.input, fontSize: 15.5, paddingHorizontal: 16, color: C.ink, outlineWidth: 0 }, // outlineWidth: 웹 포커스 테두리 없앰
   sendSm: { width: 42, height: 42, borderRadius: R.pill, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
-  composeScrim: { backgroundColor: C.composeScrim, zIndex: 30 },
-  composer: { position: 'absolute', left: 8, right: 8, backgroundColor: C.bg, borderRadius: R.cardLg, padding: 16, zIndex: 31 },
   roomBar: { position: 'absolute', left: 0, right: 0, height: ROOM_BAR, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 16 },
-  barBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 46, paddingHorizontal: 18, borderRadius: R.pill, backgroundColor: C.accentBg },
+  barBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 46, paddingHorizontal: 18, borderRadius: R.pill, backgroundColor: C.card },
   barMain: { backgroundColor: C.accent },
   barText: { fontSize: 14, fontWeight: '800', color: C.accentInk },
   bagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, backgroundColor: C.card, borderRadius: R.card, padding: 10, paddingLeft: 12 },
