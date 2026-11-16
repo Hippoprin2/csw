@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { ActivityIndicator, AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type LayoutChangeEvent } from 'react-native';
+import { ActivityIndicator, AppState, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,15 +49,17 @@ const store = {
 // 2026-11-16 홈 '하마 무대' (대표 결정 H1~H4, design/home_stage/README.md):
 // - 'stage'(기본): 뿌옇게 흐린 방 위에 단짝을 크게. 입력은 알약 한 줄(누르면 펼침), 오늘의 쪽지는 아래 한 줄(누르거나 끌어올리면 시트)
 // - 'room'(씨앗 칩 옆 '방' 버튼): 흐림이 걷히고 예전 방 그대로 — 끌어 둘러보기·유리장·꽃병·수확 바구니·꾸미기
-export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {}) {
+export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: SpaceNav; pageH?: number } = {}) {
   const { jars, profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
   const [mode, setMode] = useState<'stage' | 'room'>('stage');
   const { fullWidth } = useSpaceSize();
   const insets = useSafeAreaInsets();
-  const [pageH, setPageH] = useState(0);
-  const onLayout = (e: LayoutChangeEvent) => { const h = Math.round(e.nativeEvent.layout.height); if (h && h !== pageH) setPageH(h); };
-  const H0 = pageH || 760;
+  // 페이지 높이는 index가 잰 값(pageH)을 받음. 여기서 onLayout으로 재면 웹에서 한 번도 안 불려(GestureDetector 아래) 기본 760으로
+  // 그려져 실제 화면(예: 사파리 665)보다 커지고, 사파리가 넘친 만큼 위로 밀어 날짜·씨앗 칩이 잘렸음 (대표 폰 2026-11-16)
+  const { height: winH } = useWindowDimensions();
+  // 웹: 사파리 주소창·툴바가 접히고 펴질 때 index의 onLayout이 늦거나 안 와서 창 높이를 바로 씀 (탭 화면은 창 전체를 채움)
+  const H0 = Platform.OS === 'web' ? winH : pageH || winH;
   const switchTop = insets.top + 8 + H.chip + 8;
   const belowSwitch = switchTop + SWITCH_H + 10;
   // 그림 배율: 무대 = 페이지 전체를 덮게(흐린 배경), 방 보기 = 1080 창 세로가 아래 버튼 줄·탭 바 위에서 끝나게 (단짝 발이 안 가려지게)
@@ -354,7 +356,7 @@ export function RoomPage({ pager, nav }: { pager?: Pager; nav?: SpaceNav } = {})
 
   return (
     <GestureDetector gesture={pagePan}>
-    <View ref={wrapRef} style={st.wrap} onLayout={onLayout}>
+    <View ref={wrapRef} style={st.wrap}>
       <GestureDetector gesture={roomGesture}>
       <View style={[st.room, { width: fullWidth, height: H0 }, !stage && { backgroundColor: ART.roomFloor }]} accessibilityHint={stage ? undefined : '좌우로 끌면 방을 둘러볼 수 있어요'}>
         <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: ROOM.width * sc, height: ROOM.height * sc }, worldStyle]}>

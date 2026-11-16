@@ -137,7 +137,7 @@ export default function Spaces() {
             onMomentumScrollEnd={onScrollEnd} onScrollEndDrag={onScrollEnd} scrollEventThrottle={16}
             contentOffset={{ x: w * HOME, y: 0 }} keyboardShouldPersistTaps="handled">
             <View style={{ width: w }}><GardenPage nav={nav} /></View>
-            <View style={{ width: w, height: pageH || undefined }}><RoomPage pager={pager} nav={nav} /></View>
+            <View style={{ width: w, height: pageH || undefined }}><RoomPage pager={pager} nav={nav} pageH={pageH} /></View>
             <View style={{ width: w, height: pageH || undefined }}><YardPage active={page === 2} pager={pager} nav={nav} /></View>
           </Animated.ScrollView>
         )}

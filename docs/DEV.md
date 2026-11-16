@@ -164,3 +164,4 @@
 - 2026-11-16 대표 피드백 반영: (1) 입력 = 알약이 곧 TextInput(새 카드 없음). 포커스되면 키보드 위로 올라가고 바로 위에 작은 칩 한 줄(오늘/어제 | 예시 또는 '분류 동작 · 바꾸기'), 바깥 탭 = 키보드만 내림(글 유지). (2) Sheet 공통(ui/Sheet.tsx, 11곳): Modal slide → 직접 애니메이션 — 그림자는 제자리 페이드, 시트만 올라옴, 아래로 90px 또는 700px/s 끌면 닫힘(Modal 안 GestureHandlerRootView 필요). (3) 방 보기: 방 그림이 화면 전체(그림 아래는 ART.roomFloor #CCA77F로 이어 칠함, 단짝 발이 탭 바에 안 가리게 배율은 그대로), 버튼 줄은 바닥 위에 떠 있음
 - 린트 주의: react-hooks/purity가 submit 안 Date.now()를 '렌더 중 호출'로 오판 → 모듈 함수 nowKey()로 감쌈
 - 웹 테스트판(폰 사파리) 위 칩 잘림: 입력칸 포커스 때 사파리가 문서를 위로 밀고(body overflow hidden이어도) 키보드가 내려가도 안 되돌림 → RoomPage 웹 전용 visualViewport resize·focusout에서 scrollTo(0,0). 크롬 에뮬레이션으로는 재현 안 됨(대표 폰 확인 필요). 네이티브 해당 없음
+- 위 칩 잘림 진짜 원인(2026-11-16): RoomPage가 자기 onLayout으로 높이를 쟀는데 웹에선 GestureDetector 아래라 안 불려 기본 760px로 그려짐 → 사파리 보이는 높이(~665)보다 커서 위로 밀림(입력 전부터). 수정: 웹은 useWindowDimensions 높이, 네이티브는 index가 잰 pageH prop. 화면 높이 665/760 모두 넘침 0 확인
