@@ -165,3 +165,4 @@
 - 린트 주의: react-hooks/purity가 submit 안 Date.now()를 '렌더 중 호출'로 오판 → 모듈 함수 nowKey()로 감쌈
 - 웹 테스트판(폰 사파리) 위 칩 잘림: 입력칸 포커스 때 사파리가 문서를 위로 밀고(body overflow hidden이어도) 키보드가 내려가도 안 되돌림 → RoomPage 웹 전용 visualViewport resize·focusout에서 scrollTo(0,0). 크롬 에뮬레이션으로는 재현 안 됨(대표 폰 확인 필요). 네이티브 해당 없음
 - 위 칩 잘림 진짜 원인(2026-11-16): RoomPage가 자기 onLayout으로 높이를 쟀는데 웹에선 GestureDetector 아래라 안 불려 기본 760px로 그려짐 → 사파리 보이는 높이(~665)보다 커서 위로 밀림(입력 전부터). 수정: 웹은 useWindowDimensions 높이, 네이티브는 index가 잰 pageH prop. 화면 높이 665/760 모두 넘침 0 확인
+- 입력 때 흰 바탕(2026-11-16): 직전 수정에서 웹 높이를 useWindowDimensions로 썼는데 RN-web은 visualViewport 기준이라 iOS 키보드가 뜨면 줄어듦 → 방이 위 띠만 남음. 수정: 웹은 document.documentElement.clientHeight(키보드 무관, resize·회전만 따라감). visualViewport.height를 330으로 흉내 내도 방 665 유지 확인

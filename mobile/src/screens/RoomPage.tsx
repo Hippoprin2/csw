@@ -38,6 +38,20 @@ const PEEK_H = 44; // 오늘의 쪽지 접힌 한 줄
 const ROOM_BAR = 64; // 방 보기 아래 버튼 줄(바구니·꾸미기) 자리
 const REC_MAX_MS = 12000; // 기록 카드: 동작이 끝나지 않는 경우(로딩 실패)에도 이 뒤엔 걷음
 const nowKey = () => Date.now(); // 동작·씨앗 표시 키 (이벤트 핸들러에서만 부름)
+// 웹 전용: 키보드에 안 줄어드는 레이아웃 높이 (창 크기·회전·사파리 툴바 변화만 따라감)
+function useLayoutViewportHeight() {
+  const read = () => (Platform.OS === 'web' && typeof document !== 'undefined' ? document.documentElement.clientHeight : 0);
+  const [h, setH] = useState(read);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const on = () => setH(document.documentElement.clientHeight);
+    window.addEventListener('resize', on);
+    window.addEventListener('orientationchange', on);
+    return () => { window.removeEventListener('resize', on); window.removeEventListener('orientationchange', on); };
+  }, []);
+  return h;
+}
+
 let keptCamX: number = ROOM.view.start_x; // 둘러본 위치 유지 (앱을 켜 둔 동안). 처음엔 단짝 가운데(= 예전 방)
 
 const store = {
@@ -58,8 +72,10 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
   // 페이지 높이는 index가 잰 값(pageH)을 받음. 여기서 onLayout으로 재면 웹에서 한 번도 안 불려(GestureDetector 아래) 기본 760으로
   // 그려져 실제 화면(예: 사파리 665)보다 커지고, 사파리가 넘친 만큼 위로 밀어 날짜·씨앗 칩이 잘렸음 (대표 폰 2026-11-16)
   const { height: winH } = useWindowDimensions();
-  // 웹: 사파리 주소창·툴바가 접히고 펴질 때 index의 onLayout이 늦거나 안 와서 창 높이를 바로 씀 (탭 화면은 창 전체를 채움)
-  const H0 = Platform.OS === 'web' ? winH : pageH || winH;
+  // 웹: 창 높이를 바로 씀. 단 useWindowDimensions(=visualViewport)는 키보드가 뜨면 줄어들어 방 그림이 위쪽 띠만 남고
+  // 아래가 흰 바탕이 됐음(대표 폰 2026-11-16) → 키보드와 무관한 레이아웃 높이(documentElement.clientHeight)를 씀
+  const webH = useLayoutViewportHeight();
+  const H0 = Platform.OS === 'web' ? webH || winH : pageH || winH;
   const switchTop = insets.top + 8 + H.chip + 8;
   const belowSwitch = switchTop + SWITCH_H + 10;
   // 그림 배율: 무대 = 페이지 전체를 덮게(흐린 배경), 방 보기 = 1080 창 세로가 아래 버튼 줄·탭 바 위에서 끝나게 (단짝 발이 안 가려지게)
