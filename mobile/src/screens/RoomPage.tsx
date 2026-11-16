@@ -586,7 +586,7 @@ const st = StyleSheet.create({
   chipFloat: { backgroundColor: C.card },
   errPill: { alignSelf: 'flex-start', backgroundColor: C.card, color: C.danger, fontSize: 13, borderRadius: R.pill, paddingVertical: 8, paddingHorizontal: 14, overflow: 'hidden' },
   pill: { height: H.input, flexDirection: 'row', alignItems: 'center', paddingLeft: 6, paddingRight: 7, borderRadius: R.pill, backgroundColor: C.card },
-  pillInput: { flex: 1, minWidth: 0, height: H.input, fontSize: 15.5, paddingHorizontal: 16, color: C.ink, outlineWidth: 0 }, // outlineWidth: 웹 포커스 테두리 없앰
+  pillInput: { flex: 1, minWidth: 0, height: H.input, fontSize: 15.5, paddingHorizontal: 16, color: C.ink, outlineWidth: 0, outlineStyle: 'none' }, // 웹 포커스 파란 테두리 없앰 (사파리는 outlineWidth만으론 남음)
   sendSm: { width: 42, height: 42, borderRadius: R.pill, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
   roomBar: { position: 'absolute', left: 0, right: 0, height: ROOM_BAR, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 16 },
   barBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 46, paddingHorizontal: 18, borderRadius: R.pill, backgroundColor: C.card },
