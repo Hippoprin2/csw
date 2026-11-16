@@ -68,7 +68,7 @@
 - 주의: Supabase Auth는 사설 IP 리다이렉트(exp://192.168.x.x…)를 허용 목록에 있어도 거부하고 site_url(csw://)로 보낸다 → OAuth redirectTo는 항상 `csw://auth/callback` (iOS 인증 창이 가로챔). 확인법: admin generate_link에 redirect_to 넣고 돌려받은 redirect_to 비교. (2026-11-08 Apple·카카오 계정 생성은 서버에서 확인)
 - [ ] Apple: 코드·Supabase 설정 완료. Expo Go 실기기 테스트 필요. TestFlight/스토어는 Apple Developer 가입 후
 - [ ] 개인정보처리방침·이용약관 페이지, 문의 메일 → `EXPO_PUBLIC_PRIVACY_URL / TERMS_URL / CONTACT_EMAIL`
-- [ ] 구독(7일 체험 → 월 3,000원) 결제 연동 — 사업자등록 후. 구독 끝나도 기록 보기·내보내기·삭제, 펫·방, 안전장치는 무료 유지(STATUS 결정)
+- [ ] 구독(가입 후 14일 무료, 카드 없이 → 월 3,000원 / 연 24,000원 — 2026-11-16 결정, MONETIZATION.md) 결제 연동 — 사업자등록 후. 구독 끝나도 기록 보기·내보내기·삭제, 펫·방, 안전장치는 무료 유지(STATUS 결정)
 - [ ] continue/kill 지표용 SQL(D1/D7 재방문, 1인당 주간 기록 수) — `app_events` 기반
 - [ ] 소품 목록·가격 확정(WORLD 스레드) → `items` 테이블 갱신, 방 배치 `mobile/src/data/itemSlots.ts`
 - [ ] 최종 캐릭터 에셋(CHARACTER 스레드) → `Pet.tsx` 교체
@@ -102,7 +102,7 @@
 ### 3단계 — 출시 준비 (외부 조건 많음)
 - 이름·도메인 → Resend 메일(6자리 코드), 개인정보처리방침·약관 페이지
 - Apple Developer 가입 → EAS 개발 빌드 → 카카오 공식 SDK(이메일·닉네임만), TestFlight
-- 사업자등록 → 구독(7일 체험 → 월 3,000원). 결제 연동은 RevenueCat + StoreKit 추천, 구독 끝나도 무료로 남길 것(기록 보기·내보내기·삭제, 펫·방, 안전장치) 반영
+- 사업자등록 → 구독(가입 후 14일 무료, 카드 없이 → 월 3,000원 / 연 24,000원 — 2026-11-16 결정, MONETIZATION.md). 결제 연동은 RevenueCat + StoreKit 추천, 구독 끝나도 무료로 남길 것(기록 보기·내보내기·삭제, 펫·방, 안전장치) 반영
 - 처음 보는 문장으로 안전 감지 재평가, D1/D7·주간 기록 수 SQL, 스토어 자료(스크린샷·설명)
 
 ### 4단계 — 첫 업데이트
