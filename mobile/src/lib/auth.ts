@@ -1,6 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
+import * as Device from 'expo-device';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
@@ -22,6 +23,13 @@ export async function sessionFromUrl(url: string) {
     if (part) new URLSearchParams(part).forEach((v, k) => { params[k] = v; });
   }
   if (params.error) throw new Error(params.error_description || params.error);
+  // 시뮬레이터 테스트 로그인 (개발 전용): EXPO_PUBLIC_SIM_TEST=1로 빌드한 앱 + 시뮬레이터(실기기 아님)에서만.
+  // scripts/sim_login.py가 테스트 계정 refresh_token을 csw://auth/callback?sim_refresh=… 로 넘김. 스토어 빌드엔 이 값이 없어 꺼짐
+  if (process.env.EXPO_PUBLIC_SIM_TEST === '1' && !Device.isDevice && params.sim_refresh) {
+    const { error } = await supabase.auth.refreshSession({ refresh_token: params.sim_refresh });
+    if (error) throw error;
+    return true;
+  }
   // code만 받는다(PKCE). 이 기기가 로그인을 시작할 때 만든 검증값이 있어야 교환되므로,
   // 남이 만든 링크로는 세션이 바뀌지 않는다. 링크에 실린 access_token은 일부러 무시한다.
   if (!params.code) return false;
