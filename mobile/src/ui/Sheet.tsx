@@ -73,14 +73,16 @@ export function Sheet({ visible, onClose, children, locked }: { visible: boolean
 }
 
 // 확인 시트: 주 버튼(민트 알약, 위험 동작이면 위험색 글자) 위, 취소(글자 버튼) 아래
-export function Confirm({ visible, title, body, confirm, danger, onConfirm, onCancel }: {
+export function Confirm({ visible, title, body, confirm, danger, onConfirm, onCancel, link }: {
   visible: boolean; title: string; body?: string; confirm: string; danger?: boolean; onConfirm: () => void; onCancel: () => void;
+  link?: { title: string; onPress: () => void }; // 본문 아래 보조 버튼 (예: 계정 삭제 전 구독 관리)
 }) {
   return (
     <Sheet visible={visible} onClose={onCancel}>
       <Text style={st.title}>{title}</Text>
       {body ? <Text style={st.body}>{body}</Text> : null}
       <View style={st.col}>
+        {link ? <Btn title={link.title} kind="ghost" onPress={link.onPress} /> : null}
         <Btn title={confirm} kind={danger ? 'danger' : 'primary'} onPress={onConfirm} />
         <Btn title="취소" kind="ghost" onPress={onCancel} />
       </View>

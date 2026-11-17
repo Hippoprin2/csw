@@ -43,8 +43,8 @@ async function memberSession() { // 이미 있는 계정 (온보딩 끝, 기록 
   const otp = link.email_otp ?? link.properties?.email_otp;
   const [, s] = await sb('POST', '/auth/v1/verify', { type: 'email', email, token: otp });
   made.add(s.user.id);
-  const now = new Date().toISOString();
-  await sb('PATCH', `/rest/v1/profiles?id=eq.${s.user.id}`, { pet_name: '두부', consented_at: now, sensitive_consented_at: now, onboarded_at: now }, s.access_token);
+  await sb('PATCH', `/rest/v1/profiles?id=eq.${s.user.id}`, { pet_name: '두부' }, s.access_token);
+  await sb('POST', '/rest/v1/rpc/give_consent', { p_version: '2026-11-18', p_onboard: true }, s.access_token);
   await sb('POST', '/rest/v1/rpc/record_win', { p_text: '예전에 쓴 기록', p_category: 'cheer' }, s.access_token);
   return s;
 }
@@ -188,8 +188,10 @@ async function main() {
   check('⑧ 알림 문구에 무료 끝 안내', await hasText('무료 이용이 끝나기 이틀 전에도 날짜를 알려줄게'));
   await shot('o8_notif', '⑧ 알림 시트 1장', 900);
   const [, p1] = await admin('GET', `/rest/v1/profiles?id=eq.${s0.user.id}&select=trial_ends_at,onboarded_at`);
-  const days = (new Date(p1[0].trial_ends_at) - Date.now()) / 86400000;
-  check('가입 때 무료 종료일 = 14일 뒤', days > 13.9 && days < 14.1, p1);
+  // 가입 + 14일인 날의 끝(다음 0시 KST) — 2026-11-18
+  const kst = new Date(Date.now() + 9 * 3600000); kst.setUTCHours(0, 0, 0, 0);
+  const want = kst.getTime() + 15 * 86400000 - 9 * 3600000;
+  check('가입 때 무료 종료일 = 14일째 24시(KST)', new Date(p1[0].trial_ends_at).getTime() === want, p1);
   await tap('괜찮아');
 
   // 기존 계정 충돌: 새 익명으로 첫 기록 → 이미 있는 계정으로 로그인 → 첫 기록 옮김

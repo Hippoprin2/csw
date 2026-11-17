@@ -31,8 +31,18 @@ def member(onboard=True):
     made.append(uid)
     if onboard:
         now = datetime.now(timezone.utc).isoformat()
-        req('PATCH', f'/rest/v1/profiles?id=eq.{uid}', {'consented_at': now, 'sensitive_consented_at': now, 'onboarded_at': now, 'pet_name': '두부'}, token=T)
+        req('PATCH', f'/rest/v1/profiles?id=eq.{uid}', {'pet_name': '두부'}, token=T)
+        consent(T, onboard=True)
     return T, uid
+
+def consent(T, onboard=False):  # 동의 칸은 서버 함수로만 (2026-11-18)
+    s, r = req('POST', '/rest/v1/rpc/give_consent', {'p_version': '2026-11-18', 'p_onboard': onboard}, token=T)
+    assert s in (200, 204), (s, r)
+
+def trial_end_for(t):  # 가입 + 14일을 그날 24시(KST)로 올림
+    k = timezone(timedelta(hours=9))
+    d = (t.astimezone(k) + timedelta(days=14)).date() + timedelta(days=1)
+    return datetime(d.year, d.month, d.day, tzinfo=k)
 
 def prof(uid):
     return req('GET', f'/rest/v1/profiles?id=eq.{uid}&select=*', token=SERVICE, key=SERVICE)[1][0]
@@ -52,11 +62,20 @@ try:
     s, u = req('GET', '/auth/v1/user', token=TA); check('익명 로그인 (is_anonymous)', u.get('is_anonymous') is True, u)
     check('익명도 프로필 생성, 무료 기간 아직 없음', prof(A)['trial_ends_at'] is None, prof(A))
     now = datetime.now(timezone.utc).isoformat()
-    s, _ = req('PATCH', f'/rest/v1/profiles?id=eq.{A}', {'pet_name': '콩이', 'consented_at': now, 'sensitive_consented_at': now}, token=TA)
-    check('익명: 이름·동의 저장', s in (200, 204) and prof(A)['pet_name'] == '콩이', s)
+    s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '이불 갰다', 'p_category': 'tidy'}, token=TA)
+    check('동의 전: 기록 거절 (consent_required)', s >= 400 and 'consent_required' in str(r), (s, r))
+    s, r = req('POST', '/functions/v1/classify', {'text': '물 한 잔 마셨다'}, token=TA)
+    check('동의 전: AI 분류 안 보냄', s >= 400 and s != 429, (s, r))
+    s, _ = req('PATCH', f'/rest/v1/profiles?id=eq.{A}', {'consented_at': now}, token=TA)
+    check('동의 칸 직접 PATCH 불가', s >= 400, s)
+    s, _ = req('PATCH', f'/rest/v1/profiles?id=eq.{A}', {'pet_name': '콩이'}, token=TA)
+    consent(TA)
+    check('익명: 이름·동의(판 포함) 저장', s in (200, 204) and prof(A)['pet_name'] == '콩이' and prof(A)['consent_version'] == '2026-11-18', s)
     s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '이불 갰다', 'p_category': 'tidy'}, token=TA)
     check('익명: 첫 기록 +3', s == 200 and r['earned'] == 3 and r['first'], r)
     a_win = r['win']['id']
+    s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '물 마셨다', 'p_category': 'eat'}, token=TA)
+    check('익명: 두 번째 기록은 가입 뒤 (signup_required)', s >= 400 and 'signup_required' in str(r), (s, r))
     s, r = req('POST', '/functions/v1/classify', {'text': '물 한 잔 마셨다'}, token=TA)
     check('익명: 분류 함수', s == 200 and r.get('category'), (s, r))
     s, _ = req('POST', '/rest/v1/app_events', {'user_id': A, 'name': 'ob_first_win', 'props': {'category': 'tidy'}}, token=TA)
@@ -87,7 +106,8 @@ try:
         mgmt_sql(f"update auth.users set is_anonymous = false where id = '{A}'")
     p = prof(A)
     te = datetime.fromisoformat(p['trial_ends_at'].replace('Z', '+00:00')) if p['trial_ends_at'] else None
-    check('연결 시 무료 종료일 = 지금+14일', te and abs((te - datetime.now(timezone.utc)) - timedelta(days=14)) < timedelta(minutes=5), p)
+    check('연결 시 무료 종료일 = 지금+14일을 그날 24시(KST)로', te and te == trial_end_for(datetime.now(timezone.utc)), (p, trial_end_for(datetime.now(timezone.utc))))
+    check('연결 시 가입 시각 저장', p['signed_up_at'] is not None, p)
     check('연결 시 온보딩 완료', p['onboarded_at'] is not None, p)
     s, b = req('POST', '/rest/v1/rpc/seed_balance', {}, token=SERVICE, key=SERVICE)
     s, rows = req('GET', f'/rest/v1/seed_ledger?user_id=eq.{A}&select=delta,reason', token=SERVICE, key=SERVICE)
@@ -98,7 +118,7 @@ try:
     TM, M = member()
     req('POST', '/rest/v1/rpc/record_win', {'p_text': '예전 기록', 'p_category': 'cheer'}, token=TM)
     TC, C = anon()
-    req('PATCH', f'/rest/v1/profiles?id=eq.{C}', {'pet_name': '새이름', 'consented_at': now}, token=TC)
+    req('PATCH', f'/rest/v1/profiles?id=eq.{C}', {'pet_name': '새이름'}, token=TC); consent(TC)
     s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '물 한 잔 마셨다', 'p_category': 'eat'}, token=TC)
     s, r = req('POST', '/functions/v1/claim-anon', {'anon_token': TM}, token=TM); check('claim: 익명 아닌 토큰 거부', s >= 400, (s, r))
     s, r = req('POST', '/functions/v1/claim-anon', {'anon_token': TC}, token=TB); check('claim: 익명 계정끼리 거부', s >= 400, (s, r))
@@ -114,7 +134,7 @@ try:
     # 새로 만든 계정(온보딩 전)으로 로그인 → 가입과 같게
     TN, N = member(onboard=False)
     TD, D = anon()
-    req('PATCH', f'/rest/v1/profiles?id=eq.{D}', {'pet_name': '말랑', 'consented_at': now, 'sensitive_consented_at': now}, token=TD)
+    req('PATCH', f'/rest/v1/profiles?id=eq.{D}', {'pet_name': '말랑'}, token=TD); consent(TD)
     req('POST', '/rest/v1/rpc/record_win', {'p_text': '10분 산책', 'p_category': 'move'}, token=TD)
     s, r = req('POST', '/functions/v1/claim-anon', {'anon_token': TD}, token=TN)
     p = prof(N)
@@ -124,9 +144,13 @@ try:
 
     # ── 7일 지난 익명 계정 자동 삭제
     TE, E = anon()
+    req('POST', '/rest/v1/app_events', {'user_id': E, 'name': 'ob_test_left', 'props': {}}, token=TE)
     if mgmt_sql(f"update auth.users set created_at = now() - interval '8 days' where id = '{E}'") is not None:
         mgmt_sql('select public.purge_stale_anon()')
         s, u = req('GET', f'/auth/v1/admin/users/{E}', token=SERVICE, key=SERVICE); check('7일 지난 익명 계정 삭제', s == 404, s)
+        ev = mgmt_sql("select user_id::text from public.app_events where name = 'ob_test_left'")
+        check('삭제된 익명 계정의 이벤트는 남고 누구 것인지만 바뀜 (B1)', ev and all(e['user_id'] != E for e in ev), ev)
+        mgmt_sql("delete from public.app_events where name = 'ob_test_left'")
         s, u = req('GET', f'/auth/v1/admin/users/{B}', token=SERVICE, key=SERVICE); check('새 익명 계정은 안 지움', s == 200, s)
         jobs = mgmt_sql("select schedule from cron.job where jobname = 'purge-stale-anon'")
         check('매일 삭제 예약(pg_cron)', jobs and jobs[0]['schedule'] == '17 3 * * *', jobs)
@@ -136,6 +160,7 @@ try:
         h = hashlib.sha256((URL.rstrip('/') + ip).encode()).hexdigest()
         kday = datetime.now(timezone(timedelta(hours=9))).date().isoformat()
         mgmt_sql(f"insert into public.classify_ip_usage values ('{h}', '{kday}', 40) on conflict (ip_hash, day) do update set count = 40")
+        consent(TB)
         s, r = req('POST', '/functions/v1/classify', {'text': '설거지 했다'}, token=TB); check('IP 한도 넘으면 익명 분류 429', s == 429, (s, r))
         s, r = req('POST', '/functions/v1/classify', {'text': '설거지 했다'}, token=TM); check('정식 계정은 IP 한도 안 받음', s == 200, (s, r))
         mgmt_sql(f"delete from public.classify_ip_usage where ip_hash = '{h}'")

@@ -16,7 +16,7 @@ import { C } from '@/ui/theme';
 const CELEBRATE_MS = 3600; // 축하 동작·'+3 씨앗'을 보고 나서 시트
 const SAFETY_MS = 7000; // 자해 감지(곁에 앉기 + 말풍선)면 더 오래 기다림
 
-// 무료 끝 날짜: 가입한 날 + 14일 (서버 trial_ends_at = 연결 시각 + 14일과 같은 날)
+// 무료 끝 날짜: 가입한 날 + 14일 (서버 trial_ends_at = 연결 시각 + 14일을 그날 24시 KST로 올림 → 이 날짜 끝까지)
 function trialEndLabel() {
   const d = new Date(Date.now() + 14 * 86400000 + 9 * 3600000); // KST
   return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;

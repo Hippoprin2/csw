@@ -14,6 +14,11 @@ import { Confirm, Sheet, st as sheetSt } from '@/ui/Sheet';
 import { openLegal } from '@/lib/legal';
 import { C, H as HT, R, TAB_SPACE } from '@/ui/theme';
 
+// 스토어 구독 관리 (계정을 지워도 스토어 구독은 따로 해지해야 결제가 멈춤 — 2026-11-18 B3)
+const SUBSCRIPTIONS_URL = Platform.OS === 'android'
+  ? 'https://play.google.com/store/account/subscriptions'
+  : 'https://apps.apple.com/account/subscriptions';
+
 const CONTACT = process.env.EXPO_PUBLIC_CONTACT_EMAIL;
 const HOURS = Array.from({ length: 17 }, (_, i) => `${String(i + 7).padStart(2, '0')}:00`); // 07~23시
 
@@ -155,7 +160,8 @@ export default function Settings() {
         onConfirm={() => setStep('wins2')} onCancel={() => setStep(null)} />
       <Confirm visible={step === 'wins2'} title="정말 지울까?" body="지운 기록은 되돌릴 수 없어. 먼저 내보내기로 저장해둘 수 있어." confirm="모두 지우기" danger
         onConfirm={deleteAllWins} onCancel={() => setStep(null)} />
-      <Confirm visible={step === 'acct1'} title="계정을 삭제할까?" body="기록, 단짝, 방, 씨앗이 모두 바로 삭제돼." confirm="다음" danger
+      <Confirm visible={step === 'acct1'} title="계정을 삭제할까?" body={"기록, 단짝, 방, 씨앗이 모두 바로 삭제돼.\n구독 중이라면 계정을 지워도 결제는 멈추지 않아. 구독 관리에서 먼저 해지해 줘."} confirm="다음" danger
+        link={{ title: '구독 관리 열기', onPress: () => Linking.openURL(SUBSCRIPTIONS_URL) }}
         onConfirm={() => setStep('acct2')} onCancel={() => setStep(null)} />
       <Confirm visible={step === 'acct2'} title="정말 삭제할까?" body="삭제하면 되돌릴 수 없어. 백업에 남은 사본은 보관 기간이 지나면 사라져." confirm="계정 삭제" danger
         onConfirm={deleteAccount} onCancel={() => setStep(null)} />

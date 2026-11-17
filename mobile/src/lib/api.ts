@@ -27,8 +27,14 @@ export type Profile = {
   sensitive_consented_at?: string | null;
   onboarded_at: string | null;
   first_crop_used: boolean;
-  trial_ends_at?: string | null; // 14일 무료 끝 (가입 = 익명 → 정식 연결 때 서버가 저장)
+  trial_ends_at?: string | null; // 무료 끝 = 가입 + 14일을 그날 24시(KST)로 올림 (서버가 저장, 앱은 읽기만)
+  signed_up_at?: string | null; // 가입(정식 연결) 시각
+  consent_version?: string | null; // 동의한 약관·처리방침 판
 };
+// 동의 화면에서 보여 준 약관·처리방침 판. docs/legal을 바꿔 다시 동의받아야 할 때 올림 (서버 give_consent가 저장)
+export const CONSENT_VERSION = '2026-11-18';
+// 기록 권한 (서버 has_access: 테스터 · 무료 끝 전 · 유효한 구독)
+export type AccessState = { access: boolean; tester: boolean; trial_ends_at: string | null; sub_expires_at: string | null; sub_status: string | null };
 export type Item = {
   id: string; name: string; emoji: string; price: number; sort: number;
   space: 'room' | 'yard'; slot: string; layer: 'back' | 'mid' | 'front';
@@ -61,6 +67,9 @@ const ERR_KO: Record<string, string> = {
   yard_locked: '마당이 열리면 살 수 있어.',
   forbidden: '테스트 계정에서만 쓸 수 있어.',
   too_long: '한 줄은 200자까지 남길 수 있어.',
+  subscription_required: '무료 기간이 끝났어. 지난 기록과 방은 그대로야.',
+  signup_required: '계정을 연결하면 계속 기록할 수 있어.',
+  consent_required: '시작하기 전에 안내에 동의해줘.',
 };
 export function friendlyError(e: unknown) {
   const msg = (e as { message?: string })?.message ?? String(e);
@@ -159,6 +168,8 @@ export const api = {
   devAllZones: () => rpc<void>('dev_all_zones'),
   devSeeds: () => rpc<number>('dev_seeds'),
   deleteAccount: () => rpc<void>('delete_my_account'),
+  consent: (onboard = false) => rpc<void>('give_consent', { p_version: CONSENT_VERSION, p_onboard: onboard }),
+  accessState: () => rpc<AccessState>('access_state'),
 
   async classify(text: string): Promise<{ category: Category; self_harm: boolean; harm_others?: boolean } | null> {
     try {

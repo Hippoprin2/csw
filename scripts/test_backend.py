@@ -28,6 +28,10 @@ s, b = req('POST', '/rest/v1/rpc/grant_onboarding_gift', {}, token=T); check('�
 s, b = req('POST', '/rest/v1/rpc/grant_onboarding_gift', {}, token=T); check('선물은 1회만', b == 6, b)
 
 s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '침대 정리했다', 'p_category': 'tidy'}, token=T)
+check('동의 전 기록 거절', s >= 400 and 'consent_required' in str(r), r)
+s, _ = req('POST', '/rest/v1/rpc/give_consent', {'p_version': '2026-11-18'}, token=T); check('동의 (give_consent)', s in (200, 204), s)
+
+s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '침대 정리했다', 'p_category': 'tidy'}, token=T)
 check('첫 기록 +3, first=true', s == 200 and r['earned'] == 3 and r['first'] and r['balance'] == 9, r)
 win_id = r['win']['id']
 

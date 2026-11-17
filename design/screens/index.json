@@ -1,0 +1,74 @@
+[
+ {
+  "file": "01_auth.png",
+  "title": "① 인사"
+ },
+ {
+  "file": "02_auth_email.png",
+  "title": "이미 계정이 있어요 (로그인)"
+ },
+ {
+  "file": "03_onboarding_name.png",
+  "title": "온보딩 · 단짝 이름 짓기"
+ },
+ {
+  "file": "04_onboarding_notice.png",
+  "title": "온보딩 · 시작 전 동의"
+ },
+ {
+  "file": "06b_room_notif_ask.png",
+  "title": "방 · 가입 직후 알림 물어보기"
+ },
+ {
+  "file": "05_room.png",
+  "title": "방 (홈)"
+ },
+ {
+  "file": "06_room_celebrate.png",
+  "title": "방 · 기록 직후 축하"
+ },
+ {
+  "file": "07_room_after.png",
+  "title": "방 · 기록 후 목록"
+ },
+ {
+  "file": "08_garden.png",
+  "title": "텃밭"
+ },
+ {
+  "file": "09_yard_locked.png",
+  "title": "마당 · 잠김 (기록한 날 7일 전)"
+ },
+ {
+  "file": "09_yard.png",
+  "title": "마당 · 열림"
+ },
+ {
+  "file": "10_jar.png",
+  "title": "유리병"
+ },
+ {
+  "file": "11_jar_search.png",
+  "title": "유리병 · 기록 찾기"
+ },
+ {
+  "file": "12_jar_search_result.png",
+  "title": "유리병 · 찾기 결과"
+ },
+ {
+  "file": "13_jar_detail.png",
+  "title": "유리병 · 병 하나 보기"
+ },
+ {
+  "file": "14_shop.png",
+  "title": "꾸미기 (상점)"
+ },
+ {
+  "file": "15_settings.png",
+  "title": "설정"
+ },
+ {
+  "file": "16_help.png",
+  "title": "도움받을 수 있는 곳"
+ }
+]

@@ -29,6 +29,8 @@ def temp_user():
     _, link = req('POST', '/auth/v1/admin/generate_link', {'type': 'magiclink', 'email': email}, token=SERVICE, key=SERVICE)
     otp = link.get('email_otp') or link.get('properties', {}).get('email_otp')
     _, sess = req('POST', '/auth/v1/verify', {'type': 'email', 'email': email, 'token': otp})
+    # 기록·분류는 동의 뒤에만 (2026-11-18 서버 확인). 동의 칸은 give_consent로만
+    req('POST', '/rest/v1/rpc/give_consent', {'p_version': '2026-11-18'}, token=sess['access_token'])
     return sess['access_token'], sess['user']['id']
 
 def delete_user(uid):
