@@ -109,7 +109,7 @@ def settings_free(tag=True):
 
 
 a6 = phone('O6-A ⑥ · 무료 날짜는 가입 시트에서 ← 추천', '가입 버튼 바로 아래에 끝나는 날짜·가격. 결정하기 전에 알게 됨. 가입 뒤 무료 안내 시트는 따로 안 띄움',
-           CEL_BG + sheet(SIGN + '<div class="fine"><b style="color:#4A3226">12월 1일까지 무료</b> · 카드 등록 없음<br>그 뒤 이어 쓰려면 월 3,000원 (그때 골라도 돼)</div>', pad_b=26) + new(300, 470))
+           CEL_BG + sheet(SIGN + '<div class="fine"><b style="color:#4A3226">12월 1일까지 무료</b> · 카드 등록 없음<br>그 뒤엔 월 3,000원 또는 연 24,000원 · 그때 골라도 돼</div>', pad_b=26) + new(300, 470))
 a7 = phone('⑦ 방 도착 · 선물', '시트 없이 말풍선 + 씨앗이 칩으로 날아감(+6). 방금 기록도 쪽지 한 줄로 보임',
            ROOM_HOME.replace('<i class="lf"></i>9', '<i class="lf"></i>9')
            + '<div class="bubble" style="left:50%;transform:translateX(-50%);top:150px">선물이야! 씨앗 6개</div>'
