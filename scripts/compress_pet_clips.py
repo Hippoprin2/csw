@@ -87,7 +87,10 @@ def main():
 
     total_before = total_after = 0
     results = []
+    only = set(sys.argv[1:])  # 파일 이름을 주면 그 파일만 (예: 새로 복사한 클립)
     for path in sorted(PET_DIR.glob('*.webp')):
+        if only and path.name not in only:
+            continue
         before = path.stat().st_size
         info = get_anim_info(path)
         if info is None:

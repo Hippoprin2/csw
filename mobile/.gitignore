@@ -41,3 +41,7 @@ example
 # generated native folders
 /ios
 /android
+
+# Native (CNG: npx expo prebuild 로 생성)
+/ios
+/android

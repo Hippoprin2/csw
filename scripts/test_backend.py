@@ -41,23 +41,23 @@ s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': 'x', 'p_category': 'nop
 s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': ' ', 'p_category': 'cheer'}, token=T); check('빈 기록 거부', s >= 400)
 s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '가' * 101, 'p_category': 'cheer'}, token=T); check('100자 초과 거부', s >= 400)
 
-for i in range(9):  # 첫 기록·어제·업무 포함 하루 보상 10개 채우기
+for i in range(4):  # 첫 기록·어제·업무 포함 하루 보상 5개 채우기 (2026-11-15 상한 10 → 5)
     s, r = req('POST', '/rest/v1/rpc/record_win', {'p_text': '물 마셨다', 'p_category': 'eat'}, token=T)
-check('하루 10개 넘으면 씨앗 0, 기록은 저장', s == 200 and r['earned'] == 0 and r['balance'] == 6 + 30, r)
+check('하루 5개 넘으면 씨앗 0, 기록은 저장, capped', s == 200 and r['earned'] == 0 and r['balance'] == 6 + 15 and r.get('capped') is True, r)
 
 s, w = req('POST', '/rest/v1/wins', {'user_id': uid, 'text': 'x', 'category': 'cheer', 'win_date': '2026-11-08'}, token=T)
 check('wins 직접 insert 차단', s >= 400, s)
 s, w = req('POST', '/rest/v1/seed_ledger', {'user_id': uid, 'delta': 999, 'reason': 'win'}, token=T)
 check('씨앗 직접 insert 차단', s >= 400, s)
 
-s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'big_plant'}, token=T); check('큰 화분 구매(9)', r == 27, r)
+s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'big_plant'}, token=T); check('큰 화분 구매(9)', r == 12, r)
 s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'big_plant'}, token=T); check('중복 구매 거부', s >= 400)
 s, r = req('POST', '/rest/v1/rpc/buy_item', {'p_item_id': 'bed'}, token=T); check('씨앗 부족 거부(30>27)', s >= 400, r)
 
 s, r = req('POST', '/rest/v1/rpc/edit_win', {'p_id': win_id, 'p_text': '이불 개켰다', 'p_category': 'tidy'}, token=T)
 check('기록 수정', s == 200 and r['text'] == '이불 개켰다' and r['category_source'] == 'user', r)
 s, _ = req('DELETE', f'/rest/v1/wins?id=eq.{win_id}', token=T)
-s, b = req('POST', '/rest/v1/rpc/seed_balance', {}, token=T); check('기록 삭제해도 씨앗 유지', b == 27, b)
+s, b = req('POST', '/rest/v1/rpc/seed_balance', {}, token=T); check('기록 삭제해도 씨앗 유지', b == 12, b)
 
 s, _ = req('POST', '/rest/v1/rpc/log_safety', {'p_source': 'keyword'}, token=T); check('자해 감지 익명 집계', s in (200, 204), s)
 s, rows = req('GET', '/rest/v1/safety_daily?select=*', token=T); check('집계는 앱에서 못 읽음', s >= 400 or rows == [], (s, rows))
@@ -80,7 +80,7 @@ s, rows = req('GET', '/rest/v1/classify_usage?select=*', token=T); check('사용
 
 s, _ = req('POST', '/rest/v1/rpc/delete_all_wins', {}, token=T)
 s, w = req('GET', '/rest/v1/wins?select=id', token=T); check('모든 기록 지우기', w == [], w)
-s, b = req('POST', '/rest/v1/rpc/seed_balance', {}, token=T); check('기록 지워도 씨앗·방 유지', b == 27, b)
+s, b = req('POST', '/rest/v1/rpc/seed_balance', {}, token=T); check('기록 지워도 씨앗·방 유지', b == 12, b)
 
 s, _ = req('POST', '/rest/v1/rpc/delete_my_account', {}, token=T); check('계정 삭제 호출', s in (200, 204), _)
 s, u = req('GET', f'/auth/v1/admin/users/{uid}', token=SERVICE, key=SERVICE); check('auth 사용자 삭제됨', s == 404, s)

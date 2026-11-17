@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Image as RNImage, Platform, View } from 'react-native';
+import { Image as RNImage, Platform, Pressable, View } from 'react-native';
 
-import { PET_ASPECT, PET_CLIPS, PET_POSTER, type ClipKey } from '@/data/petClips';
+import { PET_ASPECT, PET_CLIPS, PET_FEET, PET_POSTER, type ClipKey } from '@/data/petClips';
 import type { Category } from '@/lib/categories';
 
 // 단짝(하마). 캐릭터 스레드가 렌더한 움직이는 WebP(design/character/export/v1)를 재생한다.
@@ -15,8 +15,12 @@ import type { Category } from '@/lib/categories';
 // - 'sit'(곁에 앉기, 자해 표현 대응): sit_in → sit_loop(SIT_HOLD_MS) → sit_out
 // - 'endure'(버틴 하루): 같은 앉기를 짧게 (ENDURE_HOLD_MS)
 // - space='garden': 텃밭 25° 클립. 대기 = garden_idle, 어떤 동작이든 garden_cheer(수확 만세). 방(6.5°) 클립과 섞지 않음
-export type PetKind = Category | 'sit' | 'eat_strawberry' | 'drink' | 'cook'; // drink·cook = '잘 먹기' 세부 동작 (eatVariant)
-export type PetAction = { kind: PetKind; key: number } | null;
+// - 탭 반응(tap_fart_hop·tap_roll): 600x800보다 큰 캔버스 클립. 같은 px 배율로 canvas 크기에 그리고 feet를 대기 발 위치에 맞춤,
+//   mirror = 좌우 뒤집기(구르기 왼쪽). 단짝 몸(대기 포스터 알파 범위)만 탭 영역 — 여백 탭은 아래로 통과
+export type PetKind = Category | 'sit' | 'eat_strawberry' | 'drink' | 'cook' | 'tap_fart_hop' | 'tap_roll'; // drink·cook = '잘 먹기' 세부 동작 (eatVariant)
+export type PetAction = { kind: PetKind; key: number; mirror?: boolean } | null;
+// 대기 포스터에서 단짝 몸이 차지하는 범위 (600x800 기준 x 148~460, y 160~722) → 탭 영역
+const BODY = { l: 148 / 600, r: 460 / 600, t: 160 / 800, b: 722 / 800 };
 
 const SIT_HOLD_MS = 9000;
 const ENDURE_HOLD_MS = 3000;
@@ -50,7 +54,7 @@ function sequence(kind: PetKind, space: 'room' | 'garden'): { clip: ClipKey; ms:
   return [{ clip: kind, ms: PET_CLIPS[kind].durationMs }];
 }
 
-export function Pet({ action, size = 200, space = 'room', onDone }: { action: PetAction; size?: number; space?: 'room' | 'garden'; onDone?: (key: number) => void }) {
+export function Pet({ action, size = 200, space = 'room', onDone, onTap }: { action: PetAction; size?: number; space?: 'room' | 'garden'; onDone?: (key: number) => void; onTap?: () => void }) {
   const idle: ClipKey = space === 'garden' ? 'garden_idle' : 'idle';
   const width = size;
   const height = Math.round(size * PET_ASPECT);
@@ -83,9 +87,22 @@ export function Pet({ action, size = 200, space = 'room', onDone }: { action: Pe
   }, [finished, actionKey, onDone]);
 
   const fill = { position: 'absolute' as const, left: 0, top: 0, width, height };
+  // 큰 캔버스 클립: 같은 배율(width/600)로 키우고 발 위치를 대기 클립 발에 맞춤
+  const clipBox = (k: ClipKey, mirror?: boolean) => {
+    const c = PET_CLIPS[k];
+    if (!c.canvas || !c.feet) return fill;
+    const px = width / 600;
+    const fx = mirror ? c.canvas[0] - c.feet[0] : c.feet[0];
+    return {
+      position: 'absolute' as const,
+      left: (PET_FEET[0] - fx) * px, top: (PET_FEET[1] - c.feet[1]) * px,
+      width: c.canvas[0] * px, height: c.canvas[1] * px,
+      ...(mirror ? { transform: [{ scaleX: -1 }] } : null),
+    };
+  };
 
   return (
-    <View style={{ width, height }} accessible accessibilityLabel="단짝">
+    <View style={{ width, height }} accessible={!onTap} accessibilityLabel="단짝" pointerEvents={onTap ? 'box-none' : 'auto'}>
       {/* 대기: 동작 첫 프레임이 화면에 뜬 뒤에만 숨긴다 (빈 화면 깜빡임 방지) */}
       <Image
         source={PET_CLIPS[idle].source}
@@ -99,13 +116,21 @@ export function Pet({ action, size = 200, space = 'room', onDone }: { action: Pe
         <Image
           key={overlayKey}
           source={PET_CLIPS[cur.clip].source}
-          style={fill} /* 투명 배경이라 로딩 중엔 아래 대기가 비쳐 보임. opacity 0으로 숨기면 웹에서 lazy 로딩이 멈춤 */
+          style={clipBox(cur.clip, action?.mirror)} /* 투명 배경이라 로딩 중엔 아래 대기가 비쳐 보임. opacity 0으로 숨기면 웹에서 lazy 로딩이 멈춤 */
           contentFit="contain"
           autoplay
           loading="eager"
           cachePolicy="disk" /* 디스크만: 다시 받지 않되 매번 첫 프레임부터 디코딩 (memory는 재생 위치 공유 위험) */
           onDisplay={() => setShownKey(overlayKey)}
           onLoad={() => setShownKey(overlayKey)}
+        />
+      )}
+      {onTap && (
+        <Pressable
+          onPress={onTap}
+          accessibilityRole="button"
+          accessibilityLabel="단짝 쓰다듬기"
+          style={{ position: 'absolute', left: width * BODY.l, top: height * BODY.t, width: width * (BODY.r - BODY.l), height: height * (BODY.b - BODY.t) }}
         />
       )}
     </View>

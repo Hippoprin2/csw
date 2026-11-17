@@ -9,7 +9,7 @@ import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanima
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CANVAS, ICONS, ROOM } from '@/data/world';
-import { PET_ASPECT } from '@/data/petClips';
+import { PET_ASPECT, PET_TAP_REACTIONS } from '@/data/petClips';
 import { api, friendlyError } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { CATEGORY_ORDER, CATS, CHIPS, HARM_LINE, SAFETY_LINE, classifyByKeyword, eatVariant, pickLine, type Category } from '@/lib/categories';
@@ -21,7 +21,7 @@ import { useApp } from '@/state/app';
 import { Icon } from '@/ui/Icon';
 import { webBodyHeight } from '@/lib/webViewport';
 import { Btn } from '@/ui/kit';
-import { Pet, type PetAction } from '@/ui/Pet';
+import { Pet, type PetAction, type PetKind } from '@/ui/Pet';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
 import type { Pager } from '@/ui/pager';
 import { SpaceImage } from '@/ui/SpaceImage';
@@ -32,6 +32,7 @@ import { useWinSheet } from '@/ui/WinSheet';
 
 const DAILY_REWARD_CAP = 10;
 const NOTIF_ASKED_KEY = 'csw.notifAsked';
+const SEED_CAP_KEY = 'csw.seedCapNoticed'; // 하루 씨앗 상한 안내는 처음 한 번만 (I3)
 const VASE_KEY = 'csw.sillVase'; // 창턱 꽃병 자리: 튤립/해바라기 둘 다 있으면 탭해서 바꿈 (기기에만 저장)
 const DOT = 7; // 유리장 병 속 구슬 한 칸 (캔버스 px)
 const SWITCH_H = 44; // 텃밭/방/마당 전환 높이 (36 + 위아래 4)
@@ -105,7 +106,8 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
   const [composing, setComposing] = useState(false); // 입력 펼침 (H1)
   const [notesOpen, setNotesOpen] = useState(false); // 오늘의 쪽지 시트 (H2)
   const [rec, setRec] = useState<{ key: number; text: string; category: Category } | null>(null); // 기록 카드 (H4)
-  const onPetDone = useCallback((key: number) => { setRec((r) => (r?.key === key ? null : r)); }, []);
+  const [petDoneKey, setPetDoneKey] = useState(-1); // 마지막으로 끝난 동작 key → 동작 중인지 판단 (탭 반응은 동작 중 무시)
+  const onPetDone = useCallback((key: number) => { setRec((r) => (r?.key === key ? null : r)); setPetDoneKey(key); }, []);
   useEffect(() => {
     if (!rec) return;
     const t = setTimeout(() => setRec((r) => (r?.key === rec.key ? null : r)), REC_MAX_MS);
@@ -167,6 +169,13 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
   const extFresh = !!celebration && (!action || celebration.key > action.key);
   const petAction: PetAction = extFresh ? { kind: celebration!.kind, key: celebration!.key } : action;
   const shownBubble = extFresh ? celebration!.line : bubble;
+  // 단짝 탭 → 무작위 반응 (방귀 방방 / 구르기, 구르기는 50% 왼쪽). 기록·먹이기·탭 반응 등 동작 중이거나 저장 중이면 무시
+  const tapPet = () => {
+    if (busy || (!!petAction && petAction.key !== petDoneKey)) return;
+    const kind = PET_TAP_REACTIONS[Math.floor(Math.random() * PET_TAP_REACTIONS.length)];
+    setAction({ kind: kind as PetKind, key: nowKey(), mirror: kind === 'tap_roll' && Math.random() < 0.5 });
+    track('pet_tapped', { kind });
+  };
   const newItemId = celebration?.itemId;
 
   async function submit(raw?: string) {
@@ -182,9 +191,10 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
     const unsafe = kwSafety || !!llm?.self_harm; // 둘 중 하나라도 걸리면 안내 (안전한 쪽으로)
     // L2: 남을 해치는 표현 → 축하 대신 단짝이 조용히 곁에. 상담 번호 안 띄움, 판정은 어디에도 저장 안 함, 씨앗은 그대로
     const harm = !unsafe && !!llm?.harm_others;
-    // 자해·남 해치는 표현이면 '나 돌보기' 같은 분류로 남지 않게 항상 '버틴 하루'로 저장 (사용자가 고른 분류보다 우선)
-    const category: Category = unsafe || harm ? 'endure' : userPicked ? chosen! : (llm?.category ?? classifyByKeyword(t));
-    const source = unsafe ? 'auto' : userPicked ? 'user' : llm ? 'llm' : 'auto';
+    // 자해 표현이면 '나 돌보기' 같은 분류로 남지 않게 항상 '버틴 하루'로 저장 (사용자가 고른 분류보다 우선).
+    // 남 해치는 표현(L2)은 판정 흔적을 남기지 않게 키워드 분류로 (LLM은 이때 endure를 돌려줌 — 프롬프트에서 떼면 감지율이 떨어져 그대로 둠). 출처도 둘 다 평소 값 (LAUNCH 2장)
+    const category: Category = unsafe ? 'endure' : userPicked ? chosen! : harm ? classifyByKeyword(t) : (llm?.category ?? classifyByKeyword(t));
+    const source = userPicked ? 'user' : llm ? 'llm' : 'auto';
     try {
       const winDate = day === 'today' ? today : kstYesterday();
       const r = await api.recordWin(t, category, source, winDate);
@@ -192,7 +202,7 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
       reloadJars().catch(() => {});
       setBalance(r.balance);
       setText(''); setChosen(null); setPicking(false); setDay('today');
-      track('win_recorded', { category, source, first: r.first, yesterday: day === 'yesterday', earned: r.earned });
+      track('win_recorded', { ...(category === 'endure' ? {} : { category }), source, first: r.first, yesterday: day === 'yesterday', earned: r.earned });
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
       if (unsafe) {
@@ -211,6 +221,10 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
         if (r.sealed) {
           say('유리병이 꽉 찼어! 뚜껑 닫아서 선반에 올려둘게. 새 병 시작이야', 6000);
           track('jar_sealed', { no: r.win.jar_no });
+        } else if (r.capped && !store.get(SEED_CAP_KEY)) {
+          // I3: 하루 씨앗 상한(5개)에 처음 닿았을 때 한 번만. 남은 개수·카운트는 말하지 않음
+          store.set(SEED_CAP_KEY, '1');
+          say('오늘 씨앗은 다 모았어. 기록은 계속 담겨', 5000);
         } else say(r.first ? '첫 구슬이 유리병에 들어갔어!' : pickLine(category));
       }
       if (r.earned) {
@@ -395,7 +409,7 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
           {back.map(draw)}
           {!stage && (
             <View style={{ position: 'absolute', left: ROOM.pet.x * sc, top: ROOM.pet.y * sc }}>
-              <Pet action={petAction} size={ROOM.pet.w * sc} />
+              <Pet action={petAction} size={ROOM.pet.w * sc} onDone={onPetDone} onTap={tapPet} />
             </View>
           )}
           {front.map(draw)}
@@ -411,8 +425,8 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
       </GestureDetector>
 
       {stage && (
-        <View pointerEvents="none" style={{ position: 'absolute', left: (fullWidth - petW) / 2, top: petTop }}>
-          <Pet action={petAction} size={petW} onDone={onPetDone} />
+        <View pointerEvents="box-none" style={{ position: 'absolute', left: (fullWidth - petW) / 2, top: petTop }}>
+          <Pet action={petAction} size={petW} onDone={onPetDone} onTap={tapPet} />
         </View>
       )}
       {stage && rec && (

@@ -78,7 +78,7 @@ async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T
 
 export const api = {
   recordWin: (text: string, category: Category, source: 'auto' | 'llm' | 'user', winDate: string) =>
-    rpc<{ win: Win; earned: number; balance: number; first: boolean; sealed: boolean }>('record_win', {
+    rpc<{ win: Win; earned: number; balance: number; first: boolean; sealed: boolean; capped?: boolean }>('record_win', {
       p_text: text, p_category: category, p_source: source, p_win_date: winDate,
     }),
   editWin: (id: string, text: string, category: Category) => rpc<Win>('edit_win', { p_id: id, p_text: text, p_category: category }),
