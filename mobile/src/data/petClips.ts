@@ -1,5 +1,5 @@
 // 자동 생성: design/character/export/v1/manifest.json → 수정하지 말고 다시 생성 (scripts/gen_pet_clips.py)
-export type ClipKey = 'idle' | 'tidy' | 'move' | 'study' | 'work' | 'eat' | 'care' | 'people' | 'cheer' | 'sit_in' | 'sit_loop' | 'sit_out' | 'eat_strawberry' | 'drink' | 'cook' | 'tap_fart_hop' | 'tap_roll' | 'garden_idle' | 'garden_cheer' | 'walk_front' | 'walk_side' | 'walk_back' | 'sit_bench_in' | 'sit_bench_loop' | 'sit_bench_out' | 'sit_eat_in' | 'sit_eat_loop' | 'sit_eat_strawberry' | 'sit_eat_sweetpotato' | 'sit_eat_out' | 'lie_in' | 'lie_loop' | 'lie_out' | 'splash_in' | 'splash_loop' | 'splash_out' | 'sniff' | 'show_fruit';
+export type ClipKey = 'idle' | 'tidy' | 'move' | 'study' | 'work' | 'eat' | 'care' | 'people' | 'cheer' | 'sit_in' | 'sit_loop' | 'sit_out' | 'eat_strawberry' | 'drink' | 'cook' | 'tap_fart_hop' | 'garden_idle' | 'garden_cheer' | 'walk_front' | 'walk_side' | 'walk_back' | 'sit_bench_in' | 'sit_bench_loop' | 'sit_bench_out' | 'sit_eat_in' | 'sit_eat_loop' | 'sit_eat_strawberry' | 'sit_eat_sweetpotato' | 'sit_eat_out' | 'lie_in' | 'lie_loop' | 'lie_out' | 'splash_in' | 'splash_loop' | 'splash_out' | 'sniff' | 'show_fruit';
 export const PET_ASPECT = 800 / 600; // 높이 / 너비
 // canvas·feet: 600x800보다 큰 클립(탭 반응 등) = 같은 px 배율로 canvas 크기에 그리고 feet를 대기 클립 발 위치에 맞춤
 export const PET_CLIPS: Record<ClipKey, { source: number; durationMs: number; loop: boolean; canvas?: [number, number]; feet?: [number, number] }> = {
@@ -19,7 +19,6 @@ export const PET_CLIPS: Record<ClipKey, { source: number; durationMs: number; lo
   drink: { source: require('@/assets/pet/hippo_drink.webp'), durationMs: 2667, loop: false },
   cook: { source: require('@/assets/pet/hippo_cook.webp'), durationMs: 3167, loop: false },
   tap_fart_hop: { source: require('@/assets/pet/hippo_tap_fart_hop.webp'), durationMs: 3750, loop: false, canvas: [600, 1100], feet: [303, 1013] },
-  tap_roll: { source: require('@/assets/pet/hippo_tap_roll.webp'), durationMs: 4167, loop: false, canvas: [1600, 800], feet: [803, 713] },
   garden_idle: { source: require('@/assets/pet/hippo_garden_idle.webp'), durationMs: 2000, loop: true },
   garden_cheer: { source: require('@/assets/pet/hippo_garden_cheer.webp'), durationMs: 1667, loop: false },
   walk_front: { source: require('@/assets/pet/hippo_walk_front.webp'), durationMs: 2000, loop: true },
@@ -53,8 +52,8 @@ export const PET_YARD_ACTIONS: Record<string, YardAction> = {
   sniff: {"parts": ["sniff"], "stand": [845.5, 1402.3]},
   show_fruit: {"parts": ["show_fruit"], "stand": [288.6, 855.3]},
 };
-// 방 단짝 탭 반응 (manifest tap_reactions): 무작위 하나, mirror 가능한 클립은 50% 좌우 뒤집기
-export const PET_TAP_REACTIONS: ClipKey[] = ["tap_fart_hop", "tap_roll"];
+// 방 단짝 탭 반응 (manifest tap_reactions, SKIP 제외): 무작위 하나
+export const PET_TAP_REACTIONS: ClipKey[] = ["tap_fart_hop"];
 export const PET_FEET: [number, number] = [303, 713];
 
 export const PET_POSTER = require('@/assets/pet/hippo_idle_poster.png');

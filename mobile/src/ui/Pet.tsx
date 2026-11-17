@@ -15,9 +15,9 @@ import type { Category } from '@/lib/categories';
 // - 'sit'(곁에 앉기, 자해 표현 대응): sit_in → sit_loop(SIT_HOLD_MS) → sit_out
 // - 'endure'(버틴 하루): 같은 앉기를 짧게 (ENDURE_HOLD_MS)
 // - space='garden': 텃밭 25° 클립. 대기 = garden_idle, 어떤 동작이든 garden_cheer(수확 만세). 방(6.5°) 클립과 섞지 않음
-// - 탭 반응(tap_fart_hop·tap_roll): 600x800보다 큰 캔버스 클립. 같은 px 배율로 canvas 크기에 그리고 feet를 대기 발 위치에 맞춤,
-//   mirror = 좌우 뒤집기(구르기 왼쪽). 단짝 몸(대기 포스터 알파 범위)만 탭 영역 — 여백 탭은 아래로 통과
-export type PetKind = Category | 'sit' | 'eat_strawberry' | 'drink' | 'cook' | 'tap_fart_hop' | 'tap_roll'; // drink·cook = '잘 먹기' 세부 동작 (eatVariant)
+// - 탭 반응(tap_fart_hop): 600x800보다 큰 캔버스 클립. 같은 px 배율로 canvas 크기에 그리고 feet를 대기 발 위치에 맞춤,
+//   mirror = 좌우 뒤집기(지금 쓰는 곳 없음, 구르기 삭제 2026-11-17). 단짝 몸(대기 포스터 알파 범위)만 탭 영역 — 여백 탭은 아래로 통과
+export type PetKind = Category | 'sit' | 'eat_strawberry' | 'drink' | 'cook' | 'tap_fart_hop'; // drink·cook = '잘 먹기' 세부 동작 (eatVariant)
 export type PetAction = { kind: PetKind; key: number; mirror?: boolean } | null;
 // 대기 포스터에서 단짝 몸이 차지하는 범위 (600x800 기준 x 148~460, y 160~722) → 탭 영역
 const BODY = { l: 148 / 600, r: 460 / 600, t: 160 / 800, b: 722 / 800 };

@@ -169,11 +169,11 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
   const extFresh = !!celebration && (!action || celebration.key > action.key);
   const petAction: PetAction = extFresh ? { kind: celebration!.kind, key: celebration!.key } : action;
   const shownBubble = extFresh ? celebration!.line : bubble;
-  // 단짝 탭 → 무작위 반응 (방귀 방방 / 구르기, 구르기는 50% 왼쪽). 기록·먹이기·탭 반응 등 동작 중이거나 저장 중이면 무시
+  // 단짝 탭 → 반응 (PET_TAP_REACTIONS 중 무작위, 지금은 방귀 방방 하나 — 구르기는 2026-11-17 대표 결정으로 삭제). 기록·먹이기·탭 반응 등 동작 중이거나 저장 중이면 무시
   const tapPet = () => {
     if (busy || (!!petAction && petAction.key !== petDoneKey)) return;
     const kind = PET_TAP_REACTIONS[Math.floor(Math.random() * PET_TAP_REACTIONS.length)];
-    setAction({ kind: kind as PetKind, key: nowKey(), mirror: kind === 'tap_roll' && Math.random() < 0.5 });
+    setAction({ kind: kind as PetKind, key: nowKey() });
     track('pet_tapped', { kind });
   };
   const newItemId = celebration?.itemId;

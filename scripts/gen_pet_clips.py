@@ -5,10 +5,13 @@ import json, pathlib, shutil, sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 args = [a for a in sys.argv[1:] if not a.startswith('--')]
 NEW_ONLY = '--new-only' in sys.argv
+# 앱에서 안 쓰는 클립 (2026-11-17 대표 결정: 탭 반응 구르기 삭제 — 새 홈에서 화면 밖까지 굴러감)
+SKIP = {'tap_roll'}
 src = ROOT / (args[0] if args else 'design/character/export/v1')
 dst = ROOT / 'mobile/assets/pet'
 dst.mkdir(parents=True, exist_ok=True)
 m = json.loads((src / 'manifest.json').read_text())
+m['clips'] = {k: v for k, v in m['clips'].items() if k not in SKIP}
 for v in m['clips'].values():
     if NEW_ONLY and (dst / v['file']).exists():
         continue
@@ -31,8 +34,8 @@ for k, v in m.get('yard_actions', {}).items():
     if not isinstance(v, dict): continue
     o = {kk: v[kk] for kk in ('parts', 'stand', 'enter', 'eat') if kk in v}
     lines.append(f"  {k}: {json.dumps(o)},")
-lines += ["};", "// 방 단짝 탭 반응 (manifest tap_reactions): 무작위 하나, mirror 가능한 클립은 50% 좌우 뒤집기",
-          f"export const PET_TAP_REACTIONS: ClipKey[] = {json.dumps(m.get('tap_reactions', {}).get('clips', []))};",
+lines += ["};", "// 방 단짝 탭 반응 (manifest tap_reactions, SKIP 제외): 무작위 하나",
+          f"export const PET_TAP_REACTIONS: ClipKey[] = {json.dumps([k for k in m.get('tap_reactions', {}).get('clips', []) if k not in SKIP])};",
           f"export const PET_FEET: [number, number] = {json.dumps(m.get('feet', [303, 713]))};"]
 lines += ["", f"export const PET_POSTER = require('@/assets/pet/{m['clips']['idle']['poster']}');", ""]
 (ROOT / 'mobile/src/data/petClips.ts').write_text("\n".join(lines))
