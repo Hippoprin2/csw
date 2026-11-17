@@ -16,7 +16,8 @@ const CLOSE_VELOCITY = 700; // 이 속도(px/s)로 휙 내리면 닫힘
 // 아래에서 올라오는 시트 (위 모서리 32 + 손잡이 막대, A 포근한 창 2026-11-13). 웹에서도 동작 (Alert.alert는 웹에서 버튼이 안 나옴)
 // 2026-11-16 대표 피드백: 뒤 그림자는 제자리에서 한 번에 옅게 깔리고(페이드) 시트만 올라옴 + 아래로 끌어내리면 닫힘.
 // (예전: Modal animationType="slide"라 그림자가 시트와 같이 밀려 올라오고, 끌어도 안 닫힘)
-export function Sheet({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: React.ReactNode }) {
+// locked: 끌기·바깥 누르기로 안 닫힘, 손잡이 없음 (⑥ 가입 시트처럼 꼭 골라야 하는 시트)
+export function Sheet({ visible, onClose, children, locked }: { visible: boolean; onClose: () => void; children: React.ReactNode; locked?: boolean }) {
   const insets = useSafeAreaInsets();
   const { height: winH } = useWindowDimensions();
   const [mounted, setMounted] = useState(visible);
@@ -38,29 +39,30 @@ export function Sheet({ visible, onClose, children }: { visible: boolean; onClos
   }, [visible, mounted, winH, shown, y, drag]);
 
   const pan = usePanGesture(useMemo(() => ({
+    enabled: !locked,
     activeOffsetY: [-10, 10] as [number, number], failOffsetX: [-20, 20] as [number, number], runOnJS: true,
     onUpdate: (e: { translationY: number }) => { if (Number.isFinite(e.translationY)) drag.set(Math.max(0, e.translationY)); },
     onDeactivate: (e: { translationY: number; velocityY: number }) => {
       if (e.translationY > CLOSE_DRAG || e.velocityY > CLOSE_VELOCITY) onClose();
       else drag.set(withTiming(0, { duration: 180 }));
     },
-  }), [drag, onClose]));
+  }), [drag, onClose, locked]));
 
   const scrimStyle = useAnimatedStyle(() => ({ opacity: shown.value }));
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value + drag.value }] }));
 
   if (!mounted) return null;
   return (
-    <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible transparent animationType="none" onRequestClose={locked ? () => {} : onClose} statusBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Animated.View style={[StyleSheet.absoluteFill, st.scrim, scrimStyle]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="닫기" />
+          {!locked && <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="닫기" />}
         </Animated.View>
         {/* iOS: 시트 안 입력칸(메모 한 줄·기록 고치기)이 키보드에 가리지 않게 시트를 키보드 위로 올림 */}
         <KeyboardAvoidingView style={st.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined} pointerEvents="box-none">
           <GestureDetector gesture={pan}>
             <Animated.View style={[st.sheet, { paddingBottom: 20 + insets.bottom }, sheetStyle]}>
-              <View style={st.handle} />
+              {!locked && <View style={st.handle} />}
               {children}
             </Animated.View>
           </GestureDetector>

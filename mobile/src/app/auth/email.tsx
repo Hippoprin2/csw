@@ -3,17 +3,17 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { track } from '@/lib/analytics';
-import { redirectTo } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
+import { sendEmailCode, verifyEmailCode } from '@/lib/auth';
 import { Back, Btn } from '@/ui/kit';
 import { C, H as HT, R } from '@/ui/theme';
 
 // 이메일 OTP 로그인 (가입 겸용). 코드 6자리 또는 메일 링크(→ auth/callback).
+// ⑥ 가입 시트에서 오면(익명 세션) 새 주소를 익명 계정에 연결(email_change 코드). 이미 가입한 주소면 그 계정 로그인 + 첫 기록 옮김
 export default function EmailLogin() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
+  const [mode, setMode] = useState<'link' | 'login'>('login'); // link = 익명 계정에 이메일 연결(⑥ 가입), login = 일반 로그인
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -21,18 +21,26 @@ export default function EmailLogin() {
 
   async function send() {
     setBusy(true); setErr('');
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true, emailRedirectTo: redirectTo } });
-    setBusy(false);
-    if (error) setErr(error.message.includes('rate') ? '잠시 뒤에 다시 시도해줘.' : '메일을 보내지 못했어. 주소를 확인해줄래?');
-    else setSent(true);
+    try {
+      setMode(await sendEmailCode(email.trim())); // 익명이면 연결, 이미 가입한 주소면 로그인 (lib/auth)
+      setSent(true);
+    } catch (e) {
+      const m = (e as { message?: string })?.message ?? '';
+      setErr(m.includes('rate') ? '잠시 뒤에 다시 시도해줘.' : '메일을 보내지 못했어. 주소를 확인해줄래?');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function verify() {
     setBusy(true); setErr('');
-    const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
-    setBusy(false);
-    if (error) setErr('코드가 맞지 않거나 시간이 지났어. 다시 받아볼래?');
-    else track('signed_in', { method: 'email' });
+    try {
+      await verifyEmailCode(email.trim(), code.trim(), mode);
+    } catch {
+      setErr('코드가 맞지 않거나 시간이 지났어. 다시 받아볼래?');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

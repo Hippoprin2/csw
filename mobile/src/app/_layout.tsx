@@ -13,7 +13,7 @@ import { WinSheetProvider } from '@/ui/WinSheet';
 SplashScreen.preventAutoHideAsync();
 
 function Gate() {
-  const { ready, session, profile } = useApp();
+  const { ready, session, anonymous, profile } = useApp();
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
@@ -25,17 +25,20 @@ function Gate() {
       </View>
     );
   }
-  const signedIn = !!session;
-  const onboarded = !!profile?.onboarded_at;
+  // 첫 실행 순서 (2026-11-17, design/onboarding/README.md): 세션 없음 → ① 인사(auth) / 익명 → ②이름 ③동의 ④첫 기록 ⑤축하 ⑥가입(onboarding)
+  // / 정식 + 온보딩 끝 → 탭. 정식인데 온보딩 전(‘이미 계정이 있어요’로 처음 만든 계정) → ②③ 뒤 바로 방
+  // auth 그룹은 익명에게도 열어 둠: ⑥에서 이메일 화면·OAuth 콜백(auth/callback)을 써야 해서 (그룹 안에서 화면별로 막음)
+  const member = !!session && !anonymous;
+  const onboarded = member && !!profile?.onboarded_at;
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
-      <Stack.Protected guard={!signedIn}>
-        <Stack.Screen name="auth" />
-      </Stack.Protected>
-      <Stack.Protected guard={signedIn && !onboarded}>
+      <Stack.Protected guard={!!session && !onboarded}>
         <Stack.Screen name="onboarding" />
       </Stack.Protected>
-      <Stack.Protected guard={signedIn && onboarded}>
+      <Stack.Protected guard={!member}>
+        <Stack.Screen name="auth" />
+      </Stack.Protected>
+      <Stack.Protected guard={onboarded}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="help" options={{ presentation: 'modal' }} />
         <Stack.Screen name="jar/[no]" />

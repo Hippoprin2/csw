@@ -78,6 +78,26 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: "usage_check_failed" }, 503);
   }
+  // 익명(가입 전) 계정 남발 막기: 같은 IP의 익명 계정 호출을 하루 한도로 (정식 계정은 bump_classify_ip가 0을 돌려줘 안 셈).
+  // IP는 소금 친 SHA-256 해시로만 저장. 통신사 공유 IP를 감안해 넉넉히(첫 기록 1~2번이면 충분). 넘으면 429 → 앱은 키워드 분류
+  const ip = (req.headers.get("cf-connecting-ip") ?? req.headers.get("x-real-ip") ??
+    (req.headers.get("x-forwarded-for") ?? "").split(",")[0]).trim();
+  if (ip) {
+    const ipLimit = Number(Deno.env.get("CLASSIFY_ANON_IP_DAILY_LIMIT") ?? "40");
+    const salt = Deno.env.get("CLASSIFY_IP_SALT") ?? Deno.env.get("SUPABASE_URL") ?? "";
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + ip));
+    const ipHash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+    try {
+      const u = await fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/rpc/bump_classify_ip`, {
+        method: "POST",
+        headers: { apikey: anon, Authorization: auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_ip_hash: ipHash }),
+      });
+      if (u.ok && Number(await u.json()) > ipLimit) return json({ error: "rate_limited" }, 429);
+    } catch {
+      // IP 한도 확인 실패는 막지 않음 (사용자당 한도는 위에서 이미 확인)
+    }
+  }
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 6000);

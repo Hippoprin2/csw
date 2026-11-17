@@ -27,6 +27,7 @@ export type Profile = {
   sensitive_consented_at?: string | null;
   onboarded_at: string | null;
   first_crop_used: boolean;
+  trial_ends_at?: string | null; // 14일 무료 끝 (가입 = 익명 → 정식 연결 때 서버가 저장)
 };
 export type Item = {
   id: string; name: string; emoji: string; price: number; sort: number;

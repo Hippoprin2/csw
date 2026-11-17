@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -5,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/api';
 import { openLegal } from '@/lib/legal';
 import { track } from '@/lib/analytics';
+import { JOINED_KEY } from '@/lib/auth';
+import { store } from '@/lib/store';
 import { useApp } from '@/state/app';
 import { Icon } from '@/ui/Icon';
 import { Btn } from '@/ui/kit';
@@ -27,7 +30,7 @@ const SENSITIVE: Item = {
 const ALL = [...ITEMS, SENSITIVE];
 
 export default function Notice() {
-  const { updateProfile, refresh } = useApp();
+  const { updateProfile, refresh, anonymous } = useApp();
   const [ok, setOk] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const all = ALL.every((i) => ok[i.key]);
@@ -37,9 +40,19 @@ export default function Notice() {
   async function start() {
     setBusy(true);
     try {
-      await api.gift(); // 온보딩 선물 씨앗 6개 → 첫날 첫 소품 구매 가능
       const now = new Date().toISOString();
+      if (anonymous) {
+        // 가입 전(익명): 동의만 저장하고 ④ 첫 기록으로. 선물 씨앗 6개·무료 기간·온보딩 완료는 ⑥ 가입(연결) 때 서버가 (2026-11-17)
+        await updateProfile({ consented_at: now, sensitive_consented_at: now });
+        track('ob_consent_done');
+        router.replace('/onboarding/first');
+        return;
+      }
+      // 정식 계정인데 온보딩 전 = '이미 계정이 있어요'에서 처음 만든 계정 → 선물 받고 바로 방 (⑦ 선물 말풍선·⑧ 알림 시트)
+      await api.gift(); // 온보딩 선물 씨앗 6개 → 첫날 첫 소품 구매 가능
       await updateProfile({ consented_at: now, sensitive_consented_at: now, onboarded_at: now });
+      track('ob_consent_done');
+      store.set(JOINED_KEY, '1');
       await refresh();
       track('onboarding_done');
     } finally {

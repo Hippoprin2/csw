@@ -177,3 +177,15 @@
 - ⚠️ 서명 없이(`CODE_SIGNING_ALLOWED=NO`) 빌드하면 키체인을 못 써서 로그인 요청이 멈춤(스피너 무한). 시뮬레이터 빌드는 `CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER=`(애드혹)
 - 시뮬레이터 테스트 로그인: 이메일 코드는 SMTP가 없어 example.com으로 못 보냄 → `EXPO_PUBLIC_SIM_TEST=1 xcodebuild … -configuration Release …`로 빌드 + `python3 scripts/sim_login.py <UDID>`(테스트 계정 만들고 csw://auth/callback?sim_refresh= 열기). 앱은 이 값 + 시뮬레이터(Device.isDevice=false)일 때만 받음 → 스토어 빌드엔 영향 없음. 끝나면 `web_test_session.py --delete <uid>`
 - 시뮬레이터 확인 결과 (2026-11-17): 새 홈·흐림 배경 정상, 방귀 방방 탭 반응 정상(뿡 글자·구름). 키보드: 시뮬레이터가 Mac 키보드 연결 상태라 화면 키보드가 안 떠서 '키보드가 입력창 가림'은 아직 확인 못 함
+
+## 2026-11-17 첫 실행 순서 변경 — 가입을 첫 기록 축하 뒤로 (대표 결정 O1~O6, 시안 design/onboarding/)
+- 흐름: ① 인사(`auth/index`: 시작하기 / 이미 계정이 있어요) → ② 이름 → ③ 동의 → ④ 첫 기록 → ⑤ 축하+씨앗 → ⑥ 가입 시트(필수, `onboarding/first`) → ⑦ 방 선물 말풍선 → ⑧ 알림 시트 1장. '이미 계정이 있어요' = `auth/login`
+- 라우팅(`app/_layout.tsx`): 세션 없음 → ① / 익명 또는 정식+온보딩 전 → onboarding / 정식+onboarded → 탭. auth 그룹은 익명에게도 열림(⑥에서 이메일·OAuth 콜백 씀), ①·login은 세션 있으면 스스로 onboarding으로
+- 익명: ①에서 `signInAnonymously`. 동의까지 저장, 선물·`trial_ends_at`(연결 시각+14일)·`onboarded_at`은 연결 때 서버 트리거 `handle_user_linked`. 동의한 익명이 앱을 다시 열면 `onboarding/first`, 기록이 있으면 바로 ⑥
+- 가입(`lib/auth.ts`, 버튼 `ui/SignInButtons.tsx`): 익명이면 연결 — 카카오·구글 `linkIdentity`(웹은 리다이렉트, 떠나기 전 `csw.linkUid` 저장), Apple 네이티브 `signInWithIdToken({…, link_identity})`, 이메일 `updateUser({email})` + `verifyOtp(type 'email_change')`. 이미 있는 계정이면 그 계정으로 로그인 + `claim-anon`(익명 토큰으로 소유 확인 → 첫 기록·씨앗 기록·이름(기존 계정 이름이 기본값일 때만) 옮기고 익명 삭제, 기존 계정이면 선물 없이 바로 방)
+- ④⑤는 `RoomPage firstRun` — 같은 무대·같은 submit(기록·분류·자해 감지). 탭 바·씨앗 칩·공간 전환·쪽지 숨김, 예시 칩 늘 보임. 자해 감지면 ⑥을 7초 뒤에
+- D5 알림 요청: 첫 기록 직후 → 가입 직후 방 도착 3초 뒤(`csw.joined`), 문구 "무료 이용이 끝나기 이틀 전에도 날짜를 알려줄게" 추가
+- 서버(`migrations/20261117000002_anon_onboarding.sql`): `require_member()` 가드 = 구매·구역·심기·수확·배치·dev 함수(record_win·classify·동의 저장은 익명 가능), 연결 트리거, `claim_anon_data`, 7일 지난 익명 매일 삭제(pg_cron `purge-stale-anon`), `classify_ip_usage`(IP는 솔트 해시만). classify: 익명만 IP 하루 40회(`CLASSIFY_ANON_IP_DAILY_LIMIT`), 넘으면 429 → 앱은 키워드 분류. Auth: 익명 ON, manual linking ON(Management API)
+- 이벤트(O4): ob_start, ob_name_done{skip}, ob_consent_done, ob_first_win{category}, ob_signup_shown{resumed}, signed_in{method}, onboarding_done. 익명도 user_id = 익명 id로 저장
+- 확인: tsc·eslint 통과, `scripts/test_backend.py` ALL PASS, `scripts/test_anon.py` ALL PASS(익명 A↔B 기록 격리, 서버 소유 칸 PATCH 불가, 가입 전 막힌 기능, 연결 시 무료·선물, claim, 7일 삭제, IP 한도), `node scripts/capture_onboarding.mjs <outdir>` ALL PASS 14(①~⑧, ⑥에서 다시 열기, 기존 계정 이전 스크린샷). 웹에선 실제 카카오·이메일 가입을 못 해서 '연결'은 관리 API로 흉내(서버 트리거는 실제와 같음). `capture_screens.mjs` 문구 새 흐름에 맞춤
+- 폰 확인 남음: Apple 연결(실기기), 카카오·구글 연결 후 앱 복귀, 이메일 연결 코드(Resend 붙인 뒤), 키보드 가림

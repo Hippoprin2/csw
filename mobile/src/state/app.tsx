@@ -1,11 +1,13 @@
 import type { Session } from '@supabase/supabase-js';
-import { createContext, use, useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { AppState } from 'react-native';
 
 import { api, type Crop, type Item, type JarSummary, type Owned, type Plot, type Profile, type Win, type YardState } from '@/lib/api';
 import { track } from '@/lib/analytics';
+import { claimPending, clearLinkState, hasPendingClaim, JOINED_KEY, wasLinkingOnWeb } from '@/lib/auth';
 import { addDays, kstToday } from '@/lib/dates';
 import { reschedule } from '@/lib/notifications';
+import { store } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { PetKind } from '@/ui/Pet';
 
@@ -24,6 +26,7 @@ type Ctx = {
   celebrate: (c: Omit<Celebration, 'key'>) => void;
   ready: boolean;
   session: Session | null;
+  anonymous: boolean; // 가입 전(익명 계정). 가입 = ⑥에서 정식 연결
   profile: Profile | null;
   wins: Win[];
   jars: JarSummary;
@@ -92,6 +95,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   }, []);
 
   const uid = session?.user.id;
+  const anonymous = !!session?.user.is_anonymous;
 
   const reloadRoom = useCallback(async () => {
     const { data } = await supabase.from('owned_items').select('item_id, placed').order('created_at');
@@ -144,14 +148,33 @@ export function AppProvider({ children }: PropsWithChildren) {
     if (cr.data) setCrops(cr.data as Crop[]);
   }, [uid, reloadRoom, reloadGarden, reloadYard, loadWins]);
 
+  // 가입 순간 (2026-11-17 첫 실행 순서 변경):
+  // (a) 같은 계정이 익명 → 정식(연결) = 서버 트리거가 무료 종료일·온보딩 완료·선물 6 저장 → 다시 불러오고 방에서 선물·알림(⑦⑧)
+  // (b) 다른 정식 계정으로 로그인 + 옮길 익명 기록 있음 = claim-anon으로 옮긴 뒤 불러옴. 막 만든 계정이면 (a)와 같게, 아니면 바로 방
+  const prevUser = useRef<{ id: string; anon: boolean } | null>(null);
   useEffect(() => {
-    if (!authReady || !uid) return;
+    if (!authReady) return;
+    if (!uid) { prevUser.current = null; return; }
+    const prev = prevUser.current;
+    prevUser.current = { id: uid, anon: anonymous };
+    // 웹 카카오·구글 연결은 페이지를 떠났다 돌아오므로 prev가 없음 → 떠나기 전 저장한 익명 id로 판단
+    const linked = !anonymous && ((!!prev && prev.id === uid && prev.anon) || (!prev && wasLinkingOnWeb(uid)));
+    if (prev && prev.id === uid && !linked) return; // 토큰 갱신 등 (같은 상태)
+    if (linked) { clearLinkState(); store.set(JOINED_KEY, '1'); }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 서버 데이터 비동기 로드 (외부 시스템 동기화)
-    refresh().finally(() => setLoadedUid(uid));
+    setLoadedUid(null);
+    const claim = !anonymous && hasPendingClaim()
+      ? claimPending().then((r) => {
+        if (r?.target_new) { store.set(JOINED_KEY, '1'); track('onboarding_done', { claimed: r.moved }); }
+      }).catch(() => {})
+      : Promise.resolve();
+    if (linked) track('onboarding_done');
+    claim.then(refresh).finally(() => setLoadedUid(uid));
+    if (linked) return;
     // 이전 접속이 3일 이상 전이면 텃밭이 졸고 있음 (진행에는 영향 없음)
     api.touchSeen().then((prev) => setDozing(!!prev && Date.now() - new Date(prev).getTime() >= DOZE_AFTER_MS)).catch(() => {});
     track('app_open');
-  }, [authReady, uid, refresh]);
+  }, [authReady, uid, anonymous, refresh]);
 
   // 알림 예약: 프로필·오늘 기록 여부가 바뀔 때마다 다시 잡는다
   const recordedToday = wins.some((w) => w.win_date === kstToday());
@@ -196,12 +219,12 @@ export function AppProvider({ children }: PropsWithChildren) {
   // 로그아웃 상태면 이전 사용자 데이터를 노출하지 않는다
   const mine = !!uid && loadedUid === uid;
   const value = useMemo<Ctx>(() => ({
-    ready: authReady && (!uid || loadedUid === uid), session,
+    ready: authReady && (!uid || loadedUid === uid), session, anonymous,
     profile: mine ? profile : null, wins: mine ? wins : [], jars: mine ? jars : EMPTY_JARS, reloadJars, yard: mine ? yard : EMPTY_YARD, reloadYard, balance: mine ? balance : 0,
     items, owned: mine ? owned : [], crops, plots: mine ? plots : [], bag: mine ? bag : {},
     unlocks: mine ? unlocks : [], dozing: mine && dozing, wakeGarden, celebration,
     refresh, reloadRoom, reloadGarden, setWins, setBalance, updateProfile, signOut, celebrate,
-  }), [authReady, uid, loadedUid, mine, session, profile, wins, jars, reloadJars, yard, reloadYard, balance, items, owned, crops, plots, bag, unlocks,
+  }), [authReady, uid, anonymous, loadedUid, mine, session, profile, wins, jars, reloadJars, yard, reloadYard, balance, items, owned, crops, plots, bag, unlocks,
     dozing, wakeGarden, celebration, refresh, reloadRoom, reloadGarden, updateProfile, signOut, celebrate]);
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

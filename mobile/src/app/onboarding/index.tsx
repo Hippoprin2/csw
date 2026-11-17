@@ -1,8 +1,9 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { track } from '@/lib/analytics';
 import { useApp } from '@/state/app';
 import { Btn } from '@/ui/kit';
 import { Pet } from '@/ui/Pet';
@@ -10,15 +11,18 @@ import { C, H as HT, R } from '@/ui/theme';
 
 // S1 이름 짓기 (기본 이름 제시, 건너뛰기 가능)
 export default function NamePet() {
-  const { profile, updateProfile } = useApp();
+  const { profile, updateProfile, anonymous } = useApp();
   const [name, setName] = useState(profile?.pet_name ?? '꼬마하마');
   const [busy, setBusy] = useState(false);
+  // 동의까지 마친 익명 계정이 앱을 다시 열면 ④ 첫 기록(기록이 있으면 ⑥ 가입)으로 바로 (2026-11-17 첫 실행 순서 변경)
+  if (anonymous && profile?.consented_at) return <Redirect href="/onboarding/first" />;
 
   async function next(skip = false) {
     setBusy(true);
     try {
       const n = name.trim();
       if (!skip && n && n !== profile?.pet_name) await updateProfile({ pet_name: n.slice(0, 12) });
+      track('ob_name_done', { skip });
       router.push('/onboarding/notice');
     } finally {
       setBusy(false);

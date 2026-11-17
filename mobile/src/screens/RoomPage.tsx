@@ -15,6 +15,7 @@ import { track } from '@/lib/analytics';
 import { CATEGORY_ORDER, CATS, CHIPS, HARM_LINE, SAFETY_LINE, classifyByKeyword, eatVariant, pickLine, type Category } from '@/lib/categories';
 import { formatTime, kstToday, kstYesterday } from '@/lib/dates';
 import { jarMarbles } from '@/lib/jars';
+import { JOINED_KEY } from '@/lib/auth';
 import { askPermission } from '@/lib/notifications';
 import { safetyKeywordHit } from '@/lib/safety';
 import { useApp } from '@/state/app';
@@ -68,7 +69,10 @@ const store = {
 // 2026-11-16 홈 '하마 무대' (대표 결정 H1~H4, design/home_stage/README.md):
 // - 'stage'(기본): 뿌옇게 흐린 방 위에 단짝을 크게. 입력은 알약 한 줄(누르면 펼침), 오늘의 쪽지는 아래 한 줄(누르거나 끌어올리면 시트)
 // - 'room'(씨앗 칩 옆 '방' 버튼): 흐림이 걷히고 예전 방 그대로 — 끌어 둘러보기·유리장·꽃병·수확 바구니·꾸미기
-export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: SpaceNav; pageH?: number } = {}) {
+// firstRun = ④ 첫 기록 (2026-11-17 첫 실행 순서 변경): 같은 무대·같은 submit(기록·분류·자해 감지)을 그대로 쓰고
+// 탭 바·씨앗 칩·공간 전환·쪽지는 숨김, 예시 칩은 늘 보임. 기록이 끝나면 onWin → 화면이 축하 뒤 ⑥ 가입 시트를 띄움
+export type FirstRun = { onWin: (category: Category, unsafe: boolean) => void; done: boolean };
+export function RoomPage({ pager, nav, pageH = 0, firstRun }: { pager?: Pager; nav?: SpaceNav; pageH?: number; firstRun?: FirstRun } = {}) {
   const { jars, profile, wins, setWins, reloadJars, setBalance, owned, items, updateProfile, celebration, celebrate, crops, bag, reloadGarden } = useApp();
   const [basket, setBasket] = useState(false);
   const [mode, setMode] = useState<'stage' | 'room'>('stage');
@@ -81,7 +85,7 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
   // 아래가 흰 바탕이 됐음(대표 폰 2026-11-16) → 키보드와 무관한 레이아웃 높이(documentElement.clientHeight)를 씀
   const webH = useLayoutViewportHeight();
   const H0 = Platform.OS === 'web' ? webH || winH : pageH || winH;
-  const switchTop = insets.top + 8 + H.chip + 8;
+  const switchTop = insets.top + 8 + (firstRun ? 0 : H.chip + 8);
   const belowSwitch = switchTop + SWITCH_H + 10;
   // 그림 배율: 무대 = 페이지 전체를 덮게(흐린 배경), 방 보기 = 1080 창 세로가 아래 버튼 줄·탭 바 위에서 끝나게 (단짝 발이 안 가려지게)
   const roomH = Math.max(300, H0 - TAB_SPACE - ROOM_BAR);
@@ -89,7 +93,7 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
   const offX = (CANVAS - fullWidth / sc) / 2; // 창(1080) 중 화면 밖으로 잘리는 왼쪽 폭 (캔버스 px, 넓은 화면이면 음수)
   const maxWorldX = Math.max(0, ROOM.width - fullWidth / sc);
   // 무대 단짝: 전환 아래 ~ 쪽지 위 사이를 꽉 채우는 크기 (가로는 화면의 92%까지)
-  const composerBottom = TAB_SPACE + 12;
+  const composerBottom = firstRun ? insets.bottom + 16 : TAB_SPACE + 12; // ④엔 탭 바가 없음
   const peekBottom = composerBottom + H.input + 10;
   const stageTop = belowSwitch;
   const stageBottom = H0 - (peekBottom + PEEK_H + 8);
@@ -113,7 +117,7 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
     const t = setTimeout(() => setRec((r) => (r?.key === rec.key ? null : r)), REC_MAX_MS);
     return () => clearTimeout(t);
   }, [rec]);
-  const [bubble, setBubble] = useState('');
+  const [bubble, setBubble] = useState(firstRun && !firstRun.done ? '오늘 해낸 거 하나만 알려줘' : '');
   const [float, setFloat] = useState<{ key: number; n: number } | null>(null);
   const [notifAsk, setNotifAsk] = useState(false);
   const [notifTime, setNotifTime] = useState('21:00');
@@ -233,10 +237,8 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
         setTimeout(() => setFloat((f) => (f?.key === fk ? null : f)), 1600);
       }
 
-      // D5: 알림 권한은 첫 기록 직후에 한 번만 물어본다
-      if (!unsafe && !profile?.notify_enabled && !store.get(NOTIF_ASKED_KEY) && Platform.OS !== 'web') {
-        setTimeout(() => setNotifAsk(true), 2600);
-      }
+      // D5 알림 권한은 첫 기록 직후 → ⑧ 가입 직후 방 도착 2~3초 뒤로 옮김 (2026-11-17, 아래 joined 이펙트)
+      if (firstRun) firstRun.onWin(category, unsafe);
     } catch (e) {
       setErr(friendlyError(e));
       say('');
@@ -244,6 +246,22 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
       setBusy(false);
     }
   }
+
+  // ⑦ 가입 직후 방 도착: 선물 씨앗 6개 말풍선(시트 아님) → ⑧ 2.6초 뒤 알림 시트 1장 (매일 알림 + 무료 끝나기 이틀 전 알림)
+  // 웹 테스트판에도 시트를 띄움 (화면 확인용. 웹은 알림 권한이 없어 '좋아'를 눌러도 저장만 안 됨)
+  useEffect(() => {
+    if (firstRun || !store.get(JOINED_KEY)) return;
+    store.set(JOINED_KEY, '');
+    const t1 = setTimeout(() => {
+      say('선물이야! 씨앗 6개', 4200);
+      const fk = nowKey();
+      setFloat({ key: fk, n: 6 });
+      setTimeout(() => setFloat((f) => (f?.key === fk ? null : f)), 1600);
+    }, 500);
+    const t2 = !profile?.notify_enabled && !store.get(NOTIF_ASKED_KEY) ? setTimeout(() => setNotifAsk(true), 3100) : null;
+    return () => { clearTimeout(t1); if (t2) clearTimeout(t2); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 방에 처음 들어온 한 번만
+  }, []);
 
   async function allowNotif(yes: boolean) {
     store.set(NOTIF_ASKED_KEY, '1');
@@ -443,11 +461,11 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
       {float && (
         <Text key={float.key} pointerEvents="none" style={[st.float, { top: belowSwitch + 8 }]}>+{float.n} 씨앗</Text>
       )}
-      <SpaceChips space="room" extra={roomBtn} />
-      {nav && <View style={[st.switchWrap, { top: switchTop }]}><SpaceSwitch nav={nav} style={st.switch} /></View>}
+      {!firstRun && <SpaceChips space="room" extra={roomBtn} />}
+      {nav && !firstRun && <View style={[st.switchWrap, { top: switchTop }]}><SpaceSwitch nav={nav} style={st.switch} /></View>}
 
       {/* 하마 무대 아래: 오늘의 쪽지 한 줄(H2). 기록 축하 중·입력 중엔 비켜 줌 */}
-      {stage && !rec && !composing && latest && (
+      {stage && !rec && !composing && latest && !firstRun && (
         <GestureDetector gesture={peekPan}>
           <Pressable onPress={() => setNotesOpen(true)} style={[st.peek, { bottom: peekBottom }]} accessibilityRole="button" accessibilityLabel={`오늘의 쪽지 ${todayCount}가지, 눌러서 펼치기`}>
             <Text style={st.peekTitle}>오늘의 쪽지 {todayCount}</Text>
@@ -462,9 +480,9 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
       {stage && composing && (
         <Pressable style={[StyleSheet.absoluteFill, { zIndex: 29 }]} onPress={() => Keyboard.dismiss()} accessibilityLabel="입력 닫기" />
       )}
-      {stage && !rec && (
+      {stage && !rec && !firstRun?.done && (
         <View style={[st.inputDock, { bottom: composing && kb ? kb + 8 : composerBottom }]}>
-          {composing && (
+          {(composing || firstRun) && (
             <View style={st.assist}>
               {err ? <Text style={st.errPill}>{err}</Text> : null}
               {picking && (
@@ -477,12 +495,14 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
                 </View>
               )}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={st.assistLine}>
+{!firstRun && (<>
                 {(['today', 'yesterday'] as const).map((d) => (
                   <Pressable key={d} onPress={() => setDay(d)} style={[st.chip, st.chipFloat, day === d && st.chipOn]} accessibilityRole="radio" accessibilityState={{ selected: day === d }}>
                     <Text style={[st.chipText, day === d && st.chipTextOn]}>{d === 'today' ? '오늘' : '어제'}</Text>
                   </Pressable>
                 ))}
                 <View style={st.assistSep} />
+                </>)}
                 {text.trim() ? (
                   <Pressable onPress={() => setPicking((v) => !v)} style={[st.chip, st.chipFloat]} accessibilityRole="button" accessibilityLabel={`${CATS[k].name} 동작, 눌러서 바꾸기`}>
                     <Text style={st.chipText}><Text style={{ fontWeight: '800' }}>{CATS[k].name}</Text> 동작 · <Text style={st.change}>바꾸기</Text></Text>
@@ -551,7 +571,7 @@ export function RoomPage({ pager, nav, pageH = 0 }: { pager?: Pager; nav?: Space
       </Sheet>
       <Sheet visible={notifAsk} onClose={() => allowNotif(false)}>
         <Text style={sheetSt.title}>내일 이 시간쯤 한 번만 물어봐도 될까?</Text>
-        <Text style={sheetSt.body}>하루 한 번, 오늘 해낸 걸 물어볼게. 이미 적은 날엔 안 보내.</Text>
+        <Text style={sheetSt.body}>하루 한 번, 오늘 해낸 걸 물어볼게. 이미 적은 날엔 안 보내. 무료 이용이 끝나기 이틀 전에도 날짜를 알려줄게.</Text>
         <View style={[st.chips, { marginBottom: 14 }]}>
           {['20:00', '21:00', '22:00', '23:00'].map((t) => (
             <Pressable key={t} onPress={() => setNotifTime(t)} style={[st.chip, notifTime === t && st.chipOn]}>
