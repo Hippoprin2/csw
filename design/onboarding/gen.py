@@ -18,6 +18,13 @@ CSS = hs['CSS'] + '''
 .soc { height: 52px; border-radius: 999px; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
 .btn2 { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #6E5848; font-weight: 700; }
 .fine { font-size: 11.5px; color: #8A7666; line-height: 1.55; margin: 6px 4px 0; text-align: center; }
+.set { position: absolute; inset: 0; padding: 62px 20px 0; background: #fff; }
+.set h1 { font-size: 26px; font-weight: 800; margin: 0 2px 14px; }
+.sec { font-size: 13px; color: #6E5848; font-weight: 700; margin: 16px 6px 6px; }
+.grp { background: #F7F6F3; border-radius: 22px; overflow: hidden; }
+.grp .r { padding: 15px 18px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+.grp .r + .r { border-top: 1px solid #ECE9E3; }
+.grp .r .m { color: #6E5848; font-size: 13.5px; }
 .old { position: absolute; inset: 0; width: 390px; }
 .strike { position: absolute; left: 10px; right: 10px; border: 3px dashed #C0503A; border-radius: 30px; z-index: 9; }
 .lab { position: absolute; background: #C0503A; color: #fff; font-size: 12px; font-weight: 800; padding: 5px 11px; border-radius: 999px; z-index: 9; }
@@ -64,7 +71,7 @@ cel = phone('⑤ 축하 (홈과 같은 연출)', '하마 동작 + 적은 문장 
             stage_room() + '<div class="veil" style="background:rgba(255,255,255,.55)"></div>' + hippo('tidy', 430, 115)
             + '<div class="bubble" style="left:96px;top:120px">이불 갠 거 최고야!</div>'
             + '<div class="rec" style="top:700px"><i class="dot" style="background:#7FB3A0"></i>이불 갰다</div>'
-            + '<div class="float" style="left:276px;top:654px">+1 씨앗</div>')
+            + '<div class="float" style="left:276px;top:654px">+3 씨앗</div>')
 signup = phone('⑥ 저장하기 = 가입 (필수)', '축하가 끝나면 바로 올라옴. "나중에" 없음(O2-B). 겁주는 말 없이 "남게 해 줄게"로',
                stage_room() + '<div class="veil" style="background:rgba(255,255,255,.55)"></div>' + hippo('cheer', 360, 40)
                + sheet('<div class="sh">첫 기록, 잘 간직할게</div>'
@@ -75,8 +82,58 @@ signup = phone('⑥ 저장하기 = 가입 (필수)', '축하가 끝나면 바로
                        '<div class="btn2">이메일로 계속하기</div>'
                        '<div class="fine">가입한 날부터 2주 무료 · 카드 등록 없음</div>', pad_b=30) + new(300, 486))
 room = phone('⑦ 방 도착', '선물 씨앗 6개 + 방금 기록 1개가 그대로. 이어서 "12월 1일까지 무료" 안내(유료화 시안 ①)',
-             STAGE + hippo('idle', 370, 130) + TOP.replace('<i class="lf"></i>9', '<i class="lf"></i>7') + SWITCH
+             STAGE + hippo('idle', 370, 130) + TOP + SWITCH
              + '<div class="bubble" style="left:50%;transform:translateX(-50%);top:150px">선물이야! 씨앗 6개</div>'
              + PEEK.replace('오늘의 쪽지 3', '오늘의 쪽지 1').replace('방금 침대 정리했다', '이불 갰다') + INPUT + TAB + new(300, 200))
 page('sheet2', [first, cel, signup, room])
+
+# ---------- sheet3: 가입 뒤 구독 안내 흐름 O6-A (추천) — 날짜는 가입 시트에서, 방에선 알림만 ----------
+SIGN = ('<div class="sh">첫 기록, 잘 간직할게</div>'
+        '<div class="sp">계정을 연결하면 폰을 바꿔도 기록이랑 꼬마하마가 그대로 남아.</div>'
+        '<div class="soc" style="background:#111;color:#fff"> Apple로 계속하기</div>'
+        '<div class="soc" style="background:#FEE500;color:#191919">카카오로 계속하기</div>'
+        '<div class="soc" style="background:#F7F6F3">Google로 계속하기</div>'
+        '<div class="btn2">이메일로 계속하기</div>')
+CEL_BG = stage_room() + '<div class="veil" style="background:rgba(255,255,255,.55)"></div>' + hippo('cheer', 360, 40)
+TIMES = '<div class="chips"><span class="chip">20:00</span><span class="chip on">21:00</span><span class="chip">22:00</span><span class="chip">23:00</span></div>'
+ROOM_HOME = STAGE + hippo('idle', 370, 130) + TOP + SWITCH + PEEK.replace('오늘의 쪽지 3', '오늘의 쪽지 1').replace('방금 침대 정리했다', '이불 갰다') + INPUT + TAB
+
+
+def settings_free(tag=True):
+    tb = TAB.replace('<span class="on">방</span>', '<span>방</span>').replace('<span>설정</span>', '<span class="on">설정</span>')
+    return ('<div class="set"><h1>설정</h1><div class="sec">구독</div><div class="grp">'
+            '<div class="r">12월 1일까지 무료로 쓰는 중</div><div class="r">구독 둘러보기 <span class="m">›</span></div></div>'
+            '<div class="sec">단짝</div><div class="grp"><div class="r">이름: 꼬마하마</div></div>'
+            '<div class="sec">알림</div><div class="grp"><div class="r">하루 한 번 물어보기 <span class="m">켜짐</span></div><div class="r">시간: 오후 9:00</div></div>'
+            '</div>' + tb)
+
+
+a6 = phone('O6-A ⑥ · 무료 날짜는 가입 시트에서 ← 추천', '가입 버튼 바로 아래에 끝나는 날짜·가격. 결정하기 전에 알게 됨. 가입 뒤 무료 안내 시트는 따로 안 띄움',
+           CEL_BG + sheet(SIGN + '<div class="fine"><b style="color:#4A3226">12월 1일까지 무료</b> · 카드 등록 없음<br>그 뒤 이어 쓰려면 월 3,000원 (그때 골라도 돼)</div>', pad_b=26) + new(300, 470))
+a7 = phone('⑦ 방 도착 · 선물', '시트 없이 말풍선 + 씨앗이 칩으로 날아감(+6). 방금 기록도 쪽지 한 줄로 보임',
+           ROOM_HOME.replace('<i class="lf"></i>9', '<i class="lf"></i>9')
+           + '<div class="bubble" style="left:50%;transform:translateX(-50%);top:150px">선물이야! 씨앗 6개</div>'
+           + '<div class="float" style="left:300px;top:96px">+6</div>')
+a8 = phone('⑧ 알림 물어보기 (시트 1장)', '가입 뒤 뜨는 시트는 이것 하나. 매일 알림 + 무료 끝나기 전 알림을 한 번에 물어봄',
+           ROOM_HOME + sheet('<div class="sh">내일 이 시간쯤 한 번만 물어봐도 될까?</div>'
+                             '<div class="sp">하루 한 번, 오늘 해낸 걸 물어볼게. 이미 적은 날엔 안 보내.<br>무료 이용이 끝나기 이틀 전에도 날짜를 알려줄게.</div>'
+                             + TIMES + '<div class="btn">좋아</div><div class="btn2">괜찮아</div>', pad_b=36) + new(300, 486))
+a9 = phone('⑨ 날짜는 설정에서 언제든', '홈·입력창엔 아무 표시 없음(카운트다운 없음). 유료화 시안 ②와 같음',
+           settings_free())
+page('sheet3', [a6, a7, a8, a9])
+
+# ---------- sheet4: 다른 방법 ----------
+b1 = phone('O6-B · 한 장에 다 넣기', '무료 날짜 + 선물 + 알림을 시트 하나에. 끊김은 1번이지만 글이 많고 버튼이 두 뜻을 겸함',
+           ROOM_HOME + sheet('<div class="sh">반가워! 12월 1일까지<br>전부 무료로 쓸 수 있어</div>'
+                             '<div class="sp">카드 등록은 필요 없어. 선물로 씨앗 6개도 넣어 뒀어.<br>하루 한 번, 오늘 해낸 걸 물어봐도 될까?</div>'
+                             + TIMES + '<div class="btn">알림 받고 시작하기</div><div class="btn2">알림 없이 시작하기</div>', pad_b=36))
+c1 = phone('O6-C ①/② · 지금 확정안 그대로', '방 도착 → 무료 안내 시트 [좋아] (유료화 시안 ① 그대로)',
+           ROOM_HOME + sheet('<div class="sh">반가워! 가입한 날부터 2주 동안<br>전부 무료로 쓸 수 있어</div>'
+                             '<div class="sp"><b style="color:#4A3226">12월 1일까지</b> 무료야. 카드 등록은 필요 없고, 그 뒤에 이어 쓸지는 그때 골라도 돼.</div>'
+                             '<div class="btn">좋아</div>', pad_b=40))
+c2 = phone('O6-C ②/② · 이어서 알림 시트', '닫자마자 알림 시트가 또. 가입 → 시트 → 시트, 3번 연속 끊김',
+           ROOM_HOME + sheet('<div class="sh">내일 이 시간쯤 한 번만 물어봐도 될까?</div>'
+                             '<div class="sp">하루 한 번, 오늘 해낸 걸 물어볼게. 이미 적은 날엔 안 보내.</div>'
+                             + TIMES + '<div class="btn">좋아</div><div class="btn2">괜찮아</div>', pad_b=36))
+page('sheet4', [b1, c1, c2])
 print('ok')
