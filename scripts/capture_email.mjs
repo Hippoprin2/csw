@@ -1,9 +1,7 @@
-// 첫 실행 흐름 상태별 스크린샷 + 확인 (2026-11-17 첫 실행 순서 변경: 가입을 첫 기록 축하 뒤로)
-// 사용: node scripts/capture_onboarding.mjs <outdir> [app url=http://localhost:8081]   (mobile에서 npx expo start --web --port 8081)
-// ① 인사 → ②③ → ④ 첫 기록 → ⑤ 축하 → ⑥ 가입 시트 → (앱 닫았다 다시 열기 → ⑥) → 가입(연결) → ⑦ 방·선물 → ⑧ 알림 시트
-// 그리고 새 익명으로 첫 기록 → 이미 있는 계정으로 로그인 → 첫 기록이 그 계정으로 옮겨짐(바로 방, 선물 없음)
-// 웹에선 실제 카카오·이메일 가입을 못 하므로 '연결'은 관리 API로 익명 계정에 이메일을 붙이고(서버 트리거는 실제와 같음)
-// 앱이 웹 OAuth 연결에서 돌아올 때와 같은 상태(csw.linkUid + 새 세션)로 다시 엶. 만든 테스트 계정은 끝에 지움.
+// 이메일 가입 화면 캡처 + 실제 메일 확인 (2026-11-20). capture_onboarding.mjs의 도구 부분을 복사함
+// 사용: node scripts/capture_email.mjs <outdir> https://csw-app-web.vercel.app
+// 시작하기 → 첫 기록 → ⑥ 가입 시트 → 이메일로 계속하기 → Resend 테스트 주소(delivered+…@resend.dev) → 코드 받기
+// → Resend API로 받은 메일에서 코드 → 입력 → 방·선물. 같은 계정이 정식 계정이 됐는지 확인, 메일 본문도 캡처. 테스트 계정은 끝에 지움.
 // 시스템 Chrome 헤드리스 + CDP (외부 패키지 없음, Node 22 WebSocket). 390×844 @2x
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
