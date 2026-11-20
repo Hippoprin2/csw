@@ -6,7 +6,7 @@
 
 ## 1. 대표가 먼저 정할 것 (다른 일을 막고 있음)
 - [ ] 앱 이름 확정 (지금은 가칭 CSW)
-- [ ] 도메인 구입 — 메일 발송, 처리방침 페이지에 필요
+- [x] 도메인 구입 — irumhq.com (2026-11-16)
 - [x] 스토어: **iOS·Android 둘 다** (2026-11-16 대표). **사업자등록 완료(2026-11-16 대표, 등록증 발급, 상호 Irum)** — D-U-N-S·영문 사업자등록증명 영문 상호는 `Irum` 한 가지로 통일. **도메인 = irumhq.com (2026-11-16 Cloudflare에서 구입 완료, NS bruce/veronica.ns.cloudflare.com), 문의 이메일 = contact@irumhq.com (대표 결정. 2026-11-17 Cloudflare Email Routing: 규칙 contact@ → jsonia.kang@gmail.com, 2026-11-18 jiseung.kang@ → 같은 Gmail 추가(개발자 계정 조직 가입용), 수신 주소 verified, MX route1/2/3 + SPF 추가. Email Routing '켜기'는 토큰 권한 밖 → 2026-11-18 대표가 대시보드에서 Enable, jiseung.kang@ 테스트 메일 수신 확인. 토큰 = .env.local CLOUDFLARE_API_TOKEN: DNS Edit·Email Routing Rules/Addresses·Zone Read)** — 회사 느낌·여러 프로젝트용. **D-U-N-S 신청 완료(2026-11-18 대표).** ⚠ 발급된 번호가 다른 사업장 정보(상호·주소·사업자번호·대표자 모두 다름)로 나옴 → 11-19 D&B에 jiseung.kang@irumhq.com으로 정정 요청(사업자등록증 첨부). 비슷한 사례: 한국 개발자가 D&B 웹 신청 번호가 다른 회사로 나와 Apple의 D-U-N-S 조회 도구(developer.apple.com/enroll/duns-lookup, Apple 계정 로그인)로 다시 신청 → 며칠 만에 맞는 정보의 새 번호(dalnimdev.tistory.com/433, 2024-12). 나이스디앤비는 미국 D&B 직접 발급 번호는 지원 안 함(유료 '신규' 신청 시 사업자번호 같으면 정정 가능). **보내기(2026-11-18)**: Resend(대표 Gmail 가입, 키 .env.local RESEND_API_KEY) 도메인 irumhq.com 인증 완료(ap-northeast-1, DKIM resend._domainkey·SPF send.·DMARC p=none을 Cloudflare에 추가). Gmail '다른 주소에서 메일 보내기' = smtp.resend.com:465 SSL, 사용자 resend, 비번 = API 키. 앱 이메일 OTP 커스텀 SMTP에도 같은 계정 사용 가능. 회사 웹사이트 초안(2026-11-18): repo `~/projects/irumhq-site`(정적 HTML, GitHub 없음), Vercel 프로젝트 irumhq-site → https://irumhq-site.vercel.app (`python3 scripts/vercel_deploy.py`). 11-18 대표 요청으로 앱 소개 빼고 회사 한 줄 + 사업자 정보 + 문의만 남김(서비스 성격이 제각각이라). 대표자·사업자번호·주소 【】 채우고 대표 확인 후 irumhq.com 연결 예정. 처리방침·약관 페이지는 앱 이름·전문가 확인 뒤. 이전 후보(whois·RDAP 미등록, irum.co는 가비아 '이미 있음' = 예약/프리미엄 추정): irumapp.com, irumapps.com, getirum.com, irumhq.com (irum.com/.kr/.co.kr/.app/.io/.dev는 이미 등록됨)
   - Apple: 공식 안내 = 개인사업자는 개인(Individual) 가입, 판매자 이름 = 대표 본명(로마자). **단, 국내 개인사업자가 D-U-N-S + 상호 도메인 웹사이트·업무 이메일 + 영문 사업자등록증·신분증으로 지원팀에 요청해 조직(상호 표시)으로 전환한 사례 2건 있음**(devrives.com 2026-10, eont.tistory.com 2026-08, 각 3일~1주, 연회비 재결제 없음). 보장 아님, 전환 후 판매자명 변경 불가, 전환 중 인증서 메뉴 사용 불가 → 첫 출시 전에 할 것. 경로: 개인 가입 → developer.apple.com/contact/request/migrate-individual-account (2026-11-16 재확인)
   - Google: **처음부터 조직 계정**(개인사업자 + D-U-N-S + 조직 웹사이트 인증 + 조직 전화번호) → 개인 계정의 '테스터 12명×14일 비공개 테스트' 면제. 개인 계정은 12명×14일 해도 거절되면 다시 14일(참고 vibeapplog.com 사례)
@@ -43,7 +43,7 @@
 
 ## 3. 로그인
 - [x] PKCE 전환 — 남이 만든 로그인 링크 차단 (2026-11-12, 대표 기기 확인)
-- [ ] 이메일 코드 발송용 Resend 연결 (키 없음, 도메인 필요)
+- [x] 이메일 코드 발송용 Resend 연결 — 2026-11-20, `Hamalog (기록하마) <no-reply@irumhq.com>`, `scripts/apply_email.py`·`test_email.py`
 - [ ] 구글 OAuth 앱 Publish — 안 하면 테스트 사용자만 로그인됨
 - [ ] 카카오 공식 SDK 전환 (이메일·닉네임만 요청) — 개발 빌드 필요
 - [ ] 구글 네이티브 로그인 전환 (로그인 창의 `….supabase.co` 표시 해결) — 개발 빌드 필요, 카카오와 같이

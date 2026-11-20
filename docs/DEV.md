@@ -201,3 +201,10 @@
 - 앱: 동의 화면 → `api.consent()`, 오류 문구 `subscription_required`·`signup_required`·`consent_required`, 계정 삭제 확인 창에 "결제는 멈추지 않아" + '구독 관리 열기'(iOS apps.apple.com/account/subscriptions, Android Play 구독)(B3). 약관 제4조 5항·처리방침(가입 시각, 약관 판, 익명 통계 연결 끊기, 결제 기록 분리 보관) 수정 → `gen_legal.py`
 - 테스트: `scripts/test_access.py` (무료 중/끝, 어제 기록 잠김, 끝나도 되는 것, 구독·해지·만료·유예·환불·재구독 이력, 앱에서 구독 줄 못 씀, 테스터, B5 옮기기, 삭제 뒤 결제 기록 보관) ALL PASS 32 · test_anon·test_backend·test_records·test_garden·test_yard ALL PASS. `sb.temp_user()`는 동의까지 해 둠
 - 남은 것(결제 연동 때): RevenueCat 웹훅 Edge Function → 두 표에 쓰기, 구독 시트·설정의 무료/구독 표시(`access_state`), 끝나기 2일 전 알림, 입력 알약에서 권한 없으면 구독 시트. 3년 미접속 삭제(구독 계정 제외)는 아직 없음(LAUNCH)
+
+## 2026-11-20 이메일 (로그인·가입 메일 = Resend, 대표 결정)
+- 보내는 주소 `no-reply@irumhq.com`, 이름 `Hamalog (기록하마)` (대표: Hamalog 뒤 괄호에 지역 이름). 문의는 본문 맨 아래 `contact@irumhq.com`(대표 Gmail로 감)
+- `scripts/apply_email.py` = Supabase Auth SMTP(smtp.resend.com:465) + 한국어 6자리 코드 메일 3종(로그인 magic_link / 가입 confirmation / 익명→이메일 연결 email_change), 제목에 코드, 시간당 30통(기본 2), 같은 주소 60초 간격. Resend 열쇠는 Supabase 전용 `RESEND_SMTP_KEY`(irumhq.com 보내기만, 'supabase-auth-hamalog') — Gmail 쪽 `RESEND_API_KEY`와 분리. 옛 `apply_auth_config.py`의 SMTP 부분('CSW', onboarding@resend.dev)은 쓰지 말 것
+- 테스트 `scripts/test_email.py` (Resend 테스트 주소로 3종 실제 발송 → Resend API로 받은 제목·본문 확인 → 코드로 가입/연결/로그인) ALL PASS 14. 대표 Gmail·네이버로 로그인 코드 실제 발송 delivered(11-20)
+- 지역별 이름(일본 `Hamalog (きろくカバ)`, 대만 `Hamalog (記錄河馬)`): Supabase SMTP는 보내는 이름이 프로젝트에 하나뿐 → 해당 나라 출시 때 Send Email Hook(Edge Function이 사용자 지역 보고 Resend API로 이름·제목·본문 골라 보냄)으로 바꿈. 지역 = 프로필 국가 또는 요청 시 앱 언어. 그전까지는 전부 한국 이름
+- Resend 무료 = 하루 100통·월 3,000통. 넘으면 Pro($20/월)
