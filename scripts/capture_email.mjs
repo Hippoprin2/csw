@@ -149,7 +149,8 @@ async function main() {
   await waitText('첫 기록, 잘 간직할게', 20000);
   await shot('e1_signup_sheet', '⑥ 가입 시트', 900);
   await tap('이메일로 계속하기');
-  await waitText('로그인 코드를 메일로 보내줄게', 15000);
+  await waitText('가입 코드를 메일로 보내줄게', 15000);
+  check('가입 시트에서 오면 "가입 코드" 문구', true);
   await shot('e2_email', '이메일 입력');
   const addr = `delivered+hlcap${Date.now()}@resend.dev`;
   await type('이메일', addr);
@@ -161,7 +162,7 @@ async function main() {
   await shot('e3_code', '코드 입력 화면');
   const m = await resendMail(addr, t0);
   const code = m.subject.match(/(\d{6})/)[1];
-  check('메일 제목 = 이메일 연결 코드', m.subject.startsWith('Hamalog 이메일 연결 코드'), m.subject);
+  check('메일 제목 = 가입 코드', m.subject.startsWith('Hamalog 가입 코드'), m.subject);
   writeFileSync(join(outDir, 'mail.html'), m.html);
   await type('인증 코드', code);
   await shot('e4_code_typed', '코드 입력 (6자리)', 300);

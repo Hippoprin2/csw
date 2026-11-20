@@ -63,8 +63,9 @@ body = {
     'mailer_templates_magic_link_content': tpl('로그인 코드', '앱에 아래 6자리 코드를 입력해줘.', '로그인 링크'),
     'mailer_subjects_confirmation': 'Hamalog 가입 코드 {{ .Token }}',
     'mailer_templates_confirmation_content': tpl('가입 코드', 'Hamalog에 온 걸 환영해! 앱에 아래 6자리 코드를 입력하면 가입이 끝나.', '가입 링크'),
-    'mailer_subjects_email_change': 'Hamalog 이메일 연결 코드 {{ .Token }}',
-    'mailer_templates_email_change_content': tpl('이메일 연결 코드', '이 주소를 Hamalog 계정에 연결할게. 앱에 아래 6자리 코드를 입력해줘.', '연결 링크'),
+    # email_change = 가입 시트에서 이메일 고름(익명 계정에 주소 연결) — 사용자에겐 '가입'
+    'mailer_subjects_email_change': 'Hamalog 가입 코드 {{ .Token }}',
+    'mailer_templates_email_change_content': tpl('가입 코드', 'Hamalog에 온 걸 환영해! 앱에 아래 6자리 코드를 입력하면 가입이 끝나.', '가입 링크'),
 }
 
 raw = subprocess.run(['security', 'find-generic-password', '-s', 'Supabase CLI', '-w'], capture_output=True, text=True).stdout.strip()

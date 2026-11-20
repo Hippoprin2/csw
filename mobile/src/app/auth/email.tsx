@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } fro
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { sendEmailCode, verifyEmailCode } from '@/lib/auth';
+import { useApp } from '@/state/app';
 import { Back, Btn } from '@/ui/kit';
 import { C, H as HT, R } from '@/ui/theme';
 
@@ -16,6 +17,7 @@ export default function EmailLogin() {
   const [mode, setMode] = useState<'link' | 'login'>('login'); // link = 익명 계정에 이메일 연결(⑥ 가입), login = 일반 로그인
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const { anonymous } = useApp(); // 익명(⑥ 가입 시트에서 옴) = 가입, 아니면 로그인 — 문구만 다름 (2026-11-20)
 
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
@@ -51,7 +53,7 @@ export default function EmailLogin() {
           {!sent ? (
             <>
               <Text style={st.h}>이메일로 계속하기</Text>
-              <Text style={st.sub}>로그인 코드를 메일로 보내줄게. 비밀번호는 필요 없어.</Text>
+              <Text style={st.sub}>{anonymous ? '가입' : '로그인'} 코드를 메일로 보내줄게. 비밀번호는 필요 없어.</Text>
               <TextInput
                 style={st.input} value={email} onChangeText={setEmail} placeholder="email@example.com" placeholderTextColor={C.placeholder}
                 autoCapitalize="none" autoComplete="email" keyboardType="email-address" inputMode="email"

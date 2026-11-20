@@ -61,7 +61,7 @@ try:
     check('연결 메일 도착', m is not None)
     if m:
         code = re.search(r'(\d{6})', m['subject']).group(1)
-        check('제목 = Hamalog 이메일 연결 코드', m['subject'].startswith('Hamalog 이메일 연결 코드'), m['subject'])
+        check('제목 = Hamalog 가입 코드 (익명 연결)', m['subject'].startswith('Hamalog 가입 코드'), m['subject'])
         pathlib.Path('/Users/soniakang/.hermes/cache/scratch/mail_email_change.html').write_text(m['html'])
         s, sess = req('POST', '/auth/v1/verify', {'type': 'email_change', 'email': B, 'token': code}, token=TA)
         check('연결 코드 → 같은 계정이 정식 계정', s == 200 and sess.get('user', {}).get('id') == uid and not sess['user'].get('is_anonymous'), (s, sess))

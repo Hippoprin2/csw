@@ -208,3 +208,5 @@
 - 테스트 `scripts/test_email.py` (Resend 테스트 주소로 3종 실제 발송 → Resend API로 받은 제목·본문 확인 → 코드로 가입/연결/로그인) ALL PASS 14. 대표 Gmail·네이버로 로그인 코드 실제 발송 delivered(11-20)
 - 지역별 이름(일본 `Hamalog (きろくカバ)`, 대만 `Hamalog (記錄河馬)`): Supabase SMTP는 보내는 이름이 프로젝트에 하나뿐 → 해당 나라 출시 때 Send Email Hook(Edge Function이 사용자 지역 보고 Resend API로 이름·제목·본문 골라 보냄)으로 바꿈. 지역 = 프로필 국가 또는 요청 시 앱 언어. 그전까지는 전부 한국 이름
 - Resend 무료 = 하루 100통·월 3,000통. 넘으면 Pro($20/월)
+- 2026-11-20 문구: 가입 시트에서 이메일로 오면(익명) 화면 "가입 코드를 메일로 보내줄게", 연결 메일(email_change) 제목·본문도 "Hamalog 가입 코드"로. '이미 계정이 있어요'로 오면 "로그인 코드". test_email·capture_email ALL PASS
+- 네이버 로그인(대표 요청 11-20, 진행 전): Supabase 기본 제공자에 없음 → Custom OAuth 제공자 `custom:naver`(무료 플랜 3개까지, `/auth/v1/admin/custom-providers` 사용 가능 확인). 네이버 userinfo 응답이 OIDC 표준이 아니라(`response` 안에 값) Edge Function `naver-userinfo`가 표준 형식으로 바꿔 줌, scopes = `profile`(openid 넣으면 userinfo 안 부름). 참고 sapsaldog.com/posts/supabase-naver-login-with-edge-function. 필요: 네이버 개발자센터 앱 등록(대표 네이버 계정) + 이메일 '필수' 동의 + 서비스 공개 전 검수
