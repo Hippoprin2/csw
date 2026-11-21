@@ -39,6 +39,7 @@ const DOT = 7; // 유리장 병 속 구슬 한 칸 (캔버스 px)
 const SWITCH_H = 44; // 텃밭/방/마당 전환 높이 (36 + 위아래 4)
 const PEEK_H = 44; // 오늘의 쪽지 접힌 한 줄
 const ROOM_BAR = 64; // 방 보기 아래 버튼 줄(바구니·꾸미기) 자리
+const MOTION_ASK_MS = 10000; // S25 동작 요청 버튼이 떠 있는 시간
 const REC_MAX_MS = 12000; // 기록 카드: 동작이 끝나지 않는 경우(로딩 실패)에도 이 뒤엔 걷음
 const nowKey = () => Date.now(); // 동작·씨앗 표시 키 (이벤트 핸들러에서만 부름)
 // 웹 전용: 화면에 고정된 body 높이 (lib/webViewport, 키보드엔 안 줄고 사파리 툴바·회전만 따라감)
@@ -119,6 +120,15 @@ export function RoomPage({ pager, nav, pageH = 0, firstRun }: { pager?: Pager; n
   }, [rec]);
   const [bubble, setBubble] = useState(firstRun && !firstRun.done ? '오늘 해낸 거 하나만 알려줘' : '');
   const [float, setFloat] = useState<{ key: number; n: number } | null>(null);
+  // S25 동작 요청: '그 밖의 승리'(기본 동작)로 축하한 뒤 잠깐 뜨는 버튼 → 키워드 시트
+  const [motionAsk, setMotionAsk] = useState<{ key: number; category: Category } | null>(null);
+  const [motionOpen, setMotionOpen] = useState(false);
+  const [motionWord, setMotionWord] = useState('');
+  useEffect(() => {
+    if (!motionAsk) return;
+    const t = setTimeout(() => setMotionAsk((m) => (m?.key === motionAsk.key ? null : m)), MOTION_ASK_MS);
+    return () => clearTimeout(t);
+  }, [motionAsk]);
   const [notifAsk, setNotifAsk] = useState(false);
   const [notifTime, setNotifTime] = useState('21:00');
   const [err, setErr] = useState('');
@@ -167,6 +177,18 @@ export function RoomPage({ pager, nav, pageH = 0, firstRun }: { pager?: Pager; n
     setBubble(line);
     if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
     bubbleTimer.current = setTimeout(() => setBubble(''), ms);
+  };
+
+  // S25: 키워드만 저장. 안전 단어에 걸리면 저장하지 않고 인사만 (집계에서 빠짐)
+  const sendMotion = () => {
+    const w = motionWord.trim();
+    if (!w || !motionAsk) return;
+    if (!safetyKeywordHit(w)) {
+      api.requestMotion(w, motionAsk.category).catch(() => {});
+      track('motion_requested');
+    }
+    setMotionOpen(false); setMotionAsk(null); Keyboard.dismiss();
+    say('알려줘서 고마워! 많이 모이면 배워올게', 4000);
   };
 
   // 구매·먹이기·선물 직후: 최근 이벤트(기록 vs 그 밖) 중 더 나중 것을 보여준다
@@ -222,6 +244,7 @@ export function RoomPage({ pager, nav, pageH = 0, firstRun }: { pager?: Pager; n
         setAction({ kind: eatVariant(category, t) ?? category, key: k });
         // H4: 줌·어둡게 대신 적은 문장이 카드로 떠서 '지금 이걸 축하하는 중'이 보임. 동작 끝(Pet onDone)·화면 탭이면 걷힘
         setRec({ key: k, text: t, category });
+        if (category === 'cheer' && !firstRun) { setMotionAsk({ key: k, category }); track('motion_ask_shown'); }
         if (r.sealed) {
           say('유리병이 꽉 찼어! 뚜껑 닫아서 선반에 올려둘게. 새 병 시작이야', 6000);
           track('jar_sealed', { no: r.win.jar_no });
@@ -465,7 +488,13 @@ export function RoomPage({ pager, nav, pageH = 0, firstRun }: { pager?: Pager; n
       {nav && !firstRun && <View style={[st.switchWrap, { top: switchTop }]}><SpaceSwitch nav={nav} style={st.switch} /></View>}
 
       {/* 하마 무대 아래: 오늘의 쪽지 한 줄(H2). 기록 축하 중·입력 중엔 비켜 줌 */}
-      {stage && !rec && !composing && latest && !firstRun && (
+      {stage && motionAsk && !motionOpen && !composing && !firstRun && (
+        <Pressable onPress={() => { setMotionWord(''); setMotionOpen(true); }} style={[st.motionAsk, { bottom: peekBottom }]} accessibilityRole="button" accessibilityLabel="단짝이 이 동작을 했으면 좋겠어, 알려주기">
+          <Text style={st.motionAskText}>단짝이 이 동작을 했으면 좋겠어</Text>
+          <Icon name="chevronRight" size={14} color={C.accentInk} />
+        </Pressable>
+      )}
+      {stage && !rec && !motionAsk && !composing && latest && !firstRun && (
         <GestureDetector gesture={peekPan}>
           <Pressable onPress={() => setNotesOpen(true)} style={[st.peek, { bottom: peekBottom }]} accessibilityRole="button" accessibilityLabel={`오늘의 쪽지 ${todayCount}가지, 눌러서 펼치기`}>
             <Text style={st.peekTitle}>오늘의 쪽지 {todayCount}</Text>
@@ -584,6 +613,19 @@ export function RoomPage({ pager, nav, pageH = 0, firstRun }: { pager?: Pager; n
           <Btn title="괜찮아" kind="ghost" onPress={() => allowNotif(false)} />
         </View>
       </Sheet>
+      <Sheet visible={motionOpen} onClose={() => setMotionOpen(false)}>
+        <Text style={sheetSt.title}>어떤 동작이면 좋겠어?</Text>
+        <Text style={sheetSt.body}>짧게 적어줘. 많이 모이는 동작부터 단짝이 배워올게. 적은 기록 문장은 보내지 않아.</Text>
+        <TextInput
+          value={motionWord} onChangeText={(v) => setMotionWord(v.slice(0, 20))} maxLength={20} autoFocus
+          placeholder="예: 테니스 치기, 등산" placeholderTextColor={C.muted} style={st.motionInput}
+          returnKeyType="done" onSubmitEditing={sendMotion} accessibilityLabel="원하는 동작"
+        />
+        <View style={sheetSt.col}>
+          <Btn title="알려주기" onPress={sendMotion} disabled={!motionWord.trim()} />
+          <Btn title="괜찮아" kind="ghost" onPress={() => setMotionOpen(false)} />
+        </View>
+      </Sheet>
       <Sheet visible={basket} onClose={() => setBasket(false)}>
         <Text style={sheetSt.title}>수확 바구니</Text>
         <Text style={sheetSt.body}>먹이거나 선물하면 하나씩 줄고, 다 쓰면 창턱 장식도 사라져. 텃밭에서 또 수확하면 다시 생겨.</Text>
@@ -613,6 +655,9 @@ const st = StyleSheet.create({
   float: { position: 'absolute', right: 28, fontSize: 16, fontWeight: '800', color: C.seed, zIndex: 12 },
   rec: { position: 'absolute', alignSelf: 'center', maxWidth: '86%', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.card, borderRadius: R.card, paddingVertical: 12, paddingHorizontal: 18, zIndex: 11 },
   recText: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: C.ink },
+  motionAsk: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 4, height: 44, paddingHorizontal: 18, borderRadius: R.pill, backgroundColor: C.card, zIndex: 10 },
+  motionAskText: { fontSize: 14, color: C.accentInk, fontWeight: '700' },
+  motionInput: { height: 48, borderRadius: R.card, backgroundColor: C.soft, paddingHorizontal: 14, fontSize: 16, color: C.ink, marginBottom: 14 },
   peek: { position: 'absolute', left: 16, right: 16, height: PEEK_H, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderRadius: R.card, backgroundColor: C.card, zIndex: 10 },
   peekTitle: { fontSize: 13.5, fontWeight: '800', color: C.ink },
   peekText: { flex: 1, fontSize: 13.5, color: C.muted, marginLeft: 6, marginRight: 6 },

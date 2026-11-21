@@ -1,22 +1,25 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { api, type JarInfo, type Win, type WinCounts } from '@/lib/api';
+import { type JarInfo, type Win } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { CATEGORY_ORDER, CATS } from '@/lib/categories';
 import { addDays, formatDay, kstToday, weekStart } from '@/lib/dates';
 import { jarMarbles, shelfByYear } from '@/lib/jars';
 import { useApp } from '@/state/app';
+import { CatChips } from '@/ui/CatChips';
 import { Icon } from '@/ui/Icon';
 import { MarbleJar } from '@/ui/MarbleJar';
-import { Card, H, Sub } from '@/ui/kit';
+import { H, Sub } from '@/ui/kit';
 import { WinList } from '@/ui/WinList';
 import { useWinSheet } from '@/ui/WinSheet';
 import { ART, C, H as HT, R, TAB_SPACE } from '@/ui/theme';
 
-const RECENT_LIST_DAYS = 14; // 유리병 화면 목록은 최근 2주만. 그 전은 선반의 병을 열거나 찾기 (FEATURES C6 J1-A)
+// 유리병 탭 = 시간 순서 하나 (2026-11-16 대표 결정 G1-A·G2-A·G3-A·F-B, 시안 design/jar_page/sheet5)
+// 병(쓸어 보기) → 분류 칩 → '이 순간 기억나?' 한 장 → 이번 주(머리말 + 날짜별) → 지난 주 → 더 지난 기록(선반)
+// 3주 전부터는 선반의 병·분류 칩·찾기로 본다 (하나도 없어지지 않음)
 
 // 선반 위 닫힌 병 (뚜껑 + 구슬 색)
 function ShelfJar({ jar }: { jar: JarInfo }) {
@@ -34,73 +37,69 @@ function ShelfJar({ jar }: { jar: JarInfo }) {
   );
 }
 
-function WeekCard({ start, wins, title }: { start: string; wins: Win[]; title: string }) {
-  const { openWin } = useWinSheet();
-  const end = addDays(start, 6);
-  const ws = wins.filter((w) => w.win_date >= start && w.win_date <= end);
-  const byCat = CATEGORY_ORDER.map((c) => [c, ws.filter((w) => w.category === c).length] as const).filter(([, n]) => n > 0);
-  // 반복 적은 기록 우선으로 "이 순간 기억나?" 하나 고르기 (주 단위로 고정)
-  // '버틴 하루'(힘든 마음 기록)는 다시 꺼내 보여주지 않는다 (2026-11-10 대표 결정)
-  let memory: Win | null = null;
+// '이 순간 기억나?' 한 장: 이번 주(없으면 지난 주)에서 반복이 적은 기록 하나, 주 단위로 고정
+// '버틴 하루'(힘든 마음 기록)는 다시 꺼내 보여주지 않는다 (2026-11-10 대표 결정)
+function pickMemory(ws: Win[], seed: string): Win | null {
   const pool = ws.filter((w) => w.category !== 'endure');
-  if (pool.length) {
-    const freq = new Map<string, number>();
-    pool.forEach((w) => freq.set(w.text, (freq.get(w.text) ?? 0) + 1));
-    const rare = pool.filter((w) => freq.get(w.text) === Math.min(...freq.values()));
-    memory = rare[start.split('-').reduce((a, b) => a + Number(b), 0) % rare.length];
-  }
+  if (!pool.length) return null;
+  const freq = new Map<string, number>();
+  pool.forEach((w) => freq.set(w.text, (freq.get(w.text) ?? 0) + 1));
+  const rare = pool.filter((w) => freq.get(w.text) === Math.min(...freq.values()));
+  return rare[seed.split('-').reduce((a, b) => a + Number(b), 0) % rare.length];
+}
 
+function Memory({ win }: { win: Win }) {
+  const { openWin } = useWinSheet();
   return (
-    <Card style={{ marginBottom: 14 }}>
-      <Text style={st.weekTitle}>{title}</Text>
+    <Pressable style={st.memory} onPress={() => openWin(win)} accessibilityRole="button" accessibilityHint="눌러서 크게 보기">
+      <Text style={st.memoryQ}>이 순간 기억나?</Text>
+      <Text style={st.memoryT}>“{win.text}” · {formatDay(win.win_date)}</Text>
+    </Pressable>
+  );
+}
+
+// 한 주 묶음: 작은 제목 + "N가지 해냈어" + 분류 점(많은 순) + 날짜별 기록
+function WeekSection({ label, ws }: { label: string; ws: Win[] }) {
+  const byCat = CATEGORY_ORDER.map((c) => [c, ws.filter((w) => w.category === c).length] as const)
+    .filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  return (
+    <View style={st.week}>
+      <Text style={st.weekLabel}>{label}</Text>
       {ws.length === 0 ? (
         <Text style={st.weekBody}>이번 주에 한 가장 작은 일 하나만 떠올려볼래?</Text>
       ) : (
         <>
-          <Text style={st.weekBig}>너는 {ws.length}가지를 해냈어</Text>
-          <View style={st.marbles}>
-            {ws.slice(0, 40).map((w) => <View key={w.id} style={[st.marble, { backgroundColor: CATS[w.category].color }]} />)}
-            {ws.length > 40 ? <Text style={st.more}>+{ws.length - 40}</Text> : null}
-          </View>
-          <View style={st.catRow}>
+          <Text style={st.weekBig}>{ws.length}가지 해냈어</Text>
+          <View style={st.dots} accessibilityLabel={byCat.map(([c, n]) => `${CATS[c].name} ${n}`).join(', ')}>
             {byCat.map(([c, n]) => (
-              <View key={c} style={st.catPill}>
+              <View key={c} style={st.dotItem}>
                 <View style={[st.catDot, { backgroundColor: CATS[c].color }]} />
-                <Text style={st.catPillText}>{CATS[c].name} {n}</Text>
+                <Text style={st.dotNum}>{n}</Text>
               </View>
             ))}
           </View>
-          {memory ? (
-            <Pressable style={st.memory} onPress={() => openWin(memory)} accessibilityRole="button" accessibilityHint="눌러서 크게 보기">
-              <Text style={st.memoryQ}>이 순간 기억나?</Text>
-              <Text style={st.memoryT}>“{memory.text}” · {formatDay(memory.win_date)}</Text>
-            </Pressable>
-          ) : null}
+          <WinList wins={ws} />
         </>
       )}
-    </Card>
+    </View>
   );
 }
 
 export default function Jar() {
   const { wins, jars } = useApp();
-  const [showPast, setShowPast] = useState(false);
   const [openYears, setOpenYears] = useState<Record<string, boolean>>({});
   const [locked, setLocked] = useState(false); // 구슬 쓸어 보는 동안 화면 스크롤 멈춤
-  const [counts, setCounts] = useState<WinCounts | null>(null);
 
   const today = kstToday();
   const thisWeek = weekStart(today);
+  const lastWeek = addDays(thisWeek, -7);
   const current = wins.filter((w) => w.jar_no === jars.current_jar).sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
-  // 분류 칩 숫자 (전체 기록 기준, 서버에서). 기록이 바뀌면 다시
-  const sig = `${wins.length}:${wins.filter((w) => w.starred).length}:${wins.map((w) => w.category).join('')}`;
-  useEffect(() => { api.winCounts().then(setCounts).catch(() => {}); }, [sig]);
-  const catChips = CATEGORY_ORDER.map((c) => [c, counts?.cats[c] ?? 0] as const).filter(([, n]) => n > 0);
+  const thisWs = wins.filter((w) => w.win_date >= thisWeek && w.win_date <= today);
+  const lastWs = wins.filter((w) => w.win_date >= lastWeek && w.win_date < thisWeek);
+  const memory = pickMemory(thisWs, thisWeek) ?? pickMemory(lastWs, lastWeek);
   const shelf = shelfByYear(jars);
-  const recentFrom = addDays(today, -(RECENT_LIST_DAYS - 1));
-  const recent = wins.filter((w) => w.win_date >= recentFrom);
-  const hasOlder = jars.total > recent.length;
-  const pastWeeks = [...new Set(wins.map((w: Win) => weekStart(w.win_date)).filter((s) => s < thisWeek))].sort().reverse().slice(0, 12);
+  const shelfCount = shelf.reduce((n, y) => n + y.jars.length, 0);
+  const hasOlder = jars.total > thisWs.length + lastWs.length;
 
   return (
     <SafeAreaView style={st.wrap} edges={['top']}>
@@ -126,66 +125,52 @@ export default function Jar() {
           </Text>
         )}
 
-        {shelf.length > 0 && (
-          <View style={{ marginBottom: 18 }}>
-            <Text style={st.weekTitle}>선반 · 꽉 찬 병 {shelf.reduce((n, y) => n + y.jars.length, 0)}개</Text>
-            {shelf.map((y, idx) => {
-              const opened = idx === 0 || openYears[y.year];
-              return (
-                <View key={y.year} style={{ marginBottom: 10 }}>
-                  {shelf.length > 1 && (
-                    <Pressable onPress={() => setOpenYears((o) => ({ ...o, [y.year]: !opened }))} disabled={idx === 0} style={st.yearRow}>
-                      <Text style={st.yearH}>{y.year}년 · 병 {y.jars.length}개</Text>
-                      {idx === 0 ? null : <Icon name={opened ? 'chevronDown' : 'chevronRight'} size={16} color={C.muted} />}
-                    </Pressable>
-                  )}
-                  {opened && (
-                    <>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.shelf}>
-                        {y.jars.map((j) => <ShelfJar key={j.no} jar={j} />)}
-                      </ScrollView>
-                      <View style={st.shelfBoard} />
-                    </>
-                  )}
-                </View>
-              );
-            })}
-          </View>
+        {jars.total > 0 && <CatChips style={{ marginBottom: 14 }} />}
+        {memory && <Memory win={memory} />}
+
+        {jars.total === 0 ? (
+          <Text style={st.empty}>아직 구슬이 없어. 방에서 오늘 해낸 걸 하나 적어볼래?</Text>
+        ) : (
+          <>
+            <WeekSection label="이번 주" ws={thisWs} />
+            {lastWs.length > 0 && <><View style={st.divider} /><WeekSection label="지난 주" ws={lastWs} /></>}
+          </>
         )}
 
-        {/* 분류별로 보기 (C9 M2·N3): ☆ 칩이 맨 앞, 누르면 같은 목록 화면 */}
-        {jars.total > 0 && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={st.weekTitle}>분류별로 보기</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipRow}>
-              <Pressable onPress={() => router.push('/jar/list/star')} style={st.chip} accessibilityRole="button" accessibilityLabel={`다시 보고 싶은 기록 ${counts?.starred ?? 0}개`}>
-                <Icon name="star" size={14} color={C.accentInk} fill={(counts?.starred ?? 0) > 0 ? C.accentInk : undefined} />
-                <Text style={st.chipText}>다시 보고 싶은{counts?.starred ? ` ${counts.starred}` : ''}</Text>
-              </Pressable>
-              {catChips.map(([c, n]) => (
-                <Pressable key={c} onPress={() => router.push(`/jar/list/${c}`)} style={st.chip} accessibilityRole="button">
-                  <View style={[st.catDot, { backgroundColor: CATS[c].color }]} />
-                  <Text style={st.chipText}>{CATS[c].name} {n}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
+        {(hasOlder || shelfCount > 0) && (
+          <>
+            <View style={st.divider} />
+            <Text style={st.weekLabel}>더 지난 기록</Text>
+            <Text style={st.olderBig}>하나도 없어지지 않아</Text>
+            {shelfCount > 0 && (
+              <View style={{ marginBottom: 6 }}>
+                <Text style={st.shelfTitle}>선반 · 꽉 찬 병 {shelfCount}개</Text>
+                {shelf.map((y, idx) => {
+                  const opened = idx === 0 || openYears[y.year];
+                  return (
+                    <View key={y.year} style={{ marginBottom: 10 }}>
+                      {shelf.length > 1 && (
+                        <Pressable onPress={() => setOpenYears((o) => ({ ...o, [y.year]: !opened }))} disabled={idx === 0} style={st.yearRow}>
+                          <Text style={st.yearH}>{y.year}년 · 병 {y.jars.length}개</Text>
+                          {idx === 0 ? null : <Icon name={opened ? 'chevronDown' : 'chevronRight'} size={16} color={C.muted} />}
+                        </Pressable>
+                      )}
+                      {opened && (
+                        <>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.shelf}>
+                            {y.jars.map((j) => <ShelfJar key={j.no} jar={j} />)}
+                          </ScrollView>
+                          <View style={st.shelfBoard} />
+                        </>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            <Text style={st.older}>분류 칩이나 위 찾기로도 볼 수 있어</Text>
+          </>
         )}
-
-        <WeekCard start={thisWeek} wins={wins} title="이번 주 유리병" />
-        {pastWeeks.length > 0 && (
-          <Pressable onPress={() => { setShowPast((v) => !v); if (!showPast) track('weekly_viewed', { weeks: pastWeeks.length }); }} style={{ marginBottom: 14 }}>
-            <Text style={st.link}>{showPast ? '지난 주 접기' : `지난 주 돌아보기 (${pastWeeks.length})`}</Text>
-          </Pressable>
-        )}
-        {showPast && pastWeeks.map((s) => (
-          <WeekCard key={s} start={s} wins={wins} title={`${formatDay(s)} 주`} />
-        ))}
-
-        {jars.total === 0 && <Text style={st.empty}>아직 구슬이 없어. 방에서 오늘 해낸 걸 하나 적어볼래?</Text>}
-        {recent.length > 0 && <Text style={st.weekTitle}>최근 2주</Text>}
-        <WinList wins={recent} />
-        {hasOlder && <Text style={st.older}>더 지난 기록은 선반의 병을 열거나 찾기로 볼 수 있어. 하나도 없어지지 않아.</Text>}
       </ScrollView>
     </SafeAreaView>
   );
@@ -196,10 +181,21 @@ const st = StyleSheet.create({
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   searchBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, height: HT.chip, paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
   searchTxt: { fontSize: 13, color: C.ink, fontWeight: '700' },
-  chipRow: { gap: 6, paddingHorizontal: 2 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: HT.chip, paddingHorizontal: 14, borderRadius: R.pill, backgroundColor: C.soft },
-  chipText: { fontSize: 13, color: C.ink, fontWeight: '600' },
   jarCaption: { textAlign: 'center', fontSize: 13, color: C.muted, marginBottom: 18 },
+  memory: { backgroundColor: C.soft, borderRadius: R.card, padding: 16, marginBottom: 22 },
+  memoryQ: { fontSize: 12, color: C.muted, marginBottom: 4 },
+  memoryT: { fontSize: 14, color: C.ink, fontWeight: '600' },
+  week: { marginBottom: 4 },
+  weekLabel: { fontSize: 13, color: C.muted, fontWeight: '700', marginLeft: 4, marginBottom: 2 },
+  weekBig: { fontSize: 21, fontWeight: '800', color: C.ink, marginLeft: 4, marginBottom: 8 },
+  weekBody: { fontSize: 15, color: C.ink, lineHeight: 22, marginLeft: 4, marginTop: 4, marginBottom: 16 },
+  dots: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 4, marginLeft: 4, marginBottom: 14 },
+  dotItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  catDot: { width: 8, height: 8, borderRadius: R.pill },
+  dotNum: { fontSize: 12, color: C.muted },
+  divider: { height: 8, borderRadius: R.pill, backgroundColor: C.soft, marginHorizontal: -20, marginTop: 4, marginBottom: 22 },
+  olderBig: { fontSize: 21, fontWeight: '800', color: C.ink, marginLeft: 4, marginBottom: 14 },
+  shelfTitle: { fontSize: 13, color: C.muted, fontWeight: '700', marginBottom: 8, marginLeft: 4 },
   yearRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
   yearH: { fontSize: 13, color: C.ink, fontWeight: '700' },
   shelf: { gap: 12, paddingHorizontal: 6, alignItems: 'flex-end' },
@@ -209,20 +205,6 @@ const st = StyleSheet.create({
   miniJar: { width: 54, height: 62, borderWidth: 3, borderColor: ART.jarLine, borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, backgroundColor: ART.jarGlass, flexDirection: 'row', flexWrap: 'wrap-reverse', alignContent: 'flex-start', padding: 3, gap: 1, overflow: 'hidden' },
   miniMarble: { width: 6, height: 6, borderRadius: 3 },
   shelfLabel: { fontSize: 11, color: C.muted, marginTop: 4, marginBottom: 6 },
-  weekTitle: { fontSize: 13, color: C.muted, fontWeight: '700', marginBottom: 8, marginLeft: 4 },
-  weekBig: { fontSize: 19, fontWeight: '800', color: C.ink, marginBottom: 12 },
-  weekBody: { fontSize: 15, color: C.ink, lineHeight: 22 },
-  marbles: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 12, alignItems: 'center' },
-  marble: { width: 14, height: 14, borderRadius: 7 },
-  more: { fontSize: 12, color: C.muted, marginLeft: 4 },
-  catRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  catPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.soft, borderRadius: R.pill, height: 28, paddingHorizontal: 11 },
-  catDot: { width: 8, height: 8, borderRadius: R.pill },
-  catPillText: { fontSize: 12, color: C.ink },
-  memory: { backgroundColor: C.soft, borderRadius: R.card, padding: 16 },
-  memoryQ: { fontSize: 12, color: C.muted, marginBottom: 4 },
-  memoryT: { fontSize: 14, color: C.ink, fontWeight: '600' },
-  link: { fontSize: 14, color: C.accentInk, fontWeight: '700', marginLeft: 4 },
   empty: { textAlign: 'center', color: C.muted, paddingVertical: 30, fontSize: 14 },
   older: { textAlign: 'center', color: C.muted, fontSize: 13, lineHeight: 19, paddingVertical: 12 },
 });

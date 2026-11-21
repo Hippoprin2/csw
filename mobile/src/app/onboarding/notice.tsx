@@ -25,7 +25,7 @@ const ITEMS: Item[] = [
 ];
 const SENSITIVE: Item = {
   key: 'sensitive', label: '[필수] 민감정보 처리에 동의해요', doc: 'privacy',
-  detail: '기록에 건강이나 마음 상태를 써도 괜찮아요. 그 내용도 저장·분류·안전 안내에만 쓰고, 분류를 위해 기록 한 줄이 OpenAI(미국)로 전송돼요. 다른 목적으로 쓰지 않아요.',
+  detail: '기록에 건강이나 마음 상태를 써도 괜찮아요. 그 내용도 저장·분류·힘든 마음에 맞춘 반응에만 쓰고, 분류를 위해 기록 한 줄이 OpenAI(미국)로 전송돼요. 다른 목적으로 쓰지 않아요.',
 };
 const ALL = [...ITEMS, SENSITIVE];
 

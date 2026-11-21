@@ -5,7 +5,7 @@ export type EventName =
   | 'app_open' | 'signed_in' | 'onboarding_done' | 'win_recorded' | 'win_edited' | 'win_deleted'
   | 'item_bought' | 'item_placed' | 'notif_prompt' | 'export_done' | 'weekly_viewed'
   | 'planted' | 'harvested' | 'harvest_used' | 'garden_woke' | 'space_viewed'
-  | 'jar_sealed' | 'jar_viewed'
+  | 'jar_sealed' | 'jar_viewed' | 'motion_ask_shown' | 'motion_requested'
   | 'yard_zone_bought' | 'memory_fruit' | 'pet_tapped'
   | 'win_viewed' | 'win_note_saved' | 'win_starred' | 'records_list_viewed' | 'day_viewed' | 'marble_swiped'
   // 첫 실행 단계 (O4, 2026-11-17). 가입 전 단계는 익명 계정(O5-A)으로 저장 — 익명 계정 7일 삭제 때 개수만 anon_funnel_daily에 남김

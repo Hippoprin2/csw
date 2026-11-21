@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Win } from '@/lib/api';
@@ -9,7 +8,7 @@ import { Icon } from '@/ui/Icon';
 import { useWinSheet } from '@/ui/WinSheet';
 import { C, R } from '@/ui/theme';
 
-const COLLAPSE_OVER = 6; // 하루 기록이 많으면 접어서 표시
+const DAY_ROWS = 5; // 하루에 6줄 이상이면 5줄 + "+n개 더 보기" → 하루 한 장 (2026-11-16 G3-A, 펼치기 없음)
 
 type Row = { key: string; text: string; category: Category; count: number; latest: Win; starred: boolean; note: string | null };
 
@@ -35,24 +34,20 @@ export function byDay(wins: Win[]): [string, Win[]][] {
 // onChange: 이 목록이 가진 로컬 상태도 갱신하라고 알림
 export function WinList({ wins, onChange }: { wins: Win[]; onChange?: (w: Win, deleted: boolean) => void }) {
   const { openWin } = useWinSheet();
-  const [open, setOpen] = useState<Record<string, boolean>>({});
 
   return (
     <>
       {byDay(wins).map(([d, ws]) => {
-        const rows = groupDay(ws);
-        const collapsed = ws.length > COLLAPSE_OVER && !open[d];
+        const all = groupDay(ws);
+        const rows = all.length > DAY_ROWS ? all.slice(0, DAY_ROWS) : all;
+        const more = all.slice(rows.length).reduce((n, r) => n + r.count, 0);
         return (
           <View key={d} style={{ marginBottom: 16 }}>
             <Pressable onPress={() => router.push(`/jar/day/${d}`)} style={st.dayRow} accessibilityRole="button" accessibilityLabel={`${formatDay(d)}, 하루 한 장으로 보기`}>
               <Text style={st.dayH}>{formatDay(d)}</Text>
               <Icon name="chevronRight" size={14} color={C.muted} />
             </Pressable>
-            {collapsed ? (
-              <Pressable onPress={() => setOpen((o) => ({ ...o, [d]: true }))} style={st.win}>
-                <Text style={[st.winText, { fontWeight: '700' }]}>{formatDay(d)} {ws.length}가지 · 펼치기</Text>
-              </Pressable>
-            ) : rows.map((r) => (
+            {rows.map((r) => (
               <Pressable key={r.key} onPress={() => openWin(r.latest, onChange)} style={st.win} accessibilityRole="button" accessibilityHint="눌러서 크게 보기">
                 <View style={[st.dot, { backgroundColor: CATS[r.category].color }]} />
                 <View style={{ flex: 1 }}>
@@ -63,6 +58,12 @@ export function WinList({ wins, onChange }: { wins: Win[]; onChange?: (w: Win, d
                 <Text style={st.tag}>{CATS[r.category].name}</Text>
               </Pressable>
             ))}
+            {more > 0 && (
+              <Pressable onPress={() => router.push(`/jar/day/${d}`)} style={st.more} accessibilityRole="button" accessibilityLabel={`${formatDay(d)} 기록 ${more}개 더, 하루 한 장으로 보기`}>
+                <Text style={st.moreText}>+{more}개 더 보기</Text>
+                <Icon name="chevronRight" size={14} color={C.accentInk} />
+              </Pressable>
+            )}
           </View>
         );
       })}
@@ -77,5 +78,7 @@ export const st = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: R.pill },
   winText: { fontSize: 15, color: C.ink },
   note: { fontSize: 13, color: C.muted, marginTop: 3 },
+  more: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: C.soft, borderRadius: R.pill, paddingVertical: 11, marginTop: 2 },
+  moreText: { fontSize: 13, color: C.accentInk, fontWeight: '700' },
   tag: { fontSize: 11, color: C.muted, backgroundColor: C.soft, paddingVertical: 4, paddingHorizontal: 10, borderRadius: R.pill, overflow: 'hidden' },
 });

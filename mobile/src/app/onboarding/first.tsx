@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { track } from '@/lib/analytics';
 import type { Category } from '@/lib/categories';
+import { iGa } from '@/lib/josa';
 import { RoomPage } from '@/screens/RoomPage';
 import { useApp } from '@/state/app';
 import { Sheet, st as sheetSt } from '@/ui/Sheet';
@@ -22,12 +23,6 @@ function trialEndLabel() {
   return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
 }
 
-// 이름 끝 받침에 따라 이/가
-function withJosa(name: string) {
-  const c = name.charCodeAt(name.length - 1);
-  const batchim = c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0;
-  return name + (batchim ? '이' : '가');
-}
 
 export default function FirstWin() {
   const { wins, profile } = useApp();
@@ -57,7 +52,7 @@ export default function FirstWin() {
         <View style={st.head}>
           <Text style={[sheetSt.title, { marginBottom: 0 }]}>첫 기록, 잘 간직할게</Text>
         </View>
-        <Text style={sheetSt.body}>계정을 연결하면 폰을 바꿔도 기록이랑 {withJosa(profile?.pet_name ?? '단짝')} 그대로 남아.</Text>
+        <Text style={sheetSt.body}>계정을 연결하면 폰을 바꿔도 기록이랑 {iGa(profile?.pet_name ?? '단짝')} 그대로 남아.</Text>
         <SignInButtons onEmail={() => router.push('/auth/email')} />
         <Text style={st.trial}>
           <Text style={st.trialStrong}>{trialEndLabel()}까지 무료</Text> · 카드 등록 없음{'\n'}그 뒤엔 월 3,000원 또는 연 24,000원 · 그때 골라도 돼

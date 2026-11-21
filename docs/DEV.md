@@ -210,3 +210,12 @@
 - Resend 무료 = 하루 100통·월 3,000통. 넘으면 Pro($20/월)
 - 2026-11-20 문구: 가입 시트에서 이메일로 오면(익명) 화면 "가입 코드를 메일로 보내줄게", 연결 메일(email_change) 제목·본문도 "Hamalog 가입 코드"로. '이미 계정이 있어요'로 오면 "로그인 코드". test_email·capture_email ALL PASS
 - 네이버 로그인(대표 요청 11-20, 진행 전): Supabase 기본 제공자에 없음 → Custom OAuth 제공자 `custom:naver`(무료 플랜 3개까지, `/auth/v1/admin/custom-providers` 사용 가능 확인). 네이버 userinfo 응답이 OIDC 표준이 아니라(`response` 안에 값) Edge Function `naver-userinfo`가 표준 형식으로 바꿔 줌, scopes = `profile`(openid 넣으면 userinfo 안 부름). 참고 sapsaldog.com/posts/supabase-naver-login-with-edge-function. 필요: 네이버 개발자센터 앱 등록(대표 네이버 계정) + 이메일 '필수' 동의 + 서비스 공개 전 검수
+
+### 2026-11-21 출시 전 개발 3 (막힌 것 없는 묶음)
+- 유리병 탭(`app/(tabs)/jar.tsx`) 시간순 하나로: 병 → `ui/CatChips.tsx`(서버 `win_counts` 기준, ☆ 맨 앞·많은 순, 누르면 `/jar/list/<cat|star>`; 찾기 화면 입력 전에도 표시) → '이 순간 기억나?'(이번 주→지난 주에서 반복 적은 기록, 버틴 하루 제외, 주 단위 고정) → 이번 주/지난 주 `WeekSection` → 더 지난 기록(선반). `WinList`: 하루 6줄 이상이면 5줄 + "+n개 더 보기"(→ `/jar/day/<d>`), 펼치기 없음. 예전 `weekly_viewed`(지난 주 펼치기) 이벤트는 더 안 씀
+- S25 동작 요청: migration `20261121000001` `motion_requests`(user_id cascade, category, keyword 1~20자) + `request_motion(p_keyword, p_category)`(가입 계정만, 하루 10개, RLS 정책 없음 = 앱에서 직접 접근 불가). 앱 `RoomPage`: 기본 동작(cheer) 축하 뒤 10초간 알약 버튼 → 시트(20자) → `safetyKeywordHit`면 저장 안 함 → "알려줘서 고마워! 많이 모이면 배워올게". 이벤트 `motion_ask_shown`·`motion_requested`. 첫 실행(firstRun) 중엔 안 뜸(익명 계정은 claim 대상 아님). 집계: service role로 `select keyword, count(*) from motion_requests group by 1`
+- 3년 미접속: `profiles.inactive_notice_at`, `inactive_notice_due()`(안내 보낼 대상: 3년 + 구독 중 아님 + 아직 안내 안 함), `purge_inactive_accounts()` 매일 03:37(pg_cron `purge-inactive-3y`): 안내 후 30일 지나고 그 사이 접속 없음 + 구독 중 아님 → auth.users 삭제(cascade). ⏳ 안내 메일 발송(Resend) 미구현 — 안내가 없으면 지우지 않음
+- 조사: `lib/josa.ts` `iGa()` — 알림 문구 2개와 온보딩 가입 시트에 사용
+- 법 문서: 자해 감지 시 상담 번호 안내 삭제(대표 결정 11-21). privacy 1·2·3·6장, terms 5·7조, app-store 답안, ja 같이. 수집 항목에 '단짝에게 바라는 동작 낱말' 추가. `gen_legal.py` 재생성, `CONSENT_VERSION` 2026-11-21, 동의 화면 문구 '안전 안내' → '힘든 마음에 맞춘 반응'
+- 확인: tsc·eslint 통과, `scripts/test_motion_inactive.py` ALL PASS 17, `test_backend.py`·`test_access.py` ALL PASS, 로컬 웹(393×852)에서 유리병 탭 캡처·동작 요청 저장 확인
+

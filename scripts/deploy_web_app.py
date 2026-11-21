@@ -23,10 +23,8 @@ print("built", len(files), "files,", sum(p.stat().st_size for p in files) // 102
 if "--local" in sys.argv:
     sys.exit()
 
-src = (ROOT / "scripts/deploy_prototype.py").read_text()
-ns = {"__file__": str(ROOT / "scripts/deploy_prototype.py")}
-exec(src.split("s, r = call(\"GET\"")[0], ns)  # token() + call()만 재사용
-call = ns["call"]
+sys.path.insert(0, str(ROOT / "scripts"))
+from board import call  # Vercel REST 호출 재사용 (deploy_prototype.py는 board.py 호환 껍데기가 됨)
 
 s, r = call("GET", f"/v9/projects/{NAME}")
 if s != 200:

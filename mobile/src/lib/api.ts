@@ -32,7 +32,7 @@ export type Profile = {
   consent_version?: string | null; // 동의한 약관·처리방침 판
 };
 // 동의 화면에서 보여 준 약관·처리방침 판. docs/legal을 바꿔 다시 동의받아야 할 때 올림 (서버 give_consent가 저장)
-export const CONSENT_VERSION = '2026-11-18';
+export const CONSENT_VERSION = '2026-11-21';
 // 기록 권한 (서버 has_access: 테스터 · 무료 끝 전 · 유효한 구독)
 export type AccessState = { access: boolean; tester: boolean; trial_ends_at: string | null; sub_expires_at: string | null; sub_status: string | null };
 export type Item = {
@@ -168,6 +168,8 @@ export const api = {
   devAllZones: () => rpc<void>('dev_all_zones'),
   devSeeds: () => rpc<number>('dev_seeds'),
   deleteAccount: () => rpc<void>('delete_my_account'),
+  // S25 동작 요청: 짧은 키워드만 (기록 본문 X)
+  requestMotion: (keyword: string, category: Category) => rpc<void>('request_motion', { p_keyword: keyword, p_category: category }),
   consent: (onboard = false) => rpc<void>('give_consent', { p_version: CONSENT_VERSION, p_onboard: onboard }),
   accessState: () => rpc<AccessState>('access_state'),
 

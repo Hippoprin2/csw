@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, friendlyError, type Win } from '@/lib/api';
+import { CatChips } from '@/ui/CatChips';
 import { Icon } from '@/ui/Icon';
 import { Back, H } from '@/ui/kit';
 import { patchList, RecordList } from '@/ui/RecordList';
@@ -36,6 +37,8 @@ export default function JarSearch() {
           placeholder="예) 산책, 엄마, 책" placeholderTextColor={C.muted} maxLength={50} accessibilityLabel="찾을 말"
         />
         </View>
+        {/* 입력 전엔 유리병 탭과 같은 분류 칩 (2026-11-16 F-B) */}
+        {!res && !busy && <CatChips style={{ marginBottom: 12 }} />}
         {busy ? <ActivityIndicator color={C.accent} /> : null}
         {err ? <Text style={st.msg}>{err}</Text> : null}
         {res && !busy && (res.length === 0
