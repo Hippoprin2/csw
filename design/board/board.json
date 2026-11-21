@@ -9,12 +9,12 @@
   "mocks": [
     {
       "title": "유리병 탭 정리 — 시간 순서 하나로",
-      "status": "discussing",
+      "status": "decided",
       "date": "2026-11-16",
       "thread": "디자인",
-      "decisions": "G1~G4 대표 결정 대기",
-      "note": "앱 코드는 그대로. 지금 앱 유리병 화면은 위 '지금 앱' 칸",
-      "images": ["design/jar_page/sheet1.png", "design/jar_page/sheet2.png"]
+      "decisions": "G1-A 이번 주 카드 → 주 머리말 · G2-A 3주 전부터 주별 요약 없음(선반·분류·찾기) · G3-A 많은 날 5개 + “더 보기” → 하루 한 장 · F-B 분류 칩은 병 바로 아래(누르면 분류 목록 화면, 뒤로 = 전체) · 찾기 화면에도 같은 칩",
+      "note": "대표 결정 2026-11-16, 개발 대기(앱 코드는 아직 그대로). 첫 장 = 확정안 전체, 둘째 = 분류 칩 누르면 흐름, 셋째 = 지금과 비교. 대안 비교는 design/jar_page/sheet2·3",
+      "images": ["design/jar_page/sheet5.png", "design/jar_page/sheet4.png", "design/jar_page/sheet1.png"]
     },
     {
       "title": "구독 시트 (14일 무료 뒤 · 무료 기간 중 미리 구독)",

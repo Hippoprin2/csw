@@ -259,4 +259,18 @@ open(os.path.join(HERE, 'sheet4.html'), 'w').write(page([
     col('③ ‹ 유리병 (또는 뒤로 밀기)', '해지 버튼 없이 원래 화면 그대로, 전체가 보임. 보던 위치도 유지', pb3, rec=True, fix=True),
 ]))
 
+# ---------- sheet5: 확정안 (G1-A·G2-A·G3-A + F-B: 분류 칩은 병 바로 아래, 선반은 맨 아래)
+final = (head() + jar()
+       + '<div style="position:relative"><span class="new" style="right:6px;top:-10px">F-B</span>' + chips4() + '</div>'
+       + '<div class="mem top"><b>이 순간 기억나?</b><span>“엄마한테 전화” · 11월 17일 (화)</span></div>'
+       + weekhead('이번 주', THIS) + ''.join(day_new(d) for d in THIS)
+       + '<div class="sec">' + weekhead('지난 주', LAST) + ''.join(day_new(d) for d in LAST) + '</div>'
+       + '<div class="sec"><div class="wk"><div class="k">더 지난 기록</div><div class="n" style="font-size:17px">하나도 없어지지 않아</div></div>'
+       + '<div class="t">선반 · 꽉 찬 병 1개</div>' + shelf()
+       + '<div class="older" style="padding-top:0">분류 칩이나 위 ⌕ 찾기로도 볼 수 있어</div></div>')
+open(os.path.join(HERE, 'sheet5.html'), 'w').write(page([
+    col('확정안 · 유리병 탭 전체', 'G1-A 주 머리말 · G2-A 3주 전부터는 선반·분류·찾기 · G3-A 5개 + 더 보기 · F-B 칩은 병 아래', final, rec=True),
+    col('G3-A · 많은 날 → 하루 한 장', '“+n개 더 보기”나 날짜 제목 = 같은 하루 한 장 화면', dayp, rec=True, fix=True),
+]))
+
 print('ok')
