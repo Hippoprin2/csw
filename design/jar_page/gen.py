@@ -233,4 +233,30 @@ open(os.path.join(HERE, 'sheet3.html'), 'w').write(page([
     col('F-C · 위에 붙는 거르기 칩', '내리면 칩 줄이 위에 붙고, 누르면 이 화면 기록이 그 분류만 남음', pc, fix=True),
 ]))
 
+# ---------- sheet4: F-B 흐름 (칩 누르기 → 분류 목록 화면 → ‹ 유리병 = 전체)
+finger = '<div style="position:absolute;width:44px;height:44px;border-radius:22px;background:rgba(47,125,107,.35);border:2px solid #2F7D6B;z-index:9;{}"></div>'
+def chips4():
+    cs = [('star', '★ 다시 보고 싶은 3')] + [(k, f'{CAT[k][0]} {n}') for k, n in [('move', 14), ('tidy', 11), ('eat', 9)]]
+    return '<div class="chips">' + ''.join(f'<div class="chip">' + ('' if k == 'star' else f'<span class="dot" style="background:{CAT[k][1]}"></span>') + f'{t}</div>' for k, t in cs) + '</div>'
+pb1 = (head() + small_jar + '<div style="position:relative">' + chips4()
+       + finger.format('left:190px;top:-4px') + '</div>' + mem + weekhead('이번 주', THIS) + day_new('오늘') + TAB)
+MOVE = [('11월 19일 (목)', '10분 산책', 1), ('11월 17일 (화)', '스트레칭', 0), ('11월 13일 (금)', '계단으로 올라감', 0),
+        ('11월 5일 (목)', '요가 15분', 0), ('11월 2일 (월)', '자전거 타기', 0), ('10월 28일 (수)', '산책', 0), ('10월 21일 (수)', '스쿼트 20개', 0)]
+rows, cur = '', ''
+for dd, t, st_ in MOVE:
+    m = dd.split('월')[0] + '월'
+    if m != cur:
+        rows += f'<div class="t" style="font-size:15px;color:#4A3226;margin-top:10px">{m}</div>'; cur = m
+    rows += (f'<div class="win"><div class="dot" style="background:{CAT["move"][1]}"></div><div class="x">{t}'
+             f'<div style="font-size:12px;color:#6E5848;margin-top:2px">{dd}</div></div>' + ('<span class="star">★</span>' if st_ else '') + '</div>')
+pb2 = ('<div class="dayh" style="font-size:15px;color:#1F5F50;outline:2.5px solid #2F7D6B;outline-offset:4px;border-radius:10px;display:inline-block">‹ 유리병</div>'
+       f'<h2 style="font-size:24px;font-weight:800;margin:12px 4px 4px;display:flex;align-items:center;gap:10px"><span class="dot" style="width:14px;height:14px;background:{CAT["move"][1]}"></span>몸 움직이기</h2>'
+       '<div class="lead" style="margin:0 4px 10px">지금까지 14가지 모였어.</div>' + rows)
+pb3 = (head() + small_jar + chips4() + mem + weekhead('이번 주', THIS) + day_new('오늘') + TAB)
+open(os.path.join(HERE, 'sheet4.html'), 'w').write(page([
+    col('① 칩 누르기', '병 아래 칩 줄에서 “몸 움직이기” 탭', pb1, rec=True, fix=True),
+    col('② 그 분류만 모은 화면', '새 화면(지금 있는 분류 목록). 달별로, 처음부터 전부. 기록 누르면 크게 보기', pb2, rec=True, fix=True),
+    col('③ ‹ 유리병 (또는 뒤로 밀기)', '해지 버튼 없이 원래 화면 그대로, 전체가 보임. 보던 위치도 유지', pb3, rec=True, fix=True),
+]))
+
 print('ok')
