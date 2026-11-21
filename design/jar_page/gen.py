@@ -197,4 +197,40 @@ open(os.path.join(HERE, 'sheet2.html'), 'w').write(page([
     col('G1-B · 이번 주 카드 남기기', '구슬 줄·분류 알약만 빼고 카드 유지. 같은 주가 카드+목록 두 번', g1b, fix=True),
     col('G4-B · 선반·분류 칩 병 바로 아래', '오래된 병이 잘 보이지만 이번 주 기록은 첫 화면 밖으로 밀림', g4b, fix=True),
 ]))
+
+# ---------- sheet3: 분류별 보기 자리 (대표: 맨 아래는 쓰기 힘듦)
+TAB = '<div class="tab"><span>방</span><b>유리병</b><span>꾸미기</span><span>설정</span></div>'
+mem = '<div class="mem top" style="margin-bottom:16px"><b>이 순간 기억나?</b><span>“엄마한테 전화” · 11월 17일 (화)</span></div>'
+small_jar = '<div style="transform:scale(.7);transform-origin:top center;height:285px">' + jar() + '</div>'
+def chips_wrap():
+    cs = [('star', '★ 다시 보고 싶은 3')] + [(k, f'{CAT[k][0]} {n}') for k, n in [('eat', 14), ('tidy', 11), ('move', 9), ('work', 8), ('care', 7), ('study', 6), ('people', 5), ('cheer', 4), ('endure', 2)]]
+    return '<div class="chips" style="flex-wrap:wrap">' + ''.join(
+        f'<div class="chip">' + ('' if k == 'star' else f'<span class="dot" style="background:{CAT[k][1]}"></span>') + f'{t}</div>' for k, t in cs) + '</div>'
+pa1 = ('<div style="position:relative">' + '<div class="head"><h1>나의 작은 승리 유리병</h1><div class="search" style="outline:2.5px solid #2F7D6B">⌕ 찾기·모아보기</div></div>'
+       + '<div class="lead">지금까지 구슬 69개. 구슬은 줄어들지 않아.</div></div>' + small_jar + mem + weekhead('이번 주', THIS) + day_new('오늘') + TAB)
+pa2 = ('<div class="dayh" style="font-size:15px">‹ 유리병</div><h2 style="font-size:22px;font-weight:800;margin:10px 4px 14px">찾기·모아보기</h2>'
+       + '<div class="win" style="color:#6E5848">⌕ 예) 산책, 엄마, 책</div><div style="height:18px"></div>'
+       + '<div class="t">모아보기</div>' + chips_wrap()
+       + '<div class="t" style="margin-top:8px">선반 · 꽉 찬 병 1개</div>' + shelf())
+pb = (head() + small_jar
+      + '<div style="position:relative"><span class="new" style="right:6px;top:-10px">NEW 자리</span>' + chips() + '</div>'
+      + mem + weekhead('이번 주', THIS) + day_new('오늘') + TAB)
+sticky = ('<div style="position:absolute;left:0;right:0;top:0;background:#fff;padding:58px 20px 10px;z-index:7;box-shadow:0 6px 10px -8px rgba(74,50,38,.25)">'
+          '<div class="chips" style="margin:0"><div class="chip">전체</div><div class="chip">★ 3</div>'
+          f'<div class="chip" style="background:#E3F1EC;color:#1F5F50"><span class="dot" style="background:{CAT["move"][1]}"></span>몸 움직이기 9 ✕</div>'
+          f'<div class="chip"><span class="dot" style="background:{CAT["eat"][1]}"></span>잘 먹기 14</div></div></div>')
+mv = lambda d: [w for w in DAYS[d] if w[0] == 'move']
+pc = (sticky + '<div style="height:46px"></div>'
+      + '<div class="wk"><div class="k">이번 주 · 몸 움직이기</div><div class="n">2가지</div></div>'
+      + ''.join(f'<div class="day"><div class="dayh">{d} ›</div>' + ''.join(win(*w) for w in mv(d)) + '</div>' for d in THIS if mv(d))
+      + '<div class="sec"><div class="wk"><div class="k">지난 주 · 몸 움직이기</div><div class="n">1가지</div></div>'
+      + ''.join(f'<div class="day"><div class="dayh">{d} ›</div>' + ''.join(win(*w) for w in mv(d)) + '</div>' for d in LAST if mv(d))
+      + '<div class="more">더 지난 몸 움직이기 6개 보기 ›</div></div>' + TAB)
+open(os.path.join(HERE, 'sheet3.html'), 'w').write(page([
+    col('F-A ① · 위 버튼 “찾기·모아보기”', '맨 위 버튼 하나로. 유리병 탭에 칩이 아예 없음', pa1, fix=True),
+    col('F-A ② · 누르면 나오는 화면', '글자 찾기 + ☆·분류 칩 + 선반. 오래된 기록 찾기를 한 곳에', pa2, fix=True),
+    col('F-B · 병 바로 아래 칩 한 줄', '첫 화면에서 보임. 이번 주 기록이 한 줄(약 50pt) 내려감', pb, rec=True, fix=True),
+    col('F-C · 위에 붙는 거르기 칩', '내리면 칩 줄이 위에 붙고, 누르면 이 화면 기록이 그 분류만 남음', pc, fix=True),
+]))
+
 print('ok')
