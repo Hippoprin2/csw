@@ -12,6 +12,7 @@
   - 앱 개발(코드·스키마·배포) → docs/DEV.md, mobile/, supabase/
   - 데이터 보안 → docs/SECURITY.md
   - 출시 전 체크리스트(전 주제 공통) → docs/LAUNCH.md. 자기 주제 항목이 끝나면 체크한다
+- 화면 보드(https://csw-prototype.vercel.app, `design/board/board.json`): 화면 시안을 만들거나 시안 상태가 바뀌거나(결정·개발 완료) 앱 화면을 바꾼 스레드는 끝날 때 보드를 갱신한다(`python3 scripts/board.py --deploy`, 앱 화면이면 다시 캡처 먼저 — STATUS '화면 보드' 줄).
 - 다른 주제에 영향을 주는 결정은 docs/STATUS.md의 '결정 사항'에 한 줄로 남긴다.
 - 커밋 전에 git pull/status로 다른 세션 변경을 확인한다.
 - 사용자에게는 한국어로 답하고, 끝나면 "완료했다"를 붙인다.

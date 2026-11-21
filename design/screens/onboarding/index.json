@@ -1,0 +1,46 @@
+[
+ {
+  "file": "o1_welcome.png",
+  "title": "① 인사 (시작하기 / 이미 계정이 있어요)"
+ },
+ {
+  "file": "o2_name.png",
+  "title": "② 이름"
+ },
+ {
+  "file": "o3_consent.png",
+  "title": "③ 동의"
+ },
+ {
+  "file": "o4_first_win.png",
+  "title": "④ 첫 기록 (예시 칩)"
+ },
+ {
+  "file": "o5_celebrate.png",
+  "title": "⑤ 축하 + 씨앗"
+ },
+ {
+  "file": "o6_signup.png",
+  "title": "⑥ 가입 시트 (필수)"
+ },
+ {
+  "file": "o6b_reopen.png",
+  "title": "⑥에서 앱 닫았다 다시 열기 → 다시 ⑥ (첫 기록 유지)"
+ },
+ {
+  "file": "o7_room_gift.png",
+  "title": "⑦ 방 도착 · 선물 씨앗 6개 말풍선"
+ },
+ {
+  "file": "o8_notif.png",
+  "title": "⑧ 알림 시트 1장"
+ },
+ {
+  "file": "o9_claimed.png",
+  "title": "기존 계정으로 로그인 → 첫 기록 옮겨짐 (바로 방)"
+ },
+ {
+  "file": "o10_login.png",
+  "title": "'이미 계정이 있어요' 화면"
+ }
+]

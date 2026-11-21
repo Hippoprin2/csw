@@ -151,7 +151,7 @@
 ## 화면 캡처 (전체 화면 한눈에 보기, 2026-11-13)
 - `python3 scripts/capture_screens.py` (mobile에서 `npx expo start --web --port 8081` 떠 있어야 함) → `design/screens/*.png` 17장 + index.json
 - 하는 일: 임시 테스트 계정 생성(기록 9일치) → 시스템 Chrome 헤드리스(CDP, 외부 패키지 없음, 390×844 @2x)로 로그인·온보딩·방·축하·텃밭·마당(잠김→열림)·유리병·찾기·병 보기·꾸미기·설정·도움 순서로 캡처 → 계정 삭제(실패해도 finally에서 삭제)
-- 결과는 클로드 디자인 캔버스 'CSW 앱 전체 화면' https://claude.ai/artifact/4fzUEGXDNidK5LnEppohoN 에 화면별 아트보드로 올림. 다시 찍으면 그림만 새로 올리면 됨
+- 2026-11-21부터 결과는 화면 보드 https://csw-prototype.vercel.app (`python3 scripts/board.py --deploy`, 구성 design/board/board.json). 웹 테스트판 기준으로 찍기: `python3 scripts/capture_screens.py https://csw-app-web.vercel.app` + `node scripts/capture_onboarding.mjs design/screens/onboarding https://csw-app-web.vercel.app` (첫 실행 새 순서는 capture_onboarding 쪽 — capture_screens의 01~04는 예전 순서라 보드에 안 씀). (예전: 클로드 디자인 캔버스 'CSW 앱 전체 화면')
 - 화면이 바뀌어 단계가 깨지면 `capture_screens.mjs`의 글자/aria-label(tap·waitFor)만 고치면 됨. 실패 시 zz_last_state.png 남김
 
 ## 홈 하마 무대 (2026-11-16, 대표 결정 H1~H4, 시안 design/home_stage/)

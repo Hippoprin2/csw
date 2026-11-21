@@ -1,0 +1,61 @@
+{
+  "_help": "화면 보드(https://csw-prototype.vercel.app) 내용. 화면 시안을 만들거나 상태가 바뀐 스레드가 여기 고치고 `python3 scripts/board.py --deploy`. status: discussing(논의 중) | decided(결정됨·개발 대기) | built(개발 완료 — 아래 접힌 보관함으로). 'screens' 그룹은 design/screens/ 캡처(index.json)에서 자동으로 채워짐.",
+  "app_groups": [
+    {"title": "첫 실행 (가입은 첫 기록 축하 뒤)", "dir": "design/screens/onboarding", "files": ["o1_welcome", "o2_name", "o3_consent", "o4_first_win", "o5_celebrate", "o6_signup", "o7_room_gift", "o8_notif", "o10_login"]},
+    {"title": "방 · 텃밭 · 마당", "dir": "design/screens", "files": ["05_room", "06_room_celebrate", "07_room_after", "08_garden", "09_yard_locked", "09_yard"]},
+    {"title": "유리병 (기록 다시 보기)", "dir": "design/screens", "files": ["10_jar", "11_jar_search", "12_jar_search_result", "13_jar_detail"]},
+    {"title": "꾸미기 · 설정 · 도움", "dir": "design/screens", "files": ["14_shop", "15_settings", "16_help"]}
+  ],
+  "mocks": [
+    {
+      "title": "유리병 탭 정리 — 시간 순서 하나로",
+      "status": "discussing",
+      "date": "2026-11-16",
+      "thread": "디자인",
+      "decisions": "G1~G4 대표 결정 대기",
+      "note": "앱 코드는 그대로. 지금 앱 유리병 화면은 위 '지금 앱' 칸",
+      "images": ["design/jar_page/sheet1.png", "design/jar_page/sheet2.png"]
+    },
+    {
+      "title": "구독 시트 (14일 무료 뒤 · 무료 기간 중 미리 구독)",
+      "status": "decided",
+      "date": "2026-11-17",
+      "thread": "유료화 · 첫 화면",
+      "decisions": "P1~P3, Y3(월·연 같은 무게), O7-A 확정",
+      "note": "결제 연동(RevenueCat) 때 만듦. 가입 직후 무료 안내 시트(sheet1 ①)는 O6-A로 없어지고 가입 시트 아래 한 줄로 바뀜 — 그건 이미 앱에 있음",
+      "images": ["design/monetization/sheet2.png", "design/onboarding/sheet5.png", "design/monetization/sheet1.png"]
+    },
+    {
+      "title": "첫 실행 순서 · 가입 뒤 안내",
+      "status": "built",
+      "date": "2026-11-17",
+      "thread": "첫 화면 → 개발",
+      "decisions": "O1~O7",
+      "images": ["design/onboarding/sheet1.png", "design/onboarding/sheet2.png", "design/onboarding/sheet3.png", "design/onboarding/sheet4.png"]
+    },
+    {
+      "title": "홈 '하마 무대'",
+      "status": "built",
+      "date": "2026-11-16",
+      "thread": "디자인+앱",
+      "decisions": "H1~H4",
+      "images": ["design/home_stage/sheet1.png", "design/home_stage/sheet2.png", "design/home_stage/sheet3.png"]
+    },
+    {
+      "title": "기록 다시 보기 C9 · 구슬 쓸어 보기 N5",
+      "status": "built",
+      "date": "2026-11-13",
+      "thread": "기능 → 개발",
+      "decisions": "C9 (M4 한 달 카드는 출시 후), N5",
+      "images": ["design/features/records_mock/flow.png", "design/features/records_mock/sheet1.png", "design/features/records_mock/sheet2.png", "design/features/records_mock/sheet3.png", "design/features/records_mock/sheet4.png"]
+    },
+    {
+      "title": "유리병 병 그림 J1 (둥근 3D 병)",
+      "status": "built",
+      "date": "2026-11-13",
+      "thread": "기능 → 개발",
+      "decisions": "J1-A",
+      "images": ["design/features/jar_redesign/sheet3_roundA.png"]
+    }
+  ]
+}

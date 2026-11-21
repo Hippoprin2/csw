@@ -18,7 +18,7 @@
   - 2026-11-11 페이지 끌기: 손가락 따라 넘기기(방 여백·방 끝·마당 끝), 마당→방이 텃밭까지 넘어가던 문제 수정. ⏳ 출시 후로 미룸(대표 결정): 방↔텃밭 천천히 끌 때 툭 끊기는 느낌
 - 출시 막힘: 이름·도메인, Apple 계정, 사업자·구독, 처리방침용 운영자 이름·문의 이메일, continue/kill 기준. 대표 몫: 2FA 7개 계정
 - **앱 웹 테스트판(임시, 밖에서 Expo Go 안 될 때)**: https://csw-app-web.vercel.app — 실제 앱 코드 웹 빌드 + 실제 Supabase(대표 카카오 계정 그대로). 웹 카카오 로그인은 같은 창 이동(`lib/auth.ts` 웹 분기, uri_allow_list 등록됨). **다시 올리기: `python3 scripts/deploy_web_app.py`** (작업 트리 그대로 빌드 → 앱 스레드는 폰 확인이 필요한 변경 후 실행, 1~2분). 웹이라 진동·알림·키보드·제스처 느낌은 실제 폰과 다름
-- 프로토타입: design/prototype.html → https://csw-prototype.vercel.app (배포: `python3 scripts/deploy_prototype.py`)
+- **화면 보드 (대표가 최신 화면을 한눈에 보는 곳, 2026-11-21)**: https://csw-prototype.vercel.app — ① 지금 앱(웹 테스트판 자동 캡처) ② 논의 중·개발 대기 시안(화면마다 최신만, 상태 표시) ③ 개발 끝난 시안 보관(접힘). 내용 = `design/board/board.json`, 올리기 `python3 scripts/board.py --deploy`. **모든 스레드**: 화면 시안을 새로 만들었거나 시안 상태가 바뀌면(결정·개발 완료) board.json 고치고 올림. 앱 화면을 바꿨으면 웹 테스트판 배포 뒤 다시 캡처(`python3 scripts/capture_screens.py https://csw-app-web.vercel.app` + `node scripts/capture_onboarding.mjs design/screens/onboarding https://csw-app-web.vercel.app`) → 보드 올림. 예전 HTML 프로토타입은 /prototype.html 로 남김
 - 마당 움직임 테스트(웹, 실제 앱 아님): design/yard_test/index.html → https://csw-yard-test.vercel.app (배포: `python3 scripts/deploy_yard_test.py`, 커밋된 world export를 그대로 씀). ⚙︎에서 낮/밤·구역·카메라 수치 조절 — 대표가 정한 수치를 manifest `spaces.yard.camera`와 앱에 반영
 - 게임 디자인: docs/GAME_DESIGN.md
 
