@@ -227,3 +227,13 @@
 - Android 서명 키: EAS 서버가 만든 keystore(원격 보관). 스토어 올린 뒤엔 이 키를 잃으면 안 됨 — `eas credentials`로 백업 가능
 - 무료 플랜: 한 달 iOS·Android 각 15회 정도, 대기열 있음
 
+### 2026-11-21 카카오·구글 네이티브 로그인 (K6)
+- 코드: `mobile/src/lib/auth.ts` `signInNative` — 카카오 `@react-native-kakao/user` login(nonce 해시) → id_token, 구글 `@react-native-google-signin/google-signin` → id_token → 익명이면 `linkIdentity`, 아니면 `signInWithIdToken` (Apple과 같은 흐름, 이미 있는 계정이면 claimPending). 키 없는 빌드·웹·Expo Go는 예전 브라우저 OAuth 그대로
+- 플러그인: `mobile/app.config.js`가 키 있을 때만 카카오/구글 플러그인 붙임 + 카카오 maven 저장소(expo-build-properties)
+- 필요한 값(공개값, EAS 환경 변수로): `EXPO_PUBLIC_KAKAO_NATIVE_KEY`(카카오 네이티브 앱 키), `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`(기존 웹 클라이언트 = .env.local GOOGLE_CLIENT_ID), `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
+- 콘솔 설정:
+  - 카카오: 플랫폼 iOS 번들 `com.hippoprin.csw`, Android 패키지 `com.hippoprin.csw` + 키 해시 `hZ0gvDRNZaJrgq8nTju0bPEXUxM=`(EAS 서명 키, SHA1 85:9D:20:BC:34:4D:65:A2:6B:82:AF:27:4E:3B:B4:6C:F1:17:53:13), 카카오 로그인 > OpenID Connect 켜기
+  - 구글: OAuth 클라이언트 iOS(번들 com.hippoprin.csw), Android(패키지 + 위 SHA1). Play 스토어 앱 서명 키가 생기면 그 SHA1도 추가
+  - Supabase: Google client id 칸에 `웹,iOS` 쉼표로, Skip nonce check 켜기. Kakao client id 칸에 `REST키,네이티브키`
+- APK 서명 SHA1은 JDK 없이 `python`으로 APK Signing Block에서 뽑음(이 맥엔 Java 런타임 없음)
+

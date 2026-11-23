@@ -90,8 +90,68 @@ export async function claimPending(): Promise<{ moved: number; target_new: boole
   return data as { moved: number; target_new: boolean };
 }
 
-// 카카오·구글: 브라우저 OAuth (Expo Go에서도 동작). 익명 세션이면 연결, 아니면 로그인
+// ── 카카오·구글 네이티브 로그인 (2026-11-21 K6): 개발 빌드·스토어 앱에서 SDK로 id_token을 받아 Supabase에 넘김.
+// 로그인 창에 ….supabase.co 주소가 안 보이고, 카카오톡 앱 로그인·구글 계정 시트가 뜸. Apple과 같은 linkIdentity/signInWithIdToken 흐름.
+// 키가 없는 빌드(Expo Go 등)·웹은 아래 브라우저 OAuth로.
+const KAKAO_NATIVE_KEY = process.env.EXPO_PUBLIC_KAKAO_NATIVE_KEY ?? '';
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
+
+function nativeReady(provider: Provider) {
+  if (Platform.OS === 'web') return false;
+  if (provider === 'kakao') return !!KAKAO_NATIVE_KEY;
+  return !!GOOGLE_WEB_CLIENT_ID && (Platform.OS !== 'ios' || !!GOOGLE_IOS_CLIENT_ID);
+}
+
+// 네이티브 모듈은 키가 있을 때만 불러옴 (Expo Go엔 모듈이 없어서 import만 해도 죽음)
+let kakaoInit: Promise<void> | null = null;
+async function nativeIdToken(provider: Provider): Promise<{ token: string; nonce?: string } | null> {
+  if (provider === 'kakao') {
+    const core = await import('@react-native-kakao/core');
+    const user = await import('@react-native-kakao/user');
+    kakaoInit ??= core.initializeKakaoSDK(KAKAO_NATIVE_KEY);
+    await kakaoInit;
+    // 카카오는 nonce를 그대로 id_token에 넣음 → Supabase에는 원문, 카카오에는 해시 (Apple과 같은 방식)
+    const rawNonce = Crypto.randomUUID();
+    const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+    try {
+      const t = await user.login({ nonce: hashed }); // 카카오톡 있으면 앱으로, 없으면 카카오계정 화면
+      if (!t.idToken) throw new Error('kakao_no_id_token'); // 카카오 콘솔에서 OpenID Connect 꺼져 있으면
+      return { token: t.idToken, nonce: rawNonce };
+    } catch (e) {
+      if (/cancel/i.test(String((e as { code?: string })?.code ?? '') + errMsg(e))) return null;
+      throw e;
+    }
+  }
+  const { GoogleSignin, isSuccessResponse } = await import('@react-native-google-signin/google-signin');
+  GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID || undefined });
+  if (Platform.OS === 'android') await GoogleSignin.hasPlayServices();
+  await GoogleSignin.signOut().catch(() => {}); // 매번 계정 고르게 (예전 prompt: select_account와 같게)
+  const res = await GoogleSignin.signIn();
+  if (!isSuccessResponse(res)) return null; // 취소
+  if (!res.data.idToken) throw new Error('google_no_id_token');
+  return { token: res.data.idToken }; // iOS 구글 SDK nonce는 Supabase 'Skip nonce check'로 처리
+}
+
+async function signInNative(provider: Provider) {
+  const got = await nativeIdToken(provider);
+  if (!got) return false;
+  const cred = { provider, token: got.token, ...(got.nonce ? { nonce: got.nonce } : {}) };
+  if (await currentAnonSession()) {
+    const { error } = await supabase.auth.linkIdentity(cred);
+    if (!error) { track('signed_in', { method: provider, linked: true }); return true; }
+    if (!alreadyLinked(error)) throw error;
+    await savePendingClaim(); // 이미 있는 계정 → 그 계정으로 로그인, 첫 기록은 옮김
+  }
+  const { error } = await supabase.auth.signInWithIdToken(cred);
+  if (error) throw error;
+  track('signed_in', { method: provider });
+  return true;
+}
+
+// 카카오·구글: 네이티브 SDK 우선, 없으면 브라우저 OAuth (Expo Go·웹). 익명 세션이면 연결, 아니면 로그인
 export async function signInWithProvider(provider: Provider) {
+  if (nativeReady(provider)) return signInNative(provider);
   const anon = await currentAnonSession();
   if (Platform.OS === 'web') {
     // 웹 테스트판(Vercel): 같은 창에서 카카오로 갔다가 <origin>/auth/callback?code= 로 돌아옴 → callback.tsx가 세션 교환.
