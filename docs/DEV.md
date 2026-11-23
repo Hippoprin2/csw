@@ -235,5 +235,6 @@
   - 카카오: 플랫폼 iOS 번들 `com.hippoprin.csw`, Android 패키지 `com.hippoprin.csw` + 키 해시 `hZ0gvDRNZaJrgq8nTju0bPEXUxM=`(EAS 서명 키, SHA1 85:9D:20:BC:34:4D:65:A2:6B:82:AF:27:4E:3B:B4:6C:F1:17:53:13), 카카오 로그인 > OpenID Connect 켜기
   - 구글: OAuth 클라이언트 iOS(번들 com.hippoprin.csw), Android(패키지 + 위 SHA1). Play 스토어 앱 서명 키가 생기면 그 SHA1도 추가
   - Supabase: Google client id 칸에 `웹,iOS` 쉼표로, Skip nonce check 켜기. Kakao client id 칸에 `REST키,네이티브키`
+- 2026-11-21 반영 완료: 카카오 네이티브 키·플랫폼·OIDC(대표), 구글 iOS 클라이언트 `358149586645-nkaat40…`·Android 클라이언트(대표), Supabase(apply_auth_config.py), EAS 환경 변수
 - APK 서명 SHA1은 JDK 없이 `python`으로 APK Signing Block에서 뽑음(이 맥엔 Java 런타임 없음)
 
