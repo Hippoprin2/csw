@@ -219,3 +219,11 @@
 - 법 문서: 자해 감지 시 상담 번호 안내 삭제(대표 결정 11-21). privacy 1·2·3·6장, terms 5·7조, app-store 답안, ja 같이. 수집 항목에 '단짝에게 바라는 동작 낱말' 추가. `gen_legal.py` 재생성, `CONSENT_VERSION` 2026-11-21, 동의 화면 문구 '안전 안내' → '힘든 마음에 맞춘 반응'
 - 확인: tsc·eslint 통과, `scripts/test_motion_inactive.py` ALL PASS 17, `test_backend.py`·`test_access.py` ALL PASS, 로컬 웹(393×852)에서 유리병 탭 캡처·동작 요청 저장 확인
 
+### 2026-11-21 EAS 개발 빌드
+- Expo 계정 `hippoprin`(대표 Expo Go 계정, 이 맥에 로그인됨) · 프로젝트 `@hippoprin/csw` (projectId f1308dd1-…, app.json `extra.eas`/`owner`)
+- `mobile/eas.json` 프로필: `development`(dev client, internal, iOS = 시뮬레이터, Android = APK) / `development-device`(iPhone 실기기, Apple Developer 필요) / `preview`(내부 배포 APK·ipa) / `production`(스토어, buildNumber 원격 자동 증가 `appVersionSource: remote`)
+- 빌드: `scripts/eas_build.sh <profile> <ios|android|all>` — `EAS_NO_VCS=1`로 .git(820MB) 빼고 루트 `.easignore` 기준 mobile/만 업로드(23MB). 그냥 `eas build` 하면 841MB 올라감
+- 환경 변수: EAS 빌드는 git에 없는 `.env.local`을 못 봄 → `EXPO_PUBLIC_*` 4개를 EAS 환경 변수(development/preview/production, plaintext)로 올림. 값 바뀌면 `python3 scripts/eas_env_sync.py`. `EXPO_PUBLIC_SIM_TEST`는 올리지 않음
+- Android 서명 키: EAS 서버가 만든 keystore(원격 보관). 스토어 올린 뒤엔 이 키를 잃으면 안 됨 — `eas credentials`로 백업 가능
+- 무료 플랜: 한 달 iOS·Android 각 15회 정도, 대기열 있음
+
