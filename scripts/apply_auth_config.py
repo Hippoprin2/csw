@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """루트 .env.local의 로그인 키를 Supabase Auth 설정에 반영 (Management API, 토큰은 Supabase CLI 키체인).
-있는 키만 반영: KAKAO_CLIENT_ID/SECRET, GOOGLE_CLIENT_ID/SECRET, RESEND_API_KEY(+선택 SMTP_SENDER).
+있는 키만 반영: KAKAO_CLIENT_ID/SECRET(+KAKAO_NATIVE_KEY: 앱 네이티브 로그인 id_token용, 쉼표로 덧붙임),
+GOOGLE_IOS_CLIENT_ID(+네이티브 구글: 쉼표로 덧붙이고 nonce 검사 생략), GOOGLE_CLIENT_ID/SECRET, RESEND_API_KEY(+선택 SMTP_SENDER).
 사용: python3 scripts/apply_auth_config.py
 """
 import base64, json, pathlib, re, subprocess, urllib.request, urllib.error
@@ -25,11 +26,14 @@ def patch(body):
 
 body = {}
 if env.get('KAKAO_CLIENT_ID') and env.get('KAKAO_CLIENT_SECRET'):
-    body.update(external_kakao_enabled=True, external_kakao_client_id=env['KAKAO_CLIENT_ID'],
+    body.update(external_kakao_enabled=True, external_kakao_client_id=','.join(filter(None, [env['KAKAO_CLIENT_ID'], env.get('KAKAO_NATIVE_KEY')])),  # 첫 값 = 브라우저 OAuth용 REST 키
                 external_kakao_secret=env['KAKAO_CLIENT_SECRET'], external_kakao_email_optional=True)
 if env.get('GOOGLE_CLIENT_ID') and env.get('GOOGLE_CLIENT_SECRET'):
     body.update(external_google_enabled=True, external_google_client_id=env['GOOGLE_CLIENT_ID'],
                 external_google_secret=env['GOOGLE_CLIENT_SECRET'])
+    if env.get('GOOGLE_IOS_CLIENT_ID'):  # 2026-11-21 K6 네이티브 구글: iOS 클라이언트 id_token 허용, iOS SDK nonce는 검사 생략
+        body.update(external_google_client_id=env['GOOGLE_CLIENT_ID'] + ',' + env['GOOGLE_IOS_CLIENT_ID'],
+                    external_google_skip_nonce_check=True)
 if env.get('RESEND_API_KEY'):
     body.update(smtp_host='smtp.resend.com', smtp_port='465', smtp_user='resend', smtp_pass=env['RESEND_API_KEY'],
                 smtp_admin_email=env.get('SMTP_SENDER', 'onboarding@resend.dev'), smtp_sender_name='CSW',
