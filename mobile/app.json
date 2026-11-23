@@ -51,6 +51,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f1308dd1-fc69-4243-b383-abfbf635f34d"
+      }
+    },
+    "owner": "hippoprin"
   }
 }
