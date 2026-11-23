@@ -12,7 +12,7 @@ import { C, H as HT, R } from '@/ui/theme';
 // S1 이름 짓기 (기본 이름 제시, 건너뛰기 가능)
 export default function NamePet() {
   const { profile, updateProfile, anonymous } = useApp();
-  const [name, setName] = useState(profile?.pet_name ?? '꼬마하마');
+  const [name, setName] = useState(profile?.pet_name ?? '하몽');
   const [busy, setBusy] = useState(false);
   // 동의까지 마친 익명 계정이 앱을 다시 열면 ④ 첫 기록(기록이 있으면 ⑥ 가입)으로 바로 (2026-11-17 첫 실행 순서 변경)
   if (anonymous && profile?.consented_at) return <Redirect href="/onboarding/first" />;

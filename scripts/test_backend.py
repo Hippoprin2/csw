@@ -22,7 +22,7 @@ check('OTP 로그인', s == 200 and 'access_token' in sess, f'{s} {sess}')
 T = sess['access_token']; uid = sess['user']['id']
 
 s, prof = req('GET', '/rest/v1/profiles?select=*', token=T)
-check('가입 시 프로필 자동 생성', s == 200 and len(prof) == 1 and prof[0]['pet_name'] == '꼬마하마', prof)
+check('가입 시 프로필 자동 생성', s == 200 and len(prof) == 1 and prof[0]['pet_name'] == '하몽', prof)
 
 s, b = req('POST', '/rest/v1/rpc/grant_onboarding_gift', {}, token=T); check('온보딩 선물 6', b == 6, b)
 s, b = req('POST', '/rest/v1/rpc/grant_onboarding_gift', {}, token=T); check('선물은 1회만', b == 6, b)
