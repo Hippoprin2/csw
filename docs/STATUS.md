@@ -1,6 +1,7 @@
 # CSW (Celebrate Small Wins) — STATUS
 
 ## 현재 상태 (2026-11-21)
+- 2026-11-21 네이티브 로그인 빌드: 키 반영 후 개발 빌드 iOS(5ae773d1)·Android(9803eb29) 성공. iOS 시뮬레이터에서 카카오 → kauth/accounts.kakao.com 로그인 화면, 구글 → accounts.google.com "continue to csw" 확인(supabase.co 안 보임), 취소 시 오류 없이 돌아옴. 실제 계정 로그인 완료·안드로이드 실기기는 미확인(대표 계정 필요). 리다이렉트 목록 정리는 폰 로그인 확인 뒤
 - 2026-11-21 K6 카카오·구글 네이티브 로그인 코드 완료(`2ad4900`, 키 없으면 예전 브라우저 로그인). 남은 것: 대표가 카카오·구글 콘솔 설정 후 공개 키 2개(카카오 네이티브 앱 키, 구글 iOS 클라이언트 ID) 전달 → 내가 Supabase·EAS 반영, 새 개발 빌드, 시뮬레이터 확인, 리다이렉트 목록 정리. 콘솔 단계는 DEV.md '카카오·구글 네이티브 로그인'. K5(대표 폰 빌드)는 보류
 - 2026-11-21 EAS 개발 빌드 첫 성공: iOS 시뮬레이터용(설치·Metro 연결·첫 화면 확인) + Android APK(https://expo.dev/accounts/hippoprin/projects/csw/builds/2c1ac7a8-47f5-49c7-ba03-6bc0776be97d). 개발 빌드는 Metro(이 맥)에 붙어야 화면이 뜸 → 대표 폰 테스트용은 JS가 들어간 preview 빌드가 맞음. 빌드 방법 DEV.md 'EAS 개발 빌드'. 다음: 카카오 SDK·구글 네이티브 로그인 교체, 리다이렉트 목록 정리
 - 2026-11-21 대표 결정 K3: **Supabase Pro로 올림**(대표가 결제, org `Hippoprin2's Org` — 멈춰 둔 Cloop도 같은 org라 Cloop 되살리면 compute 추가 과금). Pro 전환 확인(plan pro, 매일 백업 7개 보관). 개발 빌드는 **EAS(Expo)**로 결정(안드로이드도 빌드해야 해서) — 이 맥은 Expo 계정 `hippoprin`(jsonia.kang@gmail.com, Expo Go 때 만든 것)으로 이미 로그인돼 있음
