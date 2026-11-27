@@ -13,21 +13,16 @@ import { Icon } from '@/ui/Icon';
 import { Btn } from '@/ui/kit';
 import { C, R } from '@/ui/theme';
 
-// 한 줄 안내 + 고지·동의 1화면 (FEATURES 3장, D4)
-// 민감정보는 다른 동의와 나눠 따로 받는다 (J4, 처리방침 2장). 모두 필수.
+// 한 줄 안내 + 고지·동의 1화면 (FEATURES 3장, D4). 모두 필수.
+// 2026-11-27 대표 결정: 민감정보 별도 동의(J4)와 '상담 앱 아님' 체크를 뺌 — 상담 아님 고지는 약관 제2조 2항·제11조 3항과 도움 화면에 있음.
+// 개인정보 줄의 OpenAI 한 줄은 남김: Apple 심사 지침 5.1.2(i)(제3자 AI로 개인 데이터를 보낼 때 앱 안에서 알리고 동의받기).
 type Item = { key: string; label: string; detail?: string; doc?: 'terms' | 'privacy' };
-const ITEMS: Item[] = [
+const ALL: Item[] = [
   { key: 'age', label: '만 14세 이상이에요' },
-  { key: 'notCounsel', label: '이 앱은 상담·치료 서비스가 아니라는 걸 알아요' },
   { key: 'terms', label: '[필수] 이용약관에 동의해요', doc: 'terms' },
   { key: 'privacy', label: '[필수] 개인정보 수집·이용에 동의해요', doc: 'privacy',
-    detail: '받는 정보: 로그인 이메일, 기록·메모, 단짝·공간 진행, 알림 설정. 기록을 분류하려고 기록 한 줄만 이름 없이 OpenAI(미국)로 보내요.' },
+    detail: '분류를 위해 기록 한 줄만 이름 없이 OpenAI(미국)로 보내요.' },
 ];
-const SENSITIVE: Item = {
-  key: 'sensitive', label: '[필수] 민감정보 처리에 동의해요', doc: 'privacy',
-  detail: '기록에 건강이나 마음 상태를 써도 괜찮아요. 그 내용도 저장·분류·힘든 마음에 맞춘 반응에만 쓰고, 분류를 위해 기록 한 줄이 OpenAI(미국)로 전송돼요. 다른 목적으로 쓰지 않아요.',
-};
-const ALL = [...ITEMS, SENSITIVE];
 
 export default function Notice() {
   const { refresh, anonymous } = useApp();
@@ -66,10 +61,7 @@ export default function Notice() {
         <Text style={st.big}>침대 정리도, 물 한 잔도{'\n'}다 승리야.</Text>
         <Text style={st.sub}>크기는 상관없어. 해낸 걸 적으면 내가 축하해줄게.</Text>
         <View style={st.box}>
-          {ITEMS.map((i) => <Check key={i.key} item={i} on={!!ok[i.key]} toggle={() => toggle(i.key)} />)}
-        </View>
-        <View style={st.box}>
-          <Check item={SENSITIVE} on={!!ok.sensitive} toggle={() => toggle('sensitive')} />
+          {ALL.map((i) => <Check key={i.key} item={i} on={!!ok[i.key]} toggle={() => toggle(i.key)} />)}
         </View>
         <Pressable onPress={() => setOk(Object.fromEntries(ALL.map((i) => [i.key, !all])))} style={st.allBtn} accessibilityRole="button">
           <Text style={st.allText}>{all ? '모두 해제' : '모두 동의'}</Text>
