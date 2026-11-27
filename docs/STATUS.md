@@ -28,6 +28,7 @@
 - 게임 디자인: docs/GAME_DESIGN.md
 
 ## 결정 사항
+- 2026-11-27 (웹사이트→법·개발): **회사 사이트에 앱 공개 페이지 3개 추가(대표 결정 A)** — https://irumhq-site.vercel.app/hamalog/privacy · /hamalog/terms · /hamalog/support (irumhq.com 연결 후 같은 경로). `docs/legal/privacy.md`·`terms.md`에서 자동 생성(`~/projects/irumhq-site/scripts/build_legal.py`, 【앱 이름】=Hamalog(하마로그)·약관/처리방침 주소는 생성 때만 채움, 남은 【】는 노란색 표시). 법 스레드: 법 문서 고치면 build_legal.py → 커밋 → vercel_deploy.py로 재배포. 개발 스레드: 도메인 연결 후 EXPO_PUBLIC_PRIVACY_URL/TERMS_URL = https://irumhq.com/hamalog/privacy·terms. ⚠ 지원 페이지 FAQ에 '구매 복원'은 앱에 아직 없어서 뺌 → 결제 연동 때 추가. 사업자 정보 빈칸은 대표가 index.html 직접 작성
 - 2026-11-23 (캐릭터→기능·개발·번역·전체, 대표 확정): 하몽 성격 = 느긋함·포근함·엉뚱함·담백함. 말투 = 반말·짧은 문장, **말줄임표 금지**, 물결·이모지 OK, 재촉·비교·공백 압박·죄책감 말 금지, 칭찬은 아끼지 않음. 하몽이 말하는 앱 문구·알림·SNS는 이 기준(docs/CHARACTER.md '하몽 성격·말투')
 - 2026-11-23 (캐릭터→전체, 대표 결정): 캐릭터 이름 = **하몽 (HAMONG)**. 앱 문구·SNS·스토어 설명에서 캐릭터를 부를 때 이 이름을 쓴다. 상표 출원 예정(CHARACTER_IP.md)
 - 2026-11-23 (캐릭터→전체): 하마는 AI 생성 그림 출발이라 저작권이 약함 → 권리는 상표 우선. 출시 전 Hamalog 상표 출원, 캐릭터 이름 확정 후 이름·도형 상표, 굿즈 전 사람 손 공식 캐릭터 시트. 외주 계약엔 '2차적저작물작성권 포함 양도' 필수. 상세 docs/CHARACTER_IP.md
